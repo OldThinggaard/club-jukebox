@@ -61,6 +61,10 @@ When the queue is empty the television shows the club name, clock, date, welcome
 
 The QR code uses the public address in settings. Production should be `http://jukebox.local:47123` via Avahi. Phones get the same shelf. They do not get the PIN page from the shelf, and they cannot stream the film file. Full file playback is accepted only from the machine itself, so the sound stays on the club speakers.
 
+## Test from a USB stick
+
+`deploy/scripts/build-usb.sh` builds a Debian 13 live ISO with the jukebox already on it. Written to a USB stick, it boots a touchscreen PC into the shelf and plays on HDMI. It does not install to, or erase, the PC's own disk. Flashing steps, Secure Boot, and the console password are in [docs/usb.md](docs/usb.md). The image is `publish/usb/jukebox-live-amd64.iso`.
+
 ## Install on Debian
 
 ```bash

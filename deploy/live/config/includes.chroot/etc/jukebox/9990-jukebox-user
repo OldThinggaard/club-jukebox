@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs at live boot after the stock user setup, so the console password stays known.
+if id jukebox >/dev/null 2>&1; then
+  echo 'jukebox:jukebox' | chpasswd
+  usermod -aG audio,video,render,input,plugdev,netdev,sudo jukebox 2>/dev/null || true
+fi

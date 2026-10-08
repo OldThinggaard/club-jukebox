@@ -1,0 +1,54 @@
+#!/bin/bash
+# Prepare the live system after packages are installed.
+set -euo pipefail
+
+if ! id jukebox >/dev/null 2>&1; then
+  useradd --uid 1000 --create-home --home-dir /home/jukebox --shell /bin/bash --user-group jukebox
+fi
+echo 'jukebox:jukebox' | chpasswd
+usermod -aG audio,video,render,input,plugdev,netdev,sudo jukebox || true
+install -d -o jukebox -g jukebox /home/jukebox /var/lib/jukebox /var/log
+echo 'jukebox ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/jukebox
+chmod 440 /etc/sudoers.d/jukebox
+
+if [[ -f /etc/locale.gen ]]; then
+  sed -i 's/^# *\(da_DK.UTF-8 UTF-8\)/\1/' /etc/locale.gen
+fi
+grep -q 'da_DK.UTF-8 UTF-8' /etc/locale.gen || echo 'da_DK.UTF-8 UTF-8' >> /etc/locale.gen
+locale-gen
+update-locale LANG=da_DK.UTF-8
+ln -sfn /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime
+echo Europe/Copenhagen > /etc/timezone
+
+install -d -o jukebox -g jukebox /home/jukebox/.config/openbox
+if [[ -f /opt/jukebox/current/Jukebox.Host ]]; then
+  chmod 0755 /opt/jukebox/current/Jukebox.Host
+fi
+chmod 0755 /opt/jukebox/bin/session.sh /opt/jukebox/bin/kiosk.sh /etc/jukebox/9990-jukebox-user
+
+for dir in /lib/live/config /usr/lib/live/config; do
+  if [[ -d "$dir" ]]; then
+    install -m 0755 /etc/jukebox/9990-jukebox-user "$dir/9990-jukebox-user"
+  fi
+done
+
+chown -R jukebox:jukebox /home/jukebox /var/lib/jukebox
+
+enable_unit() {
+  local unit="$1"
+  if ! systemctl enable "$unit"; then
+    mkdir -p /etc/systemd/system/multi-user.target.wants
+    ln -sfn "/etc/systemd/system/${unit}" "/etc/systemd/system/multi-user.target.wants/${unit}"
+  fi
+}
+
+enable_unit jukebox.service
+enable_unit jukebox-graphical.service
+systemctl enable avahi-daemon.service || true
+systemctl enable NetworkManager.service || true
+
+mkdir -p /etc/systemd/system
+for target in sleep.target suspend.target hibernate.target hybrid-sleep.target; do
+  ln -sfn /dev/null "/etc/systemd/system/${target}"
+done
+ln -sfn /dev/null /etc/systemd/system/getty@tty1.service

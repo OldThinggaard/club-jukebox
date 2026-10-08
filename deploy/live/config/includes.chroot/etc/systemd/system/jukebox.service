@@ -1,0 +1,32 @@
+[Unit]
+Description=Club video jukebox
+After=network-online.target sound.target
+Wants=network-online.target avahi-daemon.service
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=notify
+User=jukebox
+Group=jukebox
+WorkingDirectory=/opt/jukebox/current
+Environment=JUKEBOX_DATA_DIR=/var/lib/jukebox
+Environment=JUKEBOX_SUPERVISED=1
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:47123
+Environment=Jukebox__PublicBaseUrl=http://jukebox.local:47123
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/jukebox/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/opt/jukebox/current/Jukebox.Host
+Restart=always
+RestartSec=2
+TimeoutStartSec=300
+WatchdogSec=30
+MemoryMax=1200M
+Nice=-5
+NoNewPrivileges=true
+SupplementaryGroups=audio video render input
+
+[Install]
+WantedBy=multi-user.target

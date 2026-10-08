@@ -1,0 +1,36 @@
+Club Jukebox — test-USB
+========================
+
+Denne nøgle starter en midlertidig Debian Linux med jukeboksen.
+Den skriver ikke til computerens egen disk. Når du slukker og tager
+nøglen ud, er maskinen som før.
+
+Sådan tester du på touchskærm-pc'en
+------------------------------------
+
+1. Sæt USB-nøglen i, og start fra USB.
+   Hvis maskinen nægter at boote, så slå Secure Boot fra i UEFI/BIOS.
+2. Tilslut HDMI-tv'et, hvis du vil se filmen på skærm 2.
+   Touchskærmen viser kun hylden. Tv'et viser velkomst og afspilning.
+3. Første opstart kan tage et par minutter. Eksempel-film bliver lavet
+   på nøglen, så hylden ikke er tom. Derefter vises Oak & Iron Clubhouse.
+4. Administration åbnes på touchskærmen via adressen
+   http://127.0.0.1:47123/admin
+   PIN-koden er 2580.
+5. En telefon på samme net kan åbne http://jukebox.local:47123
+
+Lyd vælges under Administration, fanen playback.
+Analog line out er førstevalget. HDMI-lyd kan vælges der.
+
+Konsol, hvis billedet driller
+-----------------------------
+
+Ctrl+Alt+F2
+Bruger: jukebox
+Adgangskode: jukebox
+
+Loggen fra skærmen ligger i /home/jukebox/xorg.log
+Programlog: journalctl -u jukebox -u jukebox-graphical
+
+Sort skærm efter menuen: genstart, tryk e på Live-linjen, og tilføj
+nomodeset til kernelinjen.

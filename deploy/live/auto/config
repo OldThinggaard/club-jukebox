@@ -1,0 +1,34 @@
+#!/bin/sh
+# live-build configuration for the test USB. lb config runs this file.
+set -eu
+lb config noauto \
+	--mode debian \
+	--distribution trixie \
+	--parent-distribution trixie \
+	--archive-areas "main non-free-firmware" \
+	--parent-archive-areas "main non-free-firmware" \
+	--mirror-bootstrap "http://deb.debian.org/debian/" \
+	--mirror-chroot "http://deb.debian.org/debian/" \
+	--mirror-binary "http://deb.debian.org/debian/" \
+	--mirror-chroot-security "http://security.debian.org/debian-security/" \
+	--mirror-binary-security "http://security.debian.org/debian-security/" \
+	--security true \
+	--architectures amd64 \
+	--linux-flavours amd64 \
+	--binary-images iso-hybrid \
+	--bootloaders "grub-efi,syslinux" \
+	--debian-installer none \
+	--apt-recommends true \
+	--apt-indices false \
+	--firmware-chroot true \
+	--chroot-squashfs-compression-type zstd \
+	--uefi-secure-boot auto \
+	--memtest none \
+	--win32-loader false \
+	--iso-application "Club Jukebox" \
+	--iso-preparer "Club Jukebox live USB" \
+	--iso-publisher "Club Jukebox" \
+	--iso-volume "JUKEBOX" \
+	--image-name "jukebox-live" \
+	--bootappend-live "boot=live components username=jukebox hostname=jukebox user-default-groups=audio,video,netdev,plugdev,input,render,sudo locales=da_DK.UTF-8 keyboard-layouts=dk timezone=Europe/Copenhagen noautologin" \
+	"$@"

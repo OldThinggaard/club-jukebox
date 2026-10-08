@@ -17,6 +17,7 @@ Environment=ASPNETCORE_URLS=http://0.0.0.0:47123
 ExecStart=/opt/jukebox/current/Jukebox.Host
 Restart=always
 RestartSec=2
+TimeoutStartSec=300
 WatchdogSec=30
 MemoryMax=1200M
 Nice=-5

@@ -1,0 +1,3 @@
+#!/bin/sh
+# live-build only runs chroot hooks when a live hook exists alongside the normal ones.
+exit 0
