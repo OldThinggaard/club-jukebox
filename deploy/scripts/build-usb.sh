@@ -28,11 +28,11 @@ fi
 
 stage="$LIVE/config/includes.chroot/opt/jukebox"
 rm -rf "$stage/current"
-mkdir -p "$stage/current" "$stage/bin"
+mkdir -p "$stage/current" "$stage/bin" "$stage/lib"
 cp -a "$ROOT/publish/app/." "$stage/current/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$stage/bin/kiosk.sh"
-mkdir -p "$LIVE/config/archives"
-cp -a "$LIVE/apt/." "$LIVE/config/archives/"
+install -m 0644 "$LIVE/apt/jotta.key.chroot" "$stage/lib/jotta.gpg"
+rm -rf "$LIVE/config/archives"
 chmod 0755 "$stage/bin/session.sh" "$LIVE/auto/config" \
   "$LIVE/config/hooks/normal/0100-jukebox.hook.chroot" \
   "$LIVE/config/hooks/live/0001-present.hook.chroot"

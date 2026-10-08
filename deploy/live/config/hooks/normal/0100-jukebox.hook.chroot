@@ -28,6 +28,16 @@ chmod 0755 /opt/jukebox/bin/session.sh /opt/jukebox/bin/kiosk.sh /etc/jukebox/99
   /opt/jukebox/lib/install-to-disk.sh /opt/jukebox/lib/onlime-login.sh /opt/jukebox/lib/onlime-boot.sh \
   /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/wifi-connect.sh
 
+# The Onlime repo is HTTPS. ca-certificates is installed with the package list,
+# so the repo is added here rather than during the earlier apt update.
+if [[ -f /opt/jukebox/lib/jotta.gpg ]]; then
+  install -d /etc/apt/keyrings
+  install -m 644 /opt/jukebox/lib/jotta.gpg /etc/apt/keyrings/jotta.gpg
+  printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/jotta.gpg] https://repo.jotta.cloud/debian debian main' > /etc/apt/sources.list.d/jotta.list
+  apt-get update
+  apt-get install -y jotta-cli
+fi
+
 for dir in /lib/live/config /usr/lib/live/config; do
   if [[ -d "$dir" ]]; then
     install -m 0755 /etc/jukebox/9990-jukebox-user "$dir/9990-jukebox-user"
