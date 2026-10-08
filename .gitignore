@@ -1,0 +1,14 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+TestResults/
+data/
+publish/
+src/Jukebox.Host/wwwroot/
+web/node_modules/
+web/dist/
+web/.vite/
+*.log
+.DS_Store

@@ -1,0 +1,18 @@
+[Unit]
+Description=Apply a jukebox update before the app starts
+DefaultDependencies=no
+Before=jukebox.service
+After=local-fs.target
+ConditionPathExists=/opt/jukebox/updater/Jukebox.UpdateAgent
+
+[Service]
+Type=oneshot
+User=jukebox
+Group=jukebox
+Environment=JUKEBOX_DATA_DIR=/var/lib/jukebox
+ExecStart=/opt/jukebox/updater/Jukebox.UpdateAgent --data /var/lib/jukebox --app /opt/jukebox/current
+RemainAfterExit=yes
+TimeoutStartSec=180
+
+[Install]
+WantedBy=jukebox.service

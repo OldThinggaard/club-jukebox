@@ -1,0 +1,18 @@
+[Unit]
+Description=Jukebox touchscreen browser
+After=jukebox.service graphical.target
+Requires=jukebox.service
+ConditionPathExists=/var/lib/jukebox/displays.env
+
+[Service]
+Type=simple
+User=jukebox
+Group=jukebox
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/opt/jukebox/bin/kiosk.sh ui
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

@@ -1,0 +1,11 @@
+﻿{
+  "profiles": {
+    "Jukebox.Host": {
+      "commandName": "Project",
+      "applicationUrl": "http://0.0.0.0:47123",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
