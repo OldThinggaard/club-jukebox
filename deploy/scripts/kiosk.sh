@@ -11,7 +11,7 @@ if [[ "$ROLE" == "hall" ]]; then
   URL="http://127.0.0.1:47123/player"
 else
   GEOM="${UI_GEOM:-}"
-  URL="http://127.0.0.1:47123/"
+  URL="${JUKEBOX_KIOSK_URL:-http://127.0.0.1:47123/}"
 fi
 
 SIZE="1280,800"

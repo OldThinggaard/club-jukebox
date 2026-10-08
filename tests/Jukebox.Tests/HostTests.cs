@@ -33,6 +33,17 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     [Fact]
+    public async Task Install_wizard_refuses_to_wipe_a_disk_until_booted_from_the_usb()
+    {
+        var client = _factory.CreateClient();
+        var state = await client.GetFromJsonAsync<InstallStateDto>("/api/install/state");
+        Assert.False(state!.InstallerMode);
+
+        var wipe = await client.PostAsJsonAsync("/api/install/run", new { path = "/dev/sda", confirm = "sda" });
+        Assert.Equal(HttpStatusCode.Forbidden, wipe.StatusCode);
+    }
+
+    [Fact]
     public async Task Queue_accepts_a_ready_film_once()
     {
         var id = _factory.AddFilm("Coldplay", "Yellow");
@@ -49,6 +60,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     private sealed record HealthDto(string Status);
+    private sealed record InstallStateDto(bool InstallerMode);
     private sealed record QueueDto(bool Ok, string? Reason);
     private sealed record ScreenDto(string ClubName);
 }

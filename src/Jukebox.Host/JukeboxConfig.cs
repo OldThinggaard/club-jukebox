@@ -10,4 +10,5 @@ public sealed class JukeboxConfig
     public int IdleTimeoutSeconds { get; set; } = 90;
     public string DefaultPin { get; set; } = "2580";
     public bool EnableBackground { get; set; } = true;
+    public bool InstallerMode { get; set; }
 }

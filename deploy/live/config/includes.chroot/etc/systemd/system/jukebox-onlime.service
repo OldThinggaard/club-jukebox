@@ -1,0 +1,17 @@
+[Unit]
+Description=Onlime sync for the video jukebox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=jukebox
+Group=jukebox
+Environment=HOME=/home/jukebox
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStartPre=+/usr/bin/install -d -o jukebox -g jukebox -m 700 /run/user/1000
+ExecStart=/opt/jukebox/lib/onlime-boot.sh
+
+[Install]
+WantedBy=multi-user.target

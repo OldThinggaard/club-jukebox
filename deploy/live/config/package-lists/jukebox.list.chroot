@@ -12,6 +12,7 @@ locales
 console-setup
 kbd
 network-manager
+wpasupplicant
 avahi-daemon
 xserver-xorg
 xserver-xorg-legacy
@@ -44,3 +45,13 @@ firmware-amd-graphics
 firmware-sof-signed
 intel-microcode
 amd64-microcode
+python3
+parted
+gdisk
+dosfstools
+e2fsprogs
+rsync
+grub-efi-amd64
+grub-efi-amd64-bin
+efibootmgr
+jotta-cli

@@ -58,6 +58,9 @@ fi
   done
 ) &
 
+if [[ -f /etc/jukebox-installer ]]; then
+  export JUKEBOX_KIOSK_URL="http://127.0.0.1:47123/install"
+fi
 /opt/jukebox/bin/kiosk.sh ui
 status=$?
 kill "$openbox_pid" >/dev/null 2>&1 || true

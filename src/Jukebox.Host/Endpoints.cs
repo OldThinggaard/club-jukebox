@@ -20,6 +20,7 @@ public static class Endpoints
 
     public static void Map(WebApplication app, DateTime startedUtc)
     {
+        InstallEndpoints.Map(app, app.Services.GetRequiredService<JukeboxConfig>());
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok", version = JukeboxVersion.Current }));
 
         app.MapGet("/api/screen", (MediaStore media, SettingsStore settings, QueueStore queue, PlaybackCoordinator playback, MediaIndexer indexer) =>

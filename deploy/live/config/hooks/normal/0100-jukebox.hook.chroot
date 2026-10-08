@@ -24,7 +24,9 @@ install -d -o jukebox -g jukebox /home/jukebox/.config/openbox
 if [[ -f /opt/jukebox/current/Jukebox.Host ]]; then
   chmod 0755 /opt/jukebox/current/Jukebox.Host
 fi
-chmod 0755 /opt/jukebox/bin/session.sh /opt/jukebox/bin/kiosk.sh /etc/jukebox/9990-jukebox-user
+chmod 0755 /opt/jukebox/bin/session.sh /opt/jukebox/bin/kiosk.sh /etc/jukebox/9990-jukebox-user \
+  /opt/jukebox/lib/install-to-disk.sh /opt/jukebox/lib/onlime-login.sh /opt/jukebox/lib/onlime-boot.sh \
+  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/wifi-connect.sh
 
 for dir in /lib/live/config /usr/lib/live/config; do
   if [[ -d "$dir" ]]; then
@@ -44,6 +46,7 @@ enable_unit() {
 
 enable_unit jukebox.service
 enable_unit jukebox-graphical.service
+enable_unit jukebox-onlime.service
 systemctl enable avahi-daemon.service || true
 systemctl enable NetworkManager.service || true
 

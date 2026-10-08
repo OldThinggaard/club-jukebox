@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a hybrid ISO that boots Debian and the jukebox without touching the PC disk.
+# Build a hybrid ISO that installs Debian and the jukebox onto the PC disk.
 # The ISO is written to publish/usb/jukebox-live-amd64.iso
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -22,7 +22,7 @@ case "$lb_version" in
     ;;
 esac
 
-if [[ ! -x "$ROOT/publish/app/Jukebox.Host" ]]; then
+if [[ "${1:-}" != "--build-only" ]]; then
   "$ROOT/deploy/scripts/publish.sh"
 fi
 
@@ -31,6 +31,8 @@ rm -rf "$stage/current"
 mkdir -p "$stage/current" "$stage/bin"
 cp -a "$ROOT/publish/app/." "$stage/current/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$stage/bin/kiosk.sh"
+mkdir -p "$LIVE/config/archives"
+cp -a "$LIVE/apt/." "$LIVE/config/archives/"
 chmod 0755 "$stage/bin/session.sh" "$LIVE/auto/config" \
   "$LIVE/config/hooks/normal/0100-jukebox.hook.chroot" \
   "$LIVE/config/hooks/live/0001-present.hook.chroot"
