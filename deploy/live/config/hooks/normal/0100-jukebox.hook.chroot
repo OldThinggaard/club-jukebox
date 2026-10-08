@@ -34,8 +34,8 @@ if [[ -f /opt/jukebox/lib/jotta.gpg ]]; then
   install -d /etc/apt/keyrings
   install -m 644 /opt/jukebox/lib/jotta.gpg /etc/apt/keyrings/jotta.gpg
   printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/jotta.gpg] https://repo.jotta.cloud/debian debian main' > /etc/apt/sources.list.d/jotta.list
-  apt-get update
-  apt-get install -y jotta-cli
+  DEBIAN_FRONTEND=noninteractive apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y jotta-cli
 fi
 
 for dir in /lib/live/config /usr/lib/live/config; do
