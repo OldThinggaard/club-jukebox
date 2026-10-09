@@ -31,6 +31,7 @@ install -m 0755 "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/onlime
 install -m 0644 "$ROOT/deploy/live/apt/jotta.key.chroot" "$pkg/usr/share/jukebox/jotta.gpg"
 install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/jukebox.service"
 install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
+install -m 0755 "$ROOT/deploy/package/onlime-install.sh" "$pkg/opt/jukebox/lib/onlime-install.sh"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-usb-mount.service" "$pkg/etc/systemd/system/jukebox-usb-mount.service"
 printf '%s\n' 'allowed_users=anybody' 'needs_root_rights=no' > "$pkg/etc/X11/Xwrapper.config"
@@ -55,6 +56,11 @@ if ! grep -q "Installer og genstart" "$pkg/opt/jukebox/current/wwwroot/assets/"i
   echo "The package is missing the USB install button." >&2
   exit 1
 fi
+if ! grep -q "Hent Onlime Sync" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The package is missing the Onlime Sync button." >&2
+  exit 1
+fi
+bash -n "$pkg/opt/jukebox/lib/onlime-install.sh"
 python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 bash -n "$pkg/DEBIAN/postinst"
 

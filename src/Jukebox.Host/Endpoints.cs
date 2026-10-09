@@ -441,6 +441,16 @@ public static class Endpoints
         admin.MapGet("/audit", (SettingsStore settings) => Results.Ok(settings.RecentAudit(40))).AddEndpointFilter(Gate);
         admin.MapGet("/wifi", InstallEndpoints.ListWifi).AddEndpointFilter(Gate);
         admin.MapPost("/wifi", async (WifiBody body) => await InstallEndpoints.ConnectWifi(body.Ssid, body.Psk)).AddEndpointFilter(Gate);
+        admin.MapGet("/onlime/status", () => Results.Ok(OnlimeSync.Status())).AddEndpointFilter(Gate);
+        admin.MapPost("/onlime/install", (SettingsStore settings) =>
+        {
+            var result = OnlimeSync.Install();
+            if (result.Ok)
+                settings.Audit("onlime-install", null);
+            return result.Ok
+                ? Results.Ok(new { ok = true, message = result.Message })
+                : Results.Json(new { ok = false, reason = result.Message }, statusCode: result.Status);
+        }).AddEndpointFilter(Gate);
         admin.MapPost("/onlime/open", () => InstallEndpoints.OpenOnlimeBrowser()).AddEndpointFilter(Gate);
         admin.MapPost("/onlime", async (OnlimeBody body) => await InstallEndpoints.Begin(body.Token, body.Device, startSync: true)).AddEndpointFilter(Gate);
     }

@@ -129,11 +129,8 @@ ExecStart=/opt/jukebox/lib/onlime-boot.sh
 WantedBy=multi-user.target
 EOF
 
-if [[ -f /usr/share/jukebox/jotta.gpg ]]; then
-  install -d /etc/apt/keyrings
-  install -m 644 /usr/share/jukebox/jotta.gpg /etc/apt/keyrings/jotta.gpg
-  printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/jotta.gpg] https://repo.jotta.cloud/debian debian main' > /etc/apt/sources.list.d/jotta.list
-  apt-get update >/dev/null 2>&1 && apt-get install -y jotta-cli >/dev/null 2>&1 || true
+if [[ -x /opt/jukebox/lib/onlime-install.sh ]]; then
+  /opt/jukebox/lib/onlime-install.sh || true
 fi
 
 for dm in gdm.service gdm3.service lightdm.service sddm.service; do

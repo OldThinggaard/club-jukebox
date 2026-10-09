@@ -73,6 +73,31 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     [Fact]
+    public async Task Onlime_sync_install_stays_off_the_preview()
+    {
+        var client = _factory.CreateClient();
+        var anon = await client.GetAsync("/api/admin/onlime/status");
+        Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+
+        var login = await client.PostAsJsonAsync("/api/admin/login", new { pin = "2580" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        var status = await client.GetFromJsonAsync<OnlimeStatusDto>("/api/admin/onlime/status");
+        Assert.NotNull(status);
+        if (!File.Exists("/usr/bin/jotta-cli"))
+        {
+            Assert.False(status!.Installed);
+            Assert.False(status.CanInstall);
+            Assert.Contains("forhåndsvisning", status.Message);
+        }
+
+        if (!File.Exists("/opt/jukebox/lib/onlime-install.sh"))
+        {
+            var post = await client.PostAsync("/api/admin/onlime/install", null);
+            Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task Queue_accepts_a_ready_film_once()
     {
         var id = _factory.AddFilm("Coldplay", "Yellow");
@@ -94,6 +119,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
     private sealed record QueueDto(bool Ok, string? Reason);
     private sealed record ScreenDto(string ClubName);
     private sealed record PackageDto(bool Found, bool CanInstall, string Message);
+    private sealed record OnlimeStatusDto(bool Installed, bool CanInstall, string Message);
 }
 
 public sealed class JukeboxFactory : WebApplicationFactory<Program>

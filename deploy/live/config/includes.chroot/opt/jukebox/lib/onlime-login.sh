@@ -5,7 +5,7 @@ TOKEN_FILE="${1:?token file}"
 DEVICE="${2:-videojukebox}"
 SYNC_ROOT="${3:-/var/lib/jukebox/onlime-sync}"
 if [[ ! -x /usr/bin/jotta-cli ]]; then
-  echo "Onlime-programmet er ikke installeret på denne nøgle." >&2
+  echo "Onlime Sync er ikke installeret. Hent det under Onlime." >&2
   exit 1
 fi
 install -d -o jukebox -g jukebox "$SYNC_ROOT/media" "$SYNC_ROOT/events" "$SYNC_ROOT/updates" /home/jukebox

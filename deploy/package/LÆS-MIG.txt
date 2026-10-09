@@ -1,15 +1,16 @@
 Videojukebox
 =============
 
-Når hylden allerede kører, bruges filen videojukebox-opdater.iso.
-Læg den på en USB-nøgle med Etcher. Sluk computeren, sæt nøglen i, og tænd.
-Nøglen opdaterer selv og genstarter. Tag nøglen ud, når hylden er tilbage.
+Kopiér videojukebox.deb over på en USB-nøgle som en almindelig fil.
+Sæt nøglen i Debian-computeren, dobbeltklik på filen, og tryk Installér.
+Filen sletter ikke disken. Genstart, når installationen er færdig.
 
 Hylden viser filmene. Hold fingeren på klubnavnet i to sekunder, og tast 2580.
 Gæster ser ikke administration.
 
-Første gang, hvis skrivebordet stadig er fremme:
-åbn videojukebox.deb, og tryk Installér. Genstart, når den er færdig.
-
 Netværk og Onlime sættes op under Administration.
+Mangler Onlime Sync, så sæt kablet i, åbn Onlime, og tryk Hent Onlime Sync.
+Log derefter ind, og kopiér koden.
 Film lægges i mappen media. Plakater lægges i mappen events.
+
+En ny videojukebox.deb på en USB-nøgle lægges på under Opdatering.

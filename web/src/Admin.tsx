@@ -458,9 +458,38 @@ function NetworkPanel() {
 }
 
 function OnlimePanel() {
+  const [sync, setSync] = useState<{ installed: boolean; canInstall: boolean; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [bad, setBad] = useState(false);
+
+  useEffect(() => {
+    admin<{ installed: boolean; canInstall: boolean; message: string }>("/api/admin/onlime/status")
+      .then(setSync)
+      .catch(() => setSync({ installed: false, canInstall: false, message: "Kunne ikke læse Onlime." }));
+  }, []);
+
+  async function fetchSync() {
+    setBusy(true);
+    setBad(false);
+    setMessage("Henter Onlime Sync. Lad kablet sidde i.");
+    try {
+      const body = await admin<{ message?: string }>("/api/admin/onlime/install", { method: "POST", body: "{}" });
+      setMessage(body.message ?? "Onlime Sync er installeret.");
+      setSync({ installed: true, canInstall: true, message: "Onlime Sync er installeret. Log ind, og kopiér koden." });
+    } catch (reason) {
+      setBad(true);
+      const text = reason instanceof Error ? reason.message : "";
+      try {
+        const body = JSON.parse(text) as { reason?: string };
+        setMessage(body.reason ?? "Onlime Sync kunne ikke hentes. Sæt kablet i, og prøv igen.");
+      } catch {
+        setMessage("Onlime Sync kunne ikke hentes. Sæt kablet i, og prøv igen.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function start(token: string) {
     setBusy(true);
@@ -490,8 +519,20 @@ function OnlimePanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Onlime</h2>
-      <p>Onlime sættes op her, efter maskinen er installeret. Sæt først netværk på fanen netværk, eller sæt et kabel i. Log derefter ind på Onlime og kopiér den lange kode. Sync henter filmene bagefter. Læg film i mappen media og plakater i mappen events.</p>
-      <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
+      {!sync && <p>Leder efter Onlime Sync…</p>}
+      {sync && !sync.installed && (
+        <>
+          <p>Onlime Sync er ikke på maskinen endnu. Sæt netværkskablet i, og tryk på knappen. Derefter kan du logge ind og kopiere koden.</p>
+          <Button size="lg" disabled={!sync.canInstall || busy} onClick={() => void fetchSync()}>Hent Onlime Sync</Button>
+          <p className={bad ? "warn" : "ok"}>{message || sync.message}</p>
+        </>
+      )}
+      {sync?.installed && (
+        <>
+          <p>Log ind på Onlime, og kopiér den lange kode. Sync henter filmene bagefter. Læg film i mappen media og plakater i mappen events.</p>
+          <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
+        </>
+      )}
     </section>
   );
 }
