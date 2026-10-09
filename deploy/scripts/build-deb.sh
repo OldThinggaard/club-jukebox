@@ -2,9 +2,7 @@
 # Build publish/pakke/videojukebox.deb. One file. Double-click it on Debian.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-if [[ ! -x "$ROOT/publish/app/Jukebox.Host" || ! -x "$ROOT/publish/updater/Jukebox.UpdateAgent" ]]; then
-  "$ROOT/deploy/scripts/publish.sh"
-fi
+"$ROOT/deploy/scripts/publish.sh"
 
 stage="$(mktemp -d)"
 pkg="$stage/videojukebox"
@@ -47,6 +45,10 @@ install -m 0644 "$ROOT/deploy/package/debian/control" "$pkg/DEBIAN/control"
 
 test -f "$pkg/opt/jukebox/current/Jukebox.Host"
 test ! -e "$pkg/opt/jukebox/lib/install-to-disk.sh"
+if ! grep -q "Tast koden" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The package is missing the staff PIN screen." >&2
+  exit 1
+fi
 bash -n "$pkg/DEBIAN/postinst"
 
 out="$ROOT/publish/pakke"
