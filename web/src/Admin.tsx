@@ -129,8 +129,17 @@ export function Admin() {
         </div>
       </header>
       <nav className="admin-nav">
-        {(["overview", "library", "sources", "playback", "backups", "updates", "netværk", "onlime"] as Tab[]).map((item) => (
-          <button key={item} className={tab === item ? "active" : ""} type="button" onClick={() => setTab(item)}>{item}</button>
+        {([
+          ["overview", "overview"],
+          ["library", "library"],
+          ["sources", "sources"],
+          ["playback", "playback"],
+          ["backups", "backups"],
+          ["updates", "opdatering"],
+          ["netværk", "netværk"],
+          ["onlime", "onlime"],
+        ] as [Tab, string][]).map(([item, label]) => (
+          <button key={item} className={tab === item ? "active" : ""} type="button" onClick={() => setTab(item)}>{label}</button>
         ))}
       </nav>
       {tab === "overview" && <OverviewPanel />}
@@ -488,18 +497,47 @@ function OnlimePanel() {
 }
 
 function UpdatesPanel() {
+  const [usb, setUsb] = useState<{ found: boolean; canInstall: boolean; busy: boolean; message: string } | null>(null);
   const [data, setData] = useState<{ version: string; note: string; packages: { path: string; version: string; valid: boolean; newer: boolean; error: string | null }[] } | null>(null);
+  const [message, setMessage] = useState("");
+  const [bad, setBad] = useState(false);
+
+  useEffect(() => {
+    const pull = () => {
+      admin<NonNullable<typeof usb>>("/api/admin/package").then(setUsb).catch(() => undefined);
+    };
+    pull();
+    const timer = window.setInterval(pull, 3000);
+    return () => window.clearInterval(timer);
+  }, []);
   useEffect(() => { void admin<NonNullable<typeof data>>("/api/admin/updates").then(setData); }, []);
-  if (!data) return <p>Looking for update packages…</p>;
+
+  async function install() {
+    setBad(false);
+    setMessage("Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+    try {
+      const body = await admin<{ message?: string }>("/api/admin/package", { method: "POST", body: "{}" });
+      setMessage(body.message ?? "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+    } catch {
+      setBad(true);
+      setMessage("Kunne ikke starte installationen.");
+    }
+  }
+
   return (
     <section className="panel">
-      <p>Running {data.version}. {data.note}</p>
-      {data.packages.length === 0 && <p className="muted">No package in the Onlime updates folder, the local updates folder, or a USB drive.</p>}
-      {data.packages.map((item) => (
+      <h2 className="font-serif text-3xl">Opdatering</h2>
+      <p>Sæt USB-nøglen i. Filen skal hedde videojukebox.deb. Tryk på knappen. Der skal ikke skrives noget.</p>
+      <Button size="lg" disabled={!usb?.found || !usb.canInstall || usb.busy} onClick={() => void install()}>
+        Installer og genstart
+      </Button>
+      <p className={bad ? "warn" : "ok"}>{message || usb?.message || "Leder efter USB-nøglen…"}</p>
+      {data && <p className="muted">Version {data.version}. {data.note}</p>}
+      {data?.packages.map((item) => (
         <article key={item.path} className="stat mt-3">
-          <strong>{item.version || "Unreadable package"}</strong>
+          <strong>{item.version || "Ulæselig pakke"}</strong>
           <div className="muted">{item.path}</div>
-          <div>{item.valid ? (item.newer ? "Will install on next reboot" : "Already installed or older") : item.error}</div>
+          <div>{item.valid ? (item.newer ? "Lægges på ved næste genstart" : "Allerede installeret eller ældre") : item.error}</div>
         </article>
       ))}
     </section>

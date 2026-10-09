@@ -411,6 +411,17 @@ public static class Endpoints
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
 
+        admin.MapGet("/package", () => Results.Ok(UsbPackage.Status())).AddEndpointFilter(Gate);
+        admin.MapPost("/package", (SettingsStore settings) =>
+        {
+            var result = UsbPackage.StartInstall();
+            if (result.Ok)
+                settings.Audit("usb-install", null);
+            return result.Ok
+                ? Results.Ok(new { ok = true, message = result.Message })
+                : Results.Json(new { ok = false, reason = result.Message }, statusCode: result.Status);
+        }).AddEndpointFilter(Gate);
+
         admin.MapGet("/updates", (JukeboxConfig config, Jukebox.Core.JukeboxPaths paths) =>
         {
             var roots = new List<string> { paths.OnlimeUpdates, paths.LocalUpdates, Path.Combine(paths.Smb, "updates") };
@@ -423,7 +434,7 @@ public static class Endpoints
             {
                 version = JukeboxVersion.Current,
                 packages = UpdateCatalog.Scan(roots, JukeboxVersion.Current),
-                note = "Updates install on the next reboot, before the jukebox starts. Nothing is replaced while this screen is open."
+                note = "En pakke i Onlime-mappen updates lægges på ved næste genstart. USB-nøglen installeres med knappen ovenfor."
             });
         }).AddEndpointFilter(Gate);
 

@@ -30,7 +30,9 @@ install -m 0755 \
 install -m 0755 "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/onlime_prompts.py" "$pkg/opt/jukebox/lib/onlime_prompts.py"
 install -m 0644 "$ROOT/deploy/live/apt/jotta.key.chroot" "$pkg/usr/share/jukebox/jotta.gpg"
 install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/jukebox.service"
+install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
+install -m 0644 "$ROOT/deploy/systemd/jukebox-usb-mount.service" "$pkg/etc/systemd/system/jukebox-usb-mount.service"
 printf '%s\n' 'allowed_users=anybody' 'needs_root_rights=no' > "$pkg/etc/X11/Xwrapper.config"
 cat > "$pkg/etc/systemd/logind.conf.d/jukebox.conf" <<'EOF'
 [Login]
@@ -49,6 +51,11 @@ if ! grep -q "Tast koden" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; 
   echo "The package is missing the staff PIN screen." >&2
   exit 1
 fi
+if ! grep -q "Installer og genstart" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The package is missing the USB install button." >&2
+  exit 1
+fi
+python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 bash -n "$pkg/DEBIAN/postinst"
 
 out="$ROOT/publish/pakke"

@@ -1,5 +1,5 @@
 Package: videojukebox
-Version: 1.0.0
+Version: 1.1.0
 Section: misc
 Priority: optional
 Architecture: amd64
@@ -8,4 +8,5 @@ Depends: sudo, curl, ca-certificates, locales, network-manager, wpasupplicant, a
 Description: Videojukebox til touchskærm
  Installerer Videojukebox på en Debian 13-computer.
  Disken bliver ikke slettet. Genstart computeren, når installationen er færdig.
- Touchskærmen viser hylden. Administration bruger PIN 2580.
+ Touchskærmen viser hylden. Tryk Admin og tast PIN 2580.
+ En ny version lægges på fra Administration, når USB-nøglen sidder i.

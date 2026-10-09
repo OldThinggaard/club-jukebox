@@ -54,6 +54,25 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     [Fact]
+    public async Task Usb_package_install_is_refused_away_from_the_club_machine()
+    {
+        var client = _factory.CreateClient();
+        var anon = await client.GetAsync("/api/admin/package");
+        Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+
+        var login = await client.PostAsJsonAsync("/api/admin/login", new { pin = "2580" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        var status = await client.GetFromJsonAsync<PackageDto>("/api/admin/package");
+        Assert.NotNull(status);
+        Assert.False(status!.CanInstall);
+        Assert.False(status.Found);
+        Assert.Contains("forhåndsvisning", status.Message);
+
+        var post = await client.PostAsync("/api/admin/package", null);
+        Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
+    }
+
+    [Fact]
     public async Task Queue_accepts_a_ready_film_once()
     {
         var id = _factory.AddFilm("Coldplay", "Yellow");
@@ -74,6 +93,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
     private sealed record OpenOnlimeDto(bool Opened);
     private sealed record QueueDto(bool Ok, string? Reason);
     private sealed record ScreenDto(string ClubName);
+    private sealed record PackageDto(bool Found, bool CanInstall, string Message);
 }
 
 public sealed class JukeboxFactory : WebApplicationFactory<Program>

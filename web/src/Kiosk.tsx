@@ -140,9 +140,14 @@ export function Kiosk() {
           <strong>{screen?.clock}</strong>
           <span>{screen?.dateLabel}</span>
         </div>
-        <button className="icon-button" type="button" onClick={() => setSearchOpen(true)}>
-          Search
-        </button>
+        <div className="top-actions">
+          <button className="icon-button" type="button" onClick={() => setStaffPin(true)}>
+            Admin
+          </button>
+          <button className="icon-button" type="button" onClick={() => setSearchOpen(true)}>
+            Search
+          </button>
+        </div>
       </header>
       {offline && <div className="banner">The jukebox cannot reach the local service. It will keep trying.</div>}
       <div className="chips">

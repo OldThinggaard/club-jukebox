@@ -143,6 +143,7 @@ systemctl set-default multi-user.target
 systemctl daemon-reload
 systemctl enable avahi-daemon.service || true
 systemctl enable NetworkManager.service || true
+systemctl enable jukebox-usb-mount.service
 systemctl enable jukebox-update.service
 systemctl enable jukebox.service
 systemctl enable jukebox-graphical.service

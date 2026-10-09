@@ -1,0 +1,13 @@
+[Unit]
+Description=Mount removable disks so a USB package can be seen
+DefaultDependencies=no
+Before=jukebox-update.service jukebox.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/jukebox/lib/usb-package.py mount
+RemainAfterExit=yes
+
+[Install]
+WantedBy=jukebox.service
