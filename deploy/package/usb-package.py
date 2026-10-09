@@ -135,7 +135,7 @@ def mount_one(name, fstype):
         return False
     for kind in mount_types(fstype):
         result = subprocess.run(
-            ["mount", "-t", kind, "-o", "ro,nodev,nosuid,noexec", device, target],
+            ["timeout", "15", "mount", "-t", kind, "-o", "ro,nodev,nosuid,noexec", device, target],
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

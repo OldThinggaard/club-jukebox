@@ -12,9 +12,17 @@ export function Install() {
   const [bad, setBad] = useState(false);
   const [lines, setLines] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [gate, setGate] = useState<"wait" | "install">("wait");
 
   useEffect(() => {
-    fetch("/api/install/state").then((response) => response.json()).then((state) => setInstallerMode(Boolean(state.installerMode))).catch(() => undefined);
+    fetch("/api/install/state").then((response) => response.json()).then((state) => {
+      if (state.installerMode) {
+        setInstallerMode(true);
+        setGate("install");
+        return;
+      }
+      window.location.replace("/");
+    }).catch(() => window.location.replace("/"));
   }, []);
 
   useEffect(() => {
@@ -63,6 +71,8 @@ export function Install() {
       setBusy(false);
     }
   }
+
+  if (gate !== "install") return <main className="kiosk"><p>Hylden åbnes.</p></main>;
 
   return (
     <div className="kiosk install">

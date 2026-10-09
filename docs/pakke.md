@@ -14,7 +14,7 @@ Når koden er tastet, kan en ny `videojukebox.deb` på en USB-nøgle lægges på
 2. Sæt nøglen i Debian-computeren.
 3. Åbn nøglen, og dobbeltklik på `videojukebox.deb`.
 4. Tryk Installér.
-5. Lad netværkskablet sidde i. Genstart, når installationen er færdig.
+5. Tag USB-nøglen ud. Genstart, når installationen er færdig.
 
 Netværk og Onlime sættes op under Administration. Mangler Onlime Sync, så sæt kablet i, åbn **Onlime**, og tryk **Hent Onlime Sync**. Log derefter ind, og kopiér koden. Reklamer lægges i mappen `reklamer`. Skærmen viser kun dem, når ingen har valgt en film.
 

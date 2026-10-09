@@ -140,12 +140,11 @@ systemctl set-default multi-user.target || true
 systemctl daemon-reload || true
 systemctl enable avahi-daemon.service || true
 systemctl enable NetworkManager.service || true
-systemctl enable jukebox-usb-mount.service
 systemctl enable jukebox-update.service
 systemctl enable jukebox.service
 systemctl enable jukebox-graphical.service
 systemctl enable jukebox-onlime.service
 
-echo "Videojukebox er installeret. Genstart computeren."
-wall "Videojukebox er installeret. Genstart computeren." || true
+echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren."
+wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren." || true
 exit 0
