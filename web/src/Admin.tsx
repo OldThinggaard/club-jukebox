@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
+import { DanishKeyboard } from "./components/Keyboard";
 import { OnlimeCode } from "./OnlimeCode";
 
-type Tab = "overview" | "library" | "sources" | "playback" | "backups" | "updates" | "onlime";
+type Tab = "overview" | "library" | "sources" | "playback" | "backups" | "updates" | "netværk" | "onlime";
 
 type Overview = {
   cpuPercent: number;
@@ -124,7 +125,7 @@ export function Admin() {
         <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); setAuthed(false); }}>Sign out</Button>
       </header>
       <nav className="admin-nav">
-        {(["overview", "library", "sources", "playback", "backups", "updates", "onlime"] as Tab[]).map((item) => (
+        {(["overview", "library", "sources", "playback", "backups", "updates", "netværk", "onlime"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} type="button" onClick={() => setTab(item)}>{item}</button>
         ))}
       </nav>
@@ -134,6 +135,7 @@ export function Admin() {
       {tab === "playback" && <PlaybackPanel />}
       {tab === "backups" && <BackupsPanel />}
       {tab === "updates" && <UpdatesPanel />}
+      {tab === "netværk" && <NetworkPanel />}
       {tab === "onlime" && <OnlimePanel />}
     </main>
   );
@@ -365,6 +367,83 @@ function BackupsPanel() {
   );
 }
 
+function NetworkPanel() {
+  const [networks, setNetworks] = useState<{ ssid: string; signal: number; secure: boolean }[]>([]);
+  const [ssid, setSsid] = useState("");
+  const [psk, setPsk] = useState("");
+  const [shift, setShift] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [bad, setBad] = useState(false);
+
+  async function load() {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/wifi");
+      setNetworks(response.ok ? await response.json() : []);
+    } catch {
+      setNetworks([]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function connect() {
+    setBusy(true);
+    setBad(false);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/wifi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ssid, psk }),
+      });
+      const body = await response.json();
+      if (!response.ok || body.ok === false) {
+        setBad(true);
+        setMessage(body.reason ?? "Kunne ikke forbinde.");
+        return;
+      }
+      setMessage(body.message ?? "Forbundet.");
+    } catch {
+      setBad(true);
+      setMessage("Kunne ikke nå netværksprogrammet.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel">
+      <h2 className="font-serif text-3xl">Netværk</h2>
+      <p>Et kabel virker uden opsætning. Trådløst netværk vælges her, efter installationen.</p>
+      <div className="choice-list">
+        {networks.length === 0 && <p className="muted">{busy ? "Leder efter netværk…" : "Ingen trådløse netværk fundet."}</p>}
+        {networks.map((network) => (
+          <button key={network.ssid} className={ssid === network.ssid ? "choice active" : "choice"} type="button" onClick={() => setSsid(network.ssid)}>
+            <span>{network.ssid}</span>
+            <span className="muted">{network.signal}%</span>
+          </button>
+        ))}
+      </div>
+      {ssid && (
+        <>
+          <p>Adgangskode til {ssid}</p>
+          <input aria-label="Wi-Fi-adgangskode" value={psk} onChange={(event) => setPsk(event.target.value)} />
+          <DanishKeyboard uppercase={shift} onKey={(key) => setPsk((value) => value + key)} onBackspace={() => setPsk((value) => value.slice(0, -1))} onClear={() => setPsk("")} onSpace={() => setPsk((value) => value + " ")} onShift={() => setShift((value) => !value)} />
+        </>
+      )}
+      {message && <p className={bad ? "warn" : "ok"}>{message}</p>}
+      <div className="install-actions">
+        <Button type="button" disabled={busy || !ssid} onClick={() => void connect()}>Forbind</Button>
+        <Button variant="ghost" type="button" onClick={() => void load()}>Søg igen</Button>
+      </div>
+    </section>
+  );
+}
+
 function OnlimePanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -398,7 +477,7 @@ function OnlimePanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Onlime</h2>
-      <p>Log ind på Onlime og kopiér den lange kode. Sync henter filmene bagefter. Læg film i mappen media og plakater i mappen events.</p>
+      <p>Onlime sættes op her, efter maskinen er installeret. Sæt først netværk på fanen netværk, eller sæt et kabel i. Log derefter ind på Onlime og kopiér den lange kode. Sync henter filmene bagefter. Læg film i mappen media og plakater i mappen events.</p>
       <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
     </section>
   );

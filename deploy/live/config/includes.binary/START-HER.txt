@@ -4,19 +4,15 @@ Videojukebox — installations-USB
 Denne nøgle sletter den harddisk du vælger, og installerer Videojukebox på den.
 Windows, film og andre programmer på den disk forsvinder.
 USB-nøglen selv bliver ikke slettet.
+Installationen kræver ikke netværk og ikke Onlime.
 
 Sådan installerer du
 --------------------
 
 1. Start fra USB.
    Hvis maskinen nægter at boote, så slå Secure Boot fra i UEFI/BIOS.
-2. Vælg det trådløse netværk, eller brug et netværkskabel.
-3. Tryk Åbn Onlime, log ind, og kopiér den lange kode.
-   Sæt koden ind. Den skal ikke tastes.
-   Filmene hentes fra Onlime bagefter.
-   Læg film i mappen media og plakater i mappen events.
-4. Vælg computerens harddisk. Bekræft at den må slettes.
-5. Vent. Tag nøglen ud når skærmen bliver sort, så guiden ikke starter igen.
+2. Vælg computerens harddisk. Bekræft at den må slettes.
+3. Vent. Tag nøglen ud når skærmen bliver sort, så guiden ikke starter igen.
 
 Efter genstart
 --------------
@@ -24,6 +20,11 @@ Efter genstart
 Touchskærmen viser hylden. HDMI-tv'et viser filmene.
 Administration: http://127.0.0.1:47123/admin
 PIN-koden er 2580.
+
+Onlime sættes op under Administration, fanen onlime.
+Netværk sættes op under fanen netværk, eller med et kabel.
+Læg film i mappen media og plakater i mappen events.
+
 En telefon på samme net kan åbne http://jukebox.local:47123
 
 Lyd vælges under Administration, fanen playback.

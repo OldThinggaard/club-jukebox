@@ -428,6 +428,8 @@ public static class Endpoints
         }).AddEndpointFilter(Gate);
 
         admin.MapGet("/audit", (SettingsStore settings) => Results.Ok(settings.RecentAudit(40))).AddEndpointFilter(Gate);
+        admin.MapGet("/wifi", InstallEndpoints.ListWifi).AddEndpointFilter(Gate);
+        admin.MapPost("/wifi", async (WifiBody body) => await InstallEndpoints.ConnectWifi(body.Ssid, body.Psk)).AddEndpointFilter(Gate);
         admin.MapPost("/onlime/open", () => InstallEndpoints.OpenOnlimeBrowser()).AddEndpointFilter(Gate);
         admin.MapPost("/onlime", async (OnlimeBody body) => await InstallEndpoints.Begin(body.Token, body.Device, startSync: true)).AddEndpointFilter(Gate);
     }

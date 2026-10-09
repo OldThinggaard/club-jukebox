@@ -1,19 +1,17 @@
 # Installations-USB til touchskærm-pc
 
-USB-nøglen er en Debian 13-installation. Den starter en guide på dansk, sletter den harddisk du vælger, og lægger Videojukebox på den. Bagefter kan maskinen vælge et trådløst netværk og hente film ned fra Onlime Sync.
+USB-nøglen er en Debian 13-installation. Den starter en guide på dansk, sletter den harddisk du vælger, og lægger Videojukebox på den. Installationen kræver ikke netværk. Onlime sættes op bagefter i administrationen.
 
 Den tidligere nøgle startede kun programmet midlertidigt og lod computerens disk være. Denne nøgle gør det modsatte: den valgte disk bliver tømt.
 
 ## Hvad guiden gør
 
 1. Advarer om at harddisken bliver slettet.
-2. Viser de trådløse netværk. Adgangskoden tastes på skærmen. Et netværkskabel kan bruges i stedet.
-3. Åbner Onlime, hvor du logger ind og kopierer den lange engangskode. Koden sættes ind. Den skal ikke tastes. Login sker før disken slettes, så en forkert kode ikke ødelægger noget. Sync henter filmene bagefter.
-4. Viser de fundne diske. USB-nøglen selv, mærket JUKEBOX, er skjult.
-5. Sletter den valgte disk, opretter en ny EFI- og systempartition, og kopierer Debian og Videojukebox over.
-6. Genstarter. Tag nøglen ud når skærmen bliver sort, ellers starter guiden forfra.
+2. Viser de fundne diske. USB-nøglen selv, mærket JUKEBOX, er skjult.
+3. Sletter den valgte disk, opretter en ny EFI- og systempartition, og kopierer Debian og Videojukebox over.
+4. Genstarter. Tag nøglen ud når skærmen bliver sort, ellers starter guiden forfra.
 
-Filmene hentes først når den nye disk er startet. Læg film i Onlime-mappen `media` og plakater i `events`. Hele Sync-mappen bliver hentet, og den kan fylde en disk på 128 GB. Sync er tovejs: filer der lægges i sync-mappen på maskinen, bliver også lagt op i Onlime.
+Onlime og trådløst netværk sættes op efter genstart under Administration, PIN **2580**. Fanen netværk vælger Wi-Fi. Et kabel virker uden opsætning. Fanen onlime åbner Onlime, hvor koden kopieres, og sync henter filmene. Læg film i mappen `media` og plakater i `events`. Hele Sync-mappen bliver hentet, og den kan fylde en disk på 128 GB. Sync er tovejs: filer der lægges i sync-mappen på maskinen, bliver også lagt op i Onlime.
 
 Eksempel-film bliver ikke lagt på den installerede maskine, så de ikke ryger op i kundens Onlime.
 
@@ -29,9 +27,7 @@ sha256sum -c jukebox-live-amd64.iso.sha256
 
 Nøglen skal være mindst 8 GB. Alt på nøglen bliver slettet. Vælg USB-nøglen, ikke computerens egen disk. Den sletning sker først når guiden kører på touchskærm-pc'en.
 
-**balenaEtcher** (Windows, macOS og Linux): vælg ISO-filen, vælg USB-nøglen, og skriv.
-
-**Rufus** på Windows: vælg ISO-filen, og vælg DD-tilstand når Rufus spørger.
+**Rufus** på Windows: vælg ISO-filen, og vælg DD-tilstand når Rufus spørger. Det er den sikre måde. balenaEtcher kan nægte at åbne filen med fejlen `(0 , h.requestMetadata) is not a function`. Det er en fejl i Etcher, ikke i imaget.
 
 **Linux:**
 
@@ -51,10 +47,10 @@ sudo dd if=jukebox-live-amd64.iso of=/dev/sdX bs=4M status=progress conv=fsync
 5. Administration: `http://127.0.0.1:47123/admin` på maskinen. PIN-koden er **2580**. Analog line out vælges under playback.
 6. En telefon på samme netværk kan åbne `http://jukebox.local:47123`.
 
-Hvis Onlime blev sprunget over, kan login køres senere fra konsollen:
+Onlime kan også startes fra konsollen, efter netværket virker. Koden skal ligge i en fil, og `--start` sætter sync i gang:
 
 ```bash
-sudo /opt/jukebox/lib/onlime-login.sh /sti/til/kodefil videojukebox
+sudo /opt/jukebox/lib/onlime-login.sh /sti/til/kodefil videojukebox /var/lib/jukebox/onlime-sync --start
 ```
 
 Konsol: Ctrl+Alt+F2, bruger `jukebox`, adgangskode `jukebox`. Tilbage til skærmen er Ctrl+Alt+F1. Skærmloggen er `/home/jukebox/xorg.log`.

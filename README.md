@@ -63,7 +63,7 @@ The QR code uses the public address in settings. Production should be `http://ju
 
 ## Install from a USB stick
 
-`deploy/scripts/build-usb.sh` builds a Debian 13 installer ISO. Written to a USB stick, it boots a touchscreen PC into a Danish wizard that erases the chosen hard disk, installs Videojukebox, joins a wireless network, and downloads the Onlime Sync folder after the new disk boots. Flashing steps, Secure Boot, and the console password are in [docs/usb.md](docs/usb.md). The image is `publish/usb/jukebox-live-amd64.iso`.
+`deploy/scripts/build-usb.sh` builds a Debian 13 installer ISO. Written to a USB stick, it boots a touchscreen PC into a Danish wizard that erases the chosen hard disk and installs Videojukebox. The install does not need a network. Onlime sync is set up afterwards in Administration. Flashing steps, Secure Boot, and the console password are in [docs/usb.md](docs/usb.md). The image is `publish/usb/jukebox-live-amd64.iso`.
 
 ## Install on Debian
 

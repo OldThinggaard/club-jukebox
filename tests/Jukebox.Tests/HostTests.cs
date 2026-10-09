@@ -49,6 +49,8 @@ public class HostTests : IClassFixture<JukeboxFactory>
 
         var adminOnlime = await client.PostAsJsonAsync("/api/admin/onlime", new { token = "copied-from-onlime", device = "videojukebox" });
         Assert.Equal(HttpStatusCode.Unauthorized, adminOnlime.StatusCode);
+        var adminWifi = await client.GetAsync("/api/admin/wifi");
+        Assert.Equal(HttpStatusCode.Unauthorized, adminWifi.StatusCode);
     }
 
     [Fact]

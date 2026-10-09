@@ -40,11 +40,7 @@ public static class InstallEndpoints
                 removable = disk.Removable
             }));
         });
-        group.MapGet("/wifi", () =>
-        {
-            var text = Run("nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes");
-            return Results.Ok(ParseWifi(text));
-        });
+        group.MapGet("/wifi", ListWifi);
         group.MapGet("/status", () =>
         {
             var path = Path.Combine(StateDir, "status");
@@ -56,28 +52,15 @@ public static class InstallEndpoints
         group.MapPost("/wifi", async (WifiBody body, HttpContext http) =>
         {
             if (!config.InstallerMode)
-                return Results.Json(new { ok = false, reason = "Trådløst netværk vælges på installations-USB'en." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { ok = false, reason = "Trådløst netværk sættes op under Administration efter installationen." }, statusCode: StatusCodes.Status403Forbidden);
             if (!IsLocal(http))
                 return Results.Json(new { ok = false, reason = "Kun touchskærmen kan ændre netværket." }, statusCode: StatusCodes.Status403Forbidden);
-            var ssid = (body.Ssid ?? "").Trim();
-            var psk = body.Psk ?? "";
-            if (ssid.Length is 0 or > 64 || ssid.Contains('\n') || ssid.Contains('\r') || psk.Contains('\n') || psk.Contains('\r'))
-                return Results.BadRequest(new { ok = false, reason = "Netværksnavnet kan ikke bruges." });
-            Directory.CreateDirectory(StateDir);
-            await File.WriteAllTextAsync(Path.Combine(StateDir, "ssid"), ssid);
-            await File.WriteAllTextAsync(Path.Combine(StateDir, "psk"), psk);
-            var script = "/opt/jukebox/lib/wifi-connect.sh";
-            if (!File.Exists(script))
-                return Results.Json(new { ok = false, reason = "Wi-Fi-programmet findes kun på USB-nøglen." }, statusCode: StatusCodes.Status400BadRequest);
-            var (code, output) = RunWait("sudo", "-n", script, StateDir);
-            return code == 0
-                ? Results.Ok(new { ok = true, message = $"Forbundet til {ssid}" })
-                : Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(output) ? "Kunne ikke forbinde til netværket." : output.Trim() });
+            return await ConnectWifi(body.Ssid, body.Psk);
         });
         group.MapPost("/onlime", async (OnlimeBody body, HttpContext http) =>
         {
             if (!config.InstallerMode)
-                return Results.Json(new { ok = false, reason = "Onlime kan først hentes fra installations-USB'en." }, statusCode: StatusCodes.Status403Forbidden);
+                return Results.Json(new { ok = false, reason = "Onlime sættes op under Administration efter installationen." }, statusCode: StatusCodes.Status403Forbidden);
             if (!IsLocal(http))
                 return Results.Json(new { ok = false, reason = "Kun touchskærmen kan logge på Onlime." }, statusCode: StatusCodes.Status403Forbidden);
             return await Begin(body.Token, body.Device, startSync: false);
@@ -128,6 +111,30 @@ public static class InstallEndpoints
             }
             return Results.Ok(new { ok = true });
         });
+    }
+
+    public static IResult ListWifi()
+    {
+        var text = Run("nmcli", "-t", "-f", "SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes");
+        return Results.Ok(ParseWifi(text));
+    }
+
+    public static async Task<IResult> ConnectWifi(string? rawSsid, string? rawPsk)
+    {
+        var ssid = (rawSsid ?? "").Trim();
+        var psk = rawPsk ?? "";
+        if (ssid.Length is 0 or > 64 || ssid.Contains('\n') || ssid.Contains('\r') || psk.Contains('\n') || psk.Contains('\r'))
+            return Results.BadRequest(new { ok = false, reason = "Netværksnavnet kan ikke bruges." });
+        Directory.CreateDirectory(StateDir);
+        await File.WriteAllTextAsync(Path.Combine(StateDir, "ssid"), ssid);
+        await File.WriteAllTextAsync(Path.Combine(StateDir, "psk"), psk);
+        var script = "/opt/jukebox/lib/wifi-connect.sh";
+        if (!File.Exists(script))
+            return Results.Json(new { ok = false, reason = "Wi-Fi sættes på den installerede maskine." }, statusCode: StatusCodes.Status400BadRequest);
+        var (code, output) = RunWait("sudo", "-n", script, StateDir);
+        return code == 0
+            ? Results.Ok(new { ok = true, message = $"Forbundet til {ssid}" })
+            : Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(output) ? "Kunne ikke forbinde til netværket." : output.Trim() });
     }
 
     public static IResult OpenOnlimeBrowser()
