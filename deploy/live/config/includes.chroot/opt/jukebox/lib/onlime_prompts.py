@@ -34,7 +34,7 @@ def answer(mode, pending, sent):
         return "off", "error reporting mode"
     if "path" not in sent and "report" in sent and "continue sync-setup" in low:
         return "y", "continue sync-setup"
-    if "selective" not in sent and "path" in sent and "setup selective sync?" in low:
+    if "selective" not in sent and "setup selective sync?" in low:
         return "n", "setup selective sync?"
     return None, None
 
@@ -99,6 +99,10 @@ def self_test():
         if got != expect:
             raise SystemExit(f"{text!r} answered {got!r}, expected {expect!r}")
         mark("sync", got, sent)
+    skipped = set()
+    skipped_prompt = "Do you want to setup selective sync? (y/n)"
+    if answer("sync", skipped_prompt, skipped)[0] != "n":
+        raise SystemExit("selective sync must be declined even when the path question was skipped")
     print("ok")
 
 
