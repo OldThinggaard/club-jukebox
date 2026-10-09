@@ -6,7 +6,8 @@ Before=jukebox.service jukebox-graphical.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-TimeoutStartSec=150
+TimeoutStartSec=240
+TimeoutStopSec=20
 ExecStart=/opt/jukebox/lib/apply-pending.sh
 
 [Install]
