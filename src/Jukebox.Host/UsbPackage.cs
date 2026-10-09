@@ -94,17 +94,12 @@ public static class UsbPackage
 
     private static (int Code, string Output) Run(string file, string arg1, TimeSpan timeout, params string[] rest)
     {
-        var start = new ProcessStartInfo("sudo", "-n")
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
-        };
+        var args = new List<string> { "-n" };
         if (file != "sudo")
-            start.ArgumentList.Add(file);
-        start.ArgumentList.Add(arg1);
-        foreach (var arg in rest)
-            start.ArgumentList.Add(arg);
+            args.Add(file);
+        args.Add(arg1);
+        args.AddRange(rest);
+        var start = Command.Start("sudo", args.ToArray());
         try
         {
             using var process = Process.Start(start);

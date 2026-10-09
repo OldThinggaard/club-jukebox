@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using Jukebox.Core.Data;
@@ -91,6 +92,18 @@ public class HostTests : IClassFixture<JukeboxFactory>
         var none = UsbPackage.ReadFindResult(0, "none");
         Assert.False(none.Found);
         Assert.Contains("Ingen USB-nøgle", none.Message);
+    }
+
+    [Fact]
+    public void A_command_accepts_every_argument_together()
+    {
+        var start = Command.Start("/bin/echo", "one", "two");
+        using var process = Process.Start(start);
+        Assert.NotNull(process);
+        var text = process!.StandardOutput.ReadToEnd();
+        Assert.True(process.WaitForExit(5000));
+        Assert.Equal(0, process.ExitCode);
+        Assert.Equal("one two", text.Trim());
     }
 
     [Fact]

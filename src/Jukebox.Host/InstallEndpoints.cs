@@ -89,20 +89,7 @@ public static class InstallEndpoints
             Directory.CreateDirectory(StateDir);
             var statusPath = Path.Combine(StateDir, "status");
             File.WriteAllText(statusPath, "Starter installationen.\n");
-            var start = new ProcessStartInfo("sudo", "-n")
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-            start.ArgumentList.Add(script);
-            start.ArgumentList.Add("--target");
-            start.ArgumentList.Add(path);
-            start.ArgumentList.Add("--confirm");
-            start.ArgumentList.Add(name);
-            start.ArgumentList.Add("--state");
-            start.ArgumentList.Add(StateDir);
-            start.ArgumentList.Add("--reboot");
+            var start = Command.Start("sudo", "-n", script, "--target", path, "--confirm", name, "--state", StateDir, "--reboot");
             var process = new Process { StartInfo = start, EnableRaisingEvents = true };
             var output = new System.Text.StringBuilder();
             process.OutputDataReceived += (_, eventArgs) => { if (eventArgs.Data is not null) output.AppendLine(eventArgs.Data); };

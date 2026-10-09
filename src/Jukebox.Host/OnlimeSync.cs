@@ -57,13 +57,7 @@ public static class OnlimeSync
 
     private static (int Code, string Output) Run(TimeSpan timeout)
     {
-        var start = new ProcessStartInfo("sudo", "-n")
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true
-        };
-        start.ArgumentList.Add(ScriptPath);
+        var start = Command.Start("sudo", "-n", ScriptPath);
         try
         {
             using var process = Process.Start(start);
