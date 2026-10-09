@@ -6,7 +6,7 @@ Programmet er én fil: `videojukebox.deb`. Den kopieres som en almindelig fil. D
 
 Hold fingeren på klubnavnet i to sekunder, og tast **2580**. Gæster ser kun filmene. Tryk **Hylden** for at komme tilbage.
 
-Når koden er tastet, kan en ny `videojukebox.deb` på en USB-nøgle lægges på under **Opdatering**.
+Når koden er tastet, kan en ny `videojukebox.deb` på en USB-nøgle lægges på under **Opdatering**. Skærmen skriver, om nøglen er set. Nøglen må gerne være formateret, som Windows gør det.
 
 ## Første gang, hvis skrivebordet stadig er fremme
 

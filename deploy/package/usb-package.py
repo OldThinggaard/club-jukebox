@@ -33,10 +33,10 @@ def real_roots():
 
 
 def accept(path):
-    if os.path.basename(path) != NAME or os.path.islink(path) or not os.path.isfile(path):
+    if os.path.basename(path).lower() != NAME or os.path.islink(path) or not os.path.isfile(path):
         return False
     real = os.path.realpath(path)
-    if os.path.basename(real) != NAME:
+    if os.path.basename(real).lower() != NAME:
         return False
     inside = False
     for root in real_roots():
@@ -60,11 +60,12 @@ def find_deb():
                 for name in dirnames
                 if not name.startswith(".") and not os.path.islink(os.path.join(dirpath, name))
             ]
-            if NAME not in filenames:
-                continue
-            path = os.path.join(dirpath, NAME)
-            if accept(path):
-                matches.append(os.path.realpath(path))
+            for filename in filenames:
+                if filename.lower() != NAME:
+                    continue
+                path = os.path.join(dirpath, filename)
+                if accept(path):
+                    matches.append(os.path.realpath(path))
     matches.sort()
     return matches[0] if matches else ""
 
@@ -87,23 +88,64 @@ def truthy(value):
     return value in (True, 1, "1")
 
 
-def mount_one(name):
+def normalize_fs(fstype):
+    kind = (fstype or "").strip().lower()
+    if kind in {"fat", "fat32", "msdos"}:
+        return "vfat"
+    if kind in {"ntfs3", "fuseblk"}:
+        return "ntfs"
+    return kind
+
+
+def filesystem(name, hinted):
+    kind = normalize_fs(hinted)
+    if kind:
+        return kind
+    device = os.path.join("/dev", name)
+    if not name or "/" in name or not os.path.exists(device):
+        return ""
+    try:
+        out = subprocess.check_output(
+            ["blkid", "-o", "value", "-s", "TYPE", device],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+    return normalize_fs(out)
+
+
+def mount_types(fstype):
+    if fstype == "exfat":
+        subprocess.run(["modprobe", "exfat"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return ["exfat"]
+    if fstype == "ntfs":
+        subprocess.run(["modprobe", "ntfs3"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return ["ntfs3", "ntfs"]
+    return [fstype]
+
+
+def mount_one(name, fstype):
     if not name or "/" in name or name.startswith("."):
-        return
+        return False
     target = os.path.join(MOUNT_PARENT, name)
     os.makedirs(target, exist_ok=True)
     device = os.path.join("/dev", name)
     if not os.path.exists(device):
-        return
-    subprocess.run(
-        ["mount", "-o", "ro,nodev,nosuid,noexec", device, target],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+        return False
+    for kind in mount_types(fstype):
+        result = subprocess.run(
+            ["mount", "-t", kind, "-o", "ro,nodev,nosuid,noexec", device, target],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        if result.returncode == 0:
+            return True
+    return False
 
 
-def visit(node, root_disk, parent_removable=False):
+def visit(node, root_disk, state, parent_removable=False):
     name = node.get("name") or ""
     if name in SKIP_DISKS or (root_disk and name == root_disk):
         return
@@ -115,14 +157,19 @@ def visit(node, root_disk, parent_removable=False):
     if isinstance(mounts, str):
         mounts = [mounts]
     mounted = any(point for point in mounts if point)
-    fstype = (node.get("fstype") or "").lower()
-    if node.get("type") == "part" and removable and not mounted and fstype in ALLOWED_FS:
-        mount_one(name)
-    for child in node.get("children") or []:
-        visit(child, root_disk, removable)
+    children = node.get("children") or []
+    kind = filesystem(name, node.get("fstype")) if removable else ""
+    volume = node.get("type") == "part" or (node.get("type") == "disk" and not children)
+    if volume and removable and kind in ALLOWED_FS:
+        if mounted or mount_one(name, kind):
+            state["mounted"] = True
+        else:
+            state["failed"] = True
+    for child in children:
+        visit(child, root_disk, state, removable)
 
 
-def mount_removable():
+def mount_removable(state):
     if os.environ.get("JUKEBOX_USB_NO_MOUNT") == "1":
         return
     try:
@@ -136,11 +183,21 @@ def mount_removable():
     root_disk = system_disk()
     os.makedirs(MOUNT_PARENT, exist_ok=True)
     for device in devices:
-        visit(device, root_disk)
+        visit(device, root_disk, state)
+
+
+def report(path, state):
+    if path:
+        return f"ready {path}"
+    if state.get("mounted"):
+        return "seen"
+    if state.get("failed"):
+        return "unread"
+    return "none"
 
 
 def install():
-    mount_removable()
+    mount_removable({"mounted": False, "failed": False})
     path = find_deb()
     if not path:
         print("Ingen videojukebox.deb på USB-nøglen.", file=sys.stderr)
@@ -182,6 +239,22 @@ def self_test():
         found = find_deb()
         if os.path.realpath(found) != os.path.realpath(big):
             raise SystemExit(f"expected the package, got {found!r}")
+        windows_name = os.path.join(stick, "Videojukebox.deb")
+        os.rename(big, windows_name)
+        found = find_deb()
+        if os.path.realpath(found) != os.path.realpath(windows_name):
+            raise SystemExit(f"expected the Windows name, got {found!r}")
+        os.rename(windows_name, big)
+        if report("/mnt/jukebox-usb/sdb1/videojukebox.deb", {}) != "ready /mnt/jukebox-usb/sdb1/videojukebox.deb":
+            raise SystemExit("ready line")
+        if report("", {"mounted": True}) != "seen":
+            raise SystemExit("seen line")
+        if report("", {"failed": True}) != "unread":
+            raise SystemExit("unread line")
+        if report("", {}) != "none":
+            raise SystemExit("none line")
+        if normalize_fs("NTFS3") != "ntfs" or normalize_fs("ExFAT") != "exfat" or normalize_fs("FAT32") != "vfat":
+            raise SystemExit("windows filesystem names")
         outside = os.path.join(tempfile.gettempdir(), "jukebox-usb-outside-payload")
         with open(outside, "wb") as handle:
             handle.truncate(MIN_BYTES)
@@ -204,11 +277,12 @@ def main(argv):
     if command == "self-test":
         return self_test()
     if command == "mount":
-        mount_removable()
+        mount_removable({"mounted": False, "failed": False})
         return 0
     if command == "find":
-        mount_removable()
-        print(find_deb())
+        state = {"mounted": False, "failed": False}
+        mount_removable(state)
+        print(report(find_deb(), state))
         return 0
     if command == "install":
         return install()

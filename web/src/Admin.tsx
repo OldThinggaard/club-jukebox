@@ -568,7 +568,7 @@ function UpdatesPanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Opdatering</h2>
-      <p>Sæt USB-nøglen i. Filen skal hedde videojukebox.deb. Tryk på knappen. Der skal ikke skrives noget.</p>
+      <p>Sæt USB-nøglen i. Filen skal hedde videojukebox.deb. Teksten nedenunder siger, om nøglen er set.</p>
       <Button size="lg" disabled={!usb?.found || !usb.canInstall || usb.busy} onClick={() => void install()}>
         Installer og genstart
       </Button>

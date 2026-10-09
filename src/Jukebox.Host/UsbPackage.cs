@@ -33,27 +33,31 @@ public static class UsbPackage
         }
 
         var (code, output) = Run(ScriptPath, "find", TimeSpan.FromSeconds(30));
-        var path = output.Trim();
-        if (code != 0 || string.IsNullOrWhiteSpace(path) || !path.EndsWith("videojukebox.deb", StringComparison.Ordinal))
-        {
-            return new
-            {
-                found = false,
-                canInstall = true,
-                busy = false,
-                sizeBytes = 0L,
-                message = "Sæt USB-nøglen med videojukebox.deb i maskinen."
-            };
-        }
-
+        var result = ReadFindResult(code, output);
         return new
         {
-            found = true,
+            found = result.Found,
             canInstall = true,
             busy = false,
-            sizeBytes = Size(path),
-            message = "USB-nøglen er klar. Tryk Installer og genstart."
+            sizeBytes = result.Path is null ? 0L : Size(result.Path),
+            message = result.Message
         };
+    }
+
+    public static (bool Found, string? Path, string Message) ReadFindResult(int code, string output)
+    {
+        var line = output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault() ?? "";
+        if (code != 0 || string.IsNullOrWhiteSpace(line) || line == "none")
+            return (false, null, "Ingen USB-nøgle er set. Sæt den i, og vent et øjeblik.");
+        if (line == "seen")
+            return (false, null, "USB-nøglen er sat i, men filen videojukebox.deb ligger ikke på den.");
+        if (line == "unread")
+            return (false, null, "USB-nøglen er sat i, men den kunne ikke læses. Tag den ud, og sæt den i igen.");
+
+        var path = line.StartsWith("ready ", StringComparison.Ordinal) ? line["ready ".Length..].Trim() : line;
+        if (path.EndsWith("videojukebox.deb", StringComparison.OrdinalIgnoreCase) && path.StartsWith('/'))
+            return (true, path, "USB-nøglen er klar. Tryk Installer og genstart.");
+        return (false, null, "Ingen USB-nøgle er set. Sæt den i, og vent et øjeblik.");
     }
 
     public static (bool Ok, int Status, string Message) StartInstall()

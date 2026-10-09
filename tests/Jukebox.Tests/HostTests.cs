@@ -73,6 +73,27 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     [Fact]
+    public void Usb_find_lines_say_whether_the_stick_was_seen()
+    {
+        var ready = UsbPackage.ReadFindResult(0, "ready /mnt/jukebox-usb/sdb1/videojukebox.deb");
+        Assert.True(ready.Found);
+        Assert.Contains("klar", ready.Message);
+
+        var seen = UsbPackage.ReadFindResult(0, "seen");
+        Assert.False(seen.Found);
+        Assert.Contains("sat i", seen.Message);
+        Assert.Contains("ligger ikke", seen.Message);
+
+        var unread = UsbPackage.ReadFindResult(0, "unread");
+        Assert.False(unread.Found);
+        Assert.Contains("kunne ikke læses", unread.Message);
+
+        var none = UsbPackage.ReadFindResult(0, "none");
+        Assert.False(none.Found);
+        Assert.Contains("Ingen USB-nøgle", none.Message);
+    }
+
+    [Fact]
     public async Task Onlime_sync_install_stays_off_the_preview()
     {
         var client = _factory.CreateClient();
