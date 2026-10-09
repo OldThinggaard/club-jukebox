@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DanishKeyboard } from "./components/Keyboard";
 import { api, type Category, type Media, type Screen } from "./lib/api";
 import { formatDuration } from "./lib/utils";
@@ -21,6 +21,8 @@ export function Kiosk() {
   const [shift, setShift] = useState(false);
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [offline, setOffline] = useState(false);
+  const [staffPin, setStaffPin] = useState(false);
+  const hold = useRef<number | null>(null);
 
   useEffect(() => {
     let stop = false;
@@ -61,6 +63,31 @@ export function Kiosk() {
   }, [query, category, artist, letter, screen?.libraryCount]);
 
   useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setStaffPin(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      event.preventDefault();
+      setStaffPin(true);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  function beginStaffHold() {
+    if (hold.current !== null) window.clearTimeout(hold.current);
+    hold.current = window.setTimeout(() => setStaffPin(true), 1500);
+  }
+
+  function endStaffHold() {
+    if (hold.current === null) return;
+    window.clearTimeout(hold.current);
+    hold.current = null;
+  }
+
+  useEffect(() => {
     if (!toast) return;
     const timer = window.setTimeout(() => setToast(null), 2400);
     return () => window.clearTimeout(timer);
@@ -96,7 +123,13 @@ export function Kiosk() {
     >
       {toast && <div className={toast.bad ? "toast bad" : "toast"}>{toast.text}</div>}
       <header className="topbar">
-        <div className="brand">
+        <div
+          className="brand"
+          onPointerDown={beginStaffHold}
+          onPointerUp={endStaffHold}
+          onPointerLeave={endStaffHold}
+          onPointerCancel={endStaffHold}
+        >
           {screen?.logoUrl && <img src={screen.logoUrl} alt="" />}
           <div>
             <p className="eyebrow">Video jukebox</p>
@@ -208,6 +241,7 @@ export function Kiosk() {
           />
         </div>
       )}
+      {staffPin && <StaffPin onClose={() => setStaffPin(false)} />}
       {queueOpen && (
         <div className="queue-sheet">
           <div className="sheet-head">
@@ -230,6 +264,53 @@ export function Kiosk() {
           </ol>
         </div>
       )}
+    </div>
+  );
+}
+
+function StaffPin({ onClose }: { onClose: () => void }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  async function login() {
+    const response = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin }),
+    });
+    if (!response.ok) {
+      setError("Koden er forkert.");
+      setPin("");
+      return;
+    }
+    window.location.assign("/admin");
+  }
+
+  return (
+    <div className="pin-gate staff-pin" role="dialog" aria-modal="true" aria-label="Administration">
+      <div className="pin-card">
+        <p className="eyebrow">Administration</p>
+        <h1 className="font-serif text-5xl">Tast koden</h1>
+        <p className="text-3xl tracking-[0.4em]">{pin.padEnd(4, "·")}</p>
+        {error && <p>{error}</p>}
+        <div className="pad">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "C", "0", "OK"].map((key) => (
+            <button
+              key={key}
+              className="pad-key"
+              type="button"
+              onClick={() => {
+                if (key === "C") setPin("");
+                else if (key === "OK") void login();
+                else setPin((current) => (current + key).slice(0, 8));
+              }}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+        <button className="icon-button mt-3" type="button" onClick={onClose}>Luk</button>
+      </div>
     </div>
   );
 }

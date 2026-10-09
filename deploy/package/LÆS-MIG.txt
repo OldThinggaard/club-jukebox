@@ -8,7 +8,8 @@ Videojukebox
 5. Lad netværkskablet sidde i, mens den arbejder.
 6. Genstart computeren, når installationen er færdig.
 
-Touchskærmen viser hylden. Administration: PIN 2580.
+Touchskærmen viser hylden. Hold klubnavnet inde i halvandet sekund, eller tryk Tab på et USB-tastatur.
+PIN-koden er 2580.
 Netværk og Onlime sættes op under Administration.
 Film lægges i mappen media. Plakater lægges i mappen events.
 

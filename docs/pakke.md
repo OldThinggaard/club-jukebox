@@ -8,7 +8,7 @@ Debian 13 skal allerede være installeret. Programmet lægges på med én fil: `
 4. Tryk Installér, og skriv adgangskoden.
 5. Lad netværkskablet sidde i. Genstart, når installationen er færdig.
 
-Touchskærmen viser hylden. Administration bruger PIN **2580**. Netværk og Onlime sættes op dér. Film lægges i `media`, plakater i `events`.
+Touchskærmen viser hylden. Hold klubnavnet inde i halvandet sekund, eller tryk Tab på et USB-tastatur. PIN-koden er **2580**. Netværk og Onlime sættes op dér. Film lægges i `media`, plakater i `events`.
 
 Pakken bygges med `./deploy/scripts/build-deb.sh` og lander i `publish/pakke/videojukebox.deb`.
 

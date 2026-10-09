@@ -85,6 +85,7 @@ button { cursor: pointer; }
   color: #1a140c;
   font-weight: 600;
 }
+a.icon-button { display: inline-flex; align-items: center; text-decoration: none; }
 
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
 .chip, .letter {
@@ -277,6 +278,7 @@ button { cursor: pointer; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); vertical-align: top; }
 .pin-gate { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.staff-pin { position: fixed; inset: 0; z-index: 50; background: #110e0b; color: #f4efe6; }
 .pin-card { width: min(420px, 100%); }
 .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
 .pad-key { min-height: 64px; font-size: 24px; }

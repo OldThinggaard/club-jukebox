@@ -91,7 +91,8 @@ export function Admin() {
         <div className="pin-card">
           <p className="eyebrow">Administration</p>
           <h1 className="font-serif text-5xl">Club PIN</h1>
-          <p className="muted">The first PIN is 2580. Change it after installation. Guests never see this page from the shelf.</p>
+          <p className="muted">Tast koden. Gæster ser ikke denne side fra hylden.</p>
+          <p><a href="/">Tilbage til hylden</a></p>
           <p className="text-3xl tracking-[0.4em]">{pin.padEnd(4, "·")}</p>
           {pinError && <p>{pinError}</p>}
           <div className="pad">
@@ -122,7 +123,10 @@ export function Admin() {
           <p className="eyebrow">Administration</p>
           <h1 className="font-serif text-4xl">House controls</h1>
         </div>
-        <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); setAuthed(false); }}>Sign out</Button>
+        <div className="flex gap-2">
+          <a className="icon-button" href="/">Hylden</a>
+          <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); window.location.assign("/"); }}>Log ud</Button>
+        </div>
       </header>
       <nav className="admin-nav">
         {(["overview", "library", "sources", "playback", "backups", "updates", "netværk", "onlime"] as Tab[]).map((item) => (
