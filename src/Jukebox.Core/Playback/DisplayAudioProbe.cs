@@ -147,31 +147,57 @@ public static partial class DisplayAudioProbe
         return (stored, null, null);
     }
 
-    public static string? ResolveOutput(string? stored, IReadOnlyList<AudioDevice> devices)
+    public static bool WantsHeadphones(string? stored)
     {
-        if (!string.IsNullOrWhiteSpace(stored))
-            return stored.Trim();
-        var speaker = devices.FirstOrDefault(item => item.Label == "Indbyggede højttalere");
-        if (speaker is not null)
-            return speaker.Id;
-        return devices.FirstOrDefault(item => item.Label == "Analog udgang")?.Id;
+        if (string.IsNullOrWhiteSpace(stored) || stored.Equals("speakers", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return stored.Equals("headphones", StringComparison.OrdinalIgnoreCase)
+            || stored.Contains("headphone", StringComparison.OrdinalIgnoreCase)
+            || stored.Contains("headset", StringComparison.OrdinalIgnoreCase);
     }
 
-    public static void ApplyPort(string? sink, string? port)
+    public static IReadOnlyList<AudioDevice> WithHeadphoneChoice(IReadOnlyList<AudioDevice> devices)
+    {
+        var list = devices.ToList();
+        var sink = AnalogSink(list);
+        if (sink is null)
+            return list;
+        if (!list.Any(item => item.Label == "Indbyggede højttalere"))
+            list.Insert(0, new AudioDevice($"pulse/{sink}#analog-output-speaker", "Indbyggede højttalere", "pulse"));
+        if (!list.Any(item => item.Label == "Hovedtelefonudgang"))
+            list.Insert(1, new AudioDevice($"pulse/{sink}#analog-output-headphones", "Hovedtelefonudgang", "pulse"));
+        return list;
+    }
+
+    public static string? ResolveOutput(string? stored, IReadOnlyList<AudioDevice> devices)
+    {
+        var choices = WithHeadphoneChoice(devices);
+        var label = WantsHeadphones(stored) ? "Hovedtelefonudgang" : "Indbyggede højttalere";
+        var match = choices.FirstOrDefault(item => item.Label == label);
+        if (match is not null)
+            return match.Id;
+        if (!string.IsNullOrWhiteSpace(stored) && !stored.Equals("speakers", StringComparison.OrdinalIgnoreCase))
+            return stored.Trim();
+        return choices.FirstOrDefault(item => item.Label == "Analog udgang")?.Id;
+    }
+
+    public static void ApplyPort(string? sink, string? port, int? volumePercent = null)
     {
         if (string.IsNullOrWhiteSpace(sink) || sink.Contains(' ', StringComparison.Ordinal))
             return;
         Run("pactl", $"set-default-sink {sink}");
-        if (string.IsNullOrWhiteSpace(port) || port.Contains(' ', StringComparison.Ordinal))
-            return;
-        Run("pactl", $"set-sink-port {sink} {port}");
+        if (!string.IsNullOrWhiteSpace(port) && !port.Contains(' ', StringComparison.Ordinal))
+            Run("pactl", $"set-sink-port {sink} {port}");
+        Run("pactl", $"set-sink-mute {sink} 0");
+        if (volumePercent is int volume)
+            Run("pactl", $"set-sink-volume {sink} {Math.Clamp(volume, 0, 100)}%");
     }
 
     public static IReadOnlyList<AudioDevice> QueryAudio()
     {
         var listed = ParseSinks(Run("pactl", "list sinks") ?? "");
         if (listed.Count > 0)
-            return listed;
+            return WithHeadphoneChoice(listed);
 
         var devices = new List<AudioDevice>();
         var pactl = Run("pactl", "list short sinks");
@@ -190,7 +216,7 @@ public static partial class DisplayAudioProbe
         }
 
         if (devices.Count > 0)
-            return devices;
+            return WithHeadphoneChoice(devices);
 
         var aplay = Run("aplay", "-l");
         if (string.IsNullOrWhiteSpace(aplay))
@@ -226,6 +252,22 @@ public static partial class DisplayAudioProbe
 
     private static string Geom(DisplayInfo? info) =>
         info is null ? "" : $"{info.Width}x{info.Height}+{info.X}+{info.Y}";
+
+    private static string? AnalogSink(IReadOnlyList<AudioDevice> devices)
+    {
+        foreach (var device in devices)
+        {
+            if (!device.Id.StartsWith("pulse/", StringComparison.Ordinal))
+                continue;
+            var body = device.Id["pulse/".Length..];
+            var hash = body.IndexOf('#');
+            var sink = hash >= 0 ? body[..hash] : body;
+            if (sink.Contains("analog", StringComparison.OrdinalIgnoreCase))
+                return sink;
+        }
+
+        return null;
+    }
 
     private static string DanishOutput(string port, string description)
     {

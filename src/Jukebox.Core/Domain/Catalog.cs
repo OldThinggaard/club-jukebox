@@ -59,6 +59,7 @@ public static class SettingKeys
     public const string Instructions = "club.instructions";
     public const string PublicBaseUrl = "qr.public_url";
     public const string AudioDevice = "audio.device";
+    public const string VolumePercent = "audio.volume";
     public const string UiOutput = "display.ui_output";
     public const string PlaybackOutput = "display.playback_output";
     public const string ImageSeconds = "playback.image_seconds";

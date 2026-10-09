@@ -364,8 +364,9 @@ public static class Endpoints
         admin.MapPut("/settings", (ClubSettings body, SettingsStore settings) =>
         {
             settings.Save(body);
-            var route = DisplayAudioProbe.Route(body.AudioDevice);
-            DisplayAudioProbe.ApplyPort(route.Sink, route.Port);
+            var output = DisplayAudioProbe.ResolveOutput(body.AudioDevice, DisplayAudioProbe.QueryAudio());
+            var route = DisplayAudioProbe.Route(output);
+            DisplayAudioProbe.ApplyPort(route.Sink, route.Port, body.VolumePercent);
             settings.Audit("settings", body.IdleStrategy);
             return Results.Ok(settings.Get());
         }).AddEndpointFilter(Gate);

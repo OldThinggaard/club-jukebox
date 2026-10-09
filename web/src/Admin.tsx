@@ -50,6 +50,7 @@ type Settings = {
   idleTimeoutSeconds: number;
   idleStrategy: string;
   audioDevice: string;
+  volumePercent: number;
   uiOutput: string;
   playbackOutput: string;
   imageSeconds: number;
@@ -284,17 +285,51 @@ function SourcesPanel() {
 
 function PlaybackPanel() {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [audio, setAudio] = useState<{ id: string; label: string }[]>([]);
   const [displays, setDisplays] = useState<{ name: string; connected: boolean; width: number }[]>([]);
+  const [soundNote, setSoundNote] = useState("");
   useEffect(() => {
     void admin<Settings>("/api/admin/settings").then(setSettings);
-    void admin<{ id: string; label: string }[]>("/api/admin/audio-devices").then(setAudio);
     void admin<{ displays: { name: string; connected: boolean; width: number }[] }>("/api/admin/displays").then((body) => setDisplays(body.displays));
   }, []);
-  if (!settings) return <p>Loading settings…</p>;
+  if (!settings) return <p>Henter lyd…</p>;
   const set = (patch: Partial<Settings>) => setSettings({ ...settings, ...patch });
+  const headphones = settings.audioDevice === "headphones" || settings.audioDevice.includes("headphone");
+  async function saveSound(patch: Partial<Settings>) {
+    const next = { ...settings!, ...patch };
+    setSettings(next);
+    setSoundNote("Gemmer…");
+    try {
+      const saved = await admin<Settings>("/api/admin/settings", { method: "PUT", body: JSON.stringify(next) });
+      setSettings(saved);
+      setSoundNote("Gemt");
+    } catch {
+      setSoundNote("Lyden blev ikke gemt");
+    }
+  }
   return (
     <section className="panel">
+      <h2 className="font-serif text-2xl">Lyd</h2>
+      <div className="sound-choice">
+        <button className={headphones ? "" : "active"} type="button" onClick={() => void saveSound({ audioDevice: "speakers" })}>Indbyggede højttalere</button>
+        <button className={headphones ? "active" : ""} type="button" onClick={() => void saveSound({ audioDevice: "headphones" })}>Hovedtelefonudgang</button>
+      </div>
+      <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme.</p>
+      <Field label="Lydstyrke">
+        <div className="volume-row">
+          <button type="button" onClick={() => void saveSound({ volumePercent: Math.max(0, settings.volumePercent - 5) })}>−</button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={settings.volumePercent}
+            onChange={(event) => set({ volumePercent: Number(event.target.value) })}
+            onPointerUp={(event) => void saveSound({ volumePercent: Number((event.target as HTMLInputElement).value) })}
+          />
+          <button type="button" onClick={() => void saveSound({ volumePercent: Math.min(100, settings.volumePercent + 5) })}>+</button>
+          <strong>{settings.volumePercent}%</strong>
+        </div>
+      </Field>
+      {soundNote && <p>{soundNote}</p>}
       <div className="form-grid">
         <Field label="Club name"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
         <Field label="Public address"><input value={settings.publicBaseUrl} onChange={(event) => set({ publicBaseUrl: event.target.value })} /></Field>
@@ -305,12 +340,6 @@ function PlaybackPanel() {
             <option value="hybrid">Hybrid, 80% least played</option>
             <option value="least">Least played</option>
             <option value="random">Random</option>
-          </select>
-        </Field>
-        <Field label="Lydudgang">
-          <select value={settings.audioDevice} onChange={(event) => set({ audioDevice: event.target.value })}>
-            <option value="">Indbyggede højttalere</option>
-            {audio.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
           </select>
         </Field>
         <Field label="Touchscreen output">
@@ -331,7 +360,7 @@ function PlaybackPanel() {
       <Field label="Welcome"><textarea value={settings.welcomeMessage} onChange={(event) => set({ welcomeMessage: event.target.value })} /></Field>
       <Field label="Instructions"><textarea value={settings.instructions} onChange={(event) => set({ instructions: event.target.value })} /></Field>
       <div className="actions">
-        <p className="muted">Indbyggede højttalere er lyden i skærmen. Hovedtelefonudgangen er stikket bagi.</p>
+        <p className="muted">Hovedtelefonudgangen er stikket bagi. Sæt ledningen i, før du vælger den.</p>
         <Button type="button" onClick={() => void admin("/api/admin/settings", { method: "PUT", body: JSON.stringify(settings) })}>Gem</Button>
       </div>
       <PinChange />

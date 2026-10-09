@@ -13,6 +13,7 @@ public sealed class ClubSettings
     public int IdleTimeoutSeconds { get; init; } = 90;
     public string IdleStrategy { get; init; } = "hybrid";
     public string AudioDevice { get; init; } = "";
+    public int VolumePercent { get; init; } = 80;
     public string UiOutput { get; init; } = "";
     public string PlaybackOutput { get; init; } = "";
     public int ImageSeconds { get; init; } = 12;
@@ -41,6 +42,7 @@ public sealed class SettingsStore
             PutIfMissing(connection, tx, SettingKeys.Instructions, defaults.Instructions);
             PutIfMissing(connection, tx, SettingKeys.PublicBaseUrl, defaults.PublicBaseUrl);
             PutIfMissing(connection, tx, SettingKeys.AudioDevice, defaults.AudioDevice);
+            PutIfMissing(connection, tx, SettingKeys.VolumePercent, defaults.VolumePercent.ToString());
             PutIfMissing(connection, tx, SettingKeys.UiOutput, defaults.UiOutput);
             PutIfMissing(connection, tx, SettingKeys.PlaybackOutput, defaults.PlaybackOutput);
             PutIfMissing(connection, tx, SettingKeys.ImageSeconds, defaults.ImageSeconds.ToString());
@@ -62,6 +64,7 @@ public sealed class SettingsStore
             IdleTimeoutSeconds = Int(map, SettingKeys.IdleTimeoutSeconds, 90),
             IdleStrategy = Get(map, SettingKeys.IdleStrategy, "hybrid"),
             AudioDevice = Get(map, SettingKeys.AudioDevice, ""),
+            VolumePercent = Int(map, SettingKeys.VolumePercent, 80),
             UiOutput = Get(map, SettingKeys.UiOutput, ""),
             PlaybackOutput = Get(map, SettingKeys.PlaybackOutput, ""),
             ImageSeconds = Int(map, SettingKeys.ImageSeconds, 12),
@@ -86,6 +89,7 @@ public sealed class SettingsStore
             [SettingKeys.IdleTimeoutSeconds] = Math.Clamp(settings.IdleTimeoutSeconds, 0, 24 * 3600).ToString(),
             [SettingKeys.IdleStrategy] = settings.IdleStrategy is "random" or "least" or "hybrid" ? settings.IdleStrategy : "hybrid",
             [SettingKeys.AudioDevice] = settings.AudioDevice.Trim(),
+            [SettingKeys.VolumePercent] = Math.Clamp(settings.VolumePercent, 0, 100).ToString(),
             [SettingKeys.UiOutput] = settings.UiOutput.Trim(),
             [SettingKeys.PlaybackOutput] = settings.PlaybackOutput.Trim(),
             [SettingKeys.ImageSeconds] = Math.Clamp(settings.ImageSeconds, 3, 120).ToString(),

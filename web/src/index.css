@@ -285,6 +285,13 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
 .pad-key { min-height: 64px; font-size: 24px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.sound-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.sound-choice button { min-height: 72px; border-radius: 16px; background: rgba(255,255,255,0.06); }
+.sound-choice button.active { background: #e2b15a; color: #1a140c; font-weight: 650; }
+.volume-row { display: flex; gap: 8px; align-items: center; }
+.volume-row button { min-width: 64px; min-height: 64px; border-radius: 16px; background: rgba(255,255,255,0.06); font-size: 28px; }
+.volume-row input[type="range"] { flex: 1; height: 44px; }
+.volume-row strong { min-width: 52px; }
 
 @media (max-width: 800px) {
   .topbar { flex-wrap: wrap; }

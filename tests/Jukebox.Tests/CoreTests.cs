@@ -169,7 +169,14 @@ public class DisplayParserTests
         Assert.Equal("analog-output-headphones", route.Port);
         Assert.Equal((null, null, null), DisplayAudioProbe.Route(""));
         Assert.Equal(devices[0].Id, DisplayAudioProbe.ResolveOutput("", devices));
+        Assert.Equal(devices[0].Id, DisplayAudioProbe.ResolveOutput("speakers", devices));
+        Assert.Equal(devices[1].Id, DisplayAudioProbe.ResolveOutput("headphones", devices));
         Assert.Equal(devices[1].Id, DisplayAudioProbe.ResolveOutput(devices[1].Id, devices));
+        var onlyAnalog = DisplayAudioProbe.WithHeadphoneChoice([
+            new AudioDevice("pulse/alsa_output.pci-0000_00_1f.3.analog-stereo", "Analog udgang", "pulse")
+        ]);
+        Assert.Contains(onlyAnalog, item => item.Label == "Hovedtelefonudgang");
+        Assert.Equal("analog-output-headphones", DisplayAudioProbe.Route(DisplayAudioProbe.ResolveOutput("headphones", onlyAnalog)).Port);
     }
 }
 
