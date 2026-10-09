@@ -17,4 +17,7 @@ sync_root="${JUKEBOX_DATA_DIR:-/var/lib/jukebox}/onlime-sync"
 if [[ -d "$sync_root/reklamer" ]]; then
   setsid jotta-cli download --merge "Archive/reklamer" "$sync_root/reklamer" >/var/log/jukebox-onlime-download.log 2>&1 < /dev/null &
 fi
+if [[ -d "$sync_root/media" ]]; then
+  setsid jotta-cli download --merge "Archive/media" "$sync_root/media" >>/var/log/jukebox-onlime-download.log 2>&1 < /dev/null &
+fi
 exit 0

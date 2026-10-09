@@ -196,7 +196,7 @@ public static class InstallEndpoints
         {
             ok = true,
             message = told ?? (startSync
-                ? "Sync er i gang. Læg filmene i Onlime under Sync, i mappen reklamer."
+                ? "Sync er i gang. Musik og film skal ligge i mappen media. Reklamer skal ligge i mappen reklamer. Begge mapper skal ligge under Sync."
                 : "Onlime er logget ind. Sync-mappen hentes ned efter installationen.")
         });
     }

@@ -529,7 +529,7 @@ function OnlimePanel() {
       )}
       {sync?.installed && (
         <>
-          <p>Log ind på Onlime, og kopiér koden. Filmene skal ligge i Onlime under Sync, i mappen reklamer. Tryk Start sync. Skærmen viser reklamerne, når ingen har valgt en film.</p>
+          <p>Log ind på Onlime, og kopiér koden. Under Sync skal musik og film ligge i mappen media, og reklamer i mappen reklamer. Tryk Start sync.</p>
           <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
         </>
       )}
@@ -561,7 +561,7 @@ function UpdatesPanel() {
       setMessage(body.message ?? "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
     } catch {
       setBad(true);
-      setMessage("Kunne ikke starte installationen.");
+      setMessage("Installationen svarede ikke. Hvis skærmen bliver ved med at skrive Installerer, så sluk computeren på knappen.");
     }
   }
 

@@ -130,7 +130,7 @@ WantedBy=multi-user.target
 EOF
 
 if [[ -x /opt/jukebox/lib/onlime-install.sh ]]; then
-  /opt/jukebox/lib/onlime-install.sh || true
+  timeout 90 /opt/jukebox/lib/onlime-install.sh || true
 fi
 
 for dm in gdm.service gdm3.service lightdm.service sddm.service; do

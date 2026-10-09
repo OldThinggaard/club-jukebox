@@ -16,7 +16,7 @@ Når koden er tastet, kan en ny `videojukebox.deb` på en USB-nøgle lægges på
 4. Tryk Installér.
 5. Tag USB-nøglen ud. Genstart, når installationen er færdig.
 
-Netværk og Onlime sættes op under Administration. Mangler Onlime Sync, så sæt kablet i, åbn **Onlime**, og tryk **Hent Onlime Sync**. Log derefter ind, og kopiér koden. Reklamer lægges i mappen `reklamer`. Skærmen viser kun dem, når ingen har valgt en film.
+Netværk og Onlime sættes op under Administration. Mangler Onlime Sync, så sæt kablet i, åbn **Onlime**, og tryk **Hent Onlime Sync**. Log derefter ind, og kopiér koden. Under Sync lægges musik og film i mappen `media`, og reklamer i mappen `reklamer`. Skærmen viser kun reklamerne, når ingen har valgt en film.
 
 Pakken bygges med `./deploy/scripts/build-deb.sh` og lander i `publish/pakke/videojukebox.deb`.
 

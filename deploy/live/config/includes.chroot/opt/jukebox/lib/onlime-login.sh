@@ -54,7 +54,7 @@ if [[ "$status" == *"not logged in"* || "$status" == *"Not logged in"* || "$stat
   exit 1
 fi
 if [[ "$status" != *"Sync"* ]]; then
-  echo "Sync blev ikke startet. Læg filmene i Onlime under Sync, i mappen reklamer, og prøv igen." >&2
+  echo "Sync blev ikke startet. Læg musikken i mappen media og reklamerne i mappen reklamer, begge under Sync, og prøv igen." >&2
   exit 1
 fi
 
@@ -62,7 +62,10 @@ if [[ "$START" == "--start" ]]; then
   setsid sudo -u jukebox env HOME=/home/jukebox XDG_RUNTIME_DIR="$runtime" \
     jotta-cli download --merge "Archive/reklamer" "$SYNC_ROOT/reklamer" \
     >/var/log/jukebox-onlime-download.log 2>&1 < /dev/null &
-  echo "Sync er i gang. Læg filmene i Onlime under Sync, i mappen reklamer."
+  setsid sudo -u jukebox env HOME=/home/jukebox XDG_RUNTIME_DIR="$runtime" \
+    jotta-cli download --merge "Archive/media" "$SYNC_ROOT/media" \
+    >>/var/log/jukebox-onlime-download.log 2>&1 < /dev/null &
+  echo "Sync er i gang. Musik og film skal ligge i mappen media. Reklamer skal ligge i mappen reklamer. Begge mapper skal ligge under Sync."
 else
   echo "Onlime er logget ind. Filmene hentes ned til $SYNC_ROOT når maskinen er startet."
 fi
