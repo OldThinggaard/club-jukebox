@@ -1,5 +1,7 @@
 # Installations-USB til touchskærm-pc
 
+Til en rigtig maskine bruges Debian 13 og [programpakken](pakke.md). USB-imagen herunder er den gamle samlede installation.
+
 USB-nøglen er en Debian 13-installation. Den starter en guide på dansk, sletter den harddisk du vælger, og lægger Videojukebox på den. Installationen kræver ikke netværk. Onlime sættes op bagefter i administrationen.
 
 Den tidligere nøgle startede kun programmet midlertidigt og lod computerens disk være. Denne nøgle gør det modsatte: den valgte disk bliver tømt.

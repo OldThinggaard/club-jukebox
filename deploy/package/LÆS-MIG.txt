@@ -1,0 +1,78 @@
+Videojukebox på Debian 13
+==========================
+
+Debian lægger systemet på disken. Denne pakke lægger kun programmet på bagefter.
+Pakken sletter ikke disken.
+
+1. Operativsystem
+-----------------
+
+Hent Debian 13.7, 64-bit, netinst:
+
+https://get.debian.org/images/release/current/amd64/iso-cd/debian-13.7.0-amd64-netinst.iso
+
+Filen er cirka 756 MB. SHA256:
+
+a7ef94ac2fb9a7fec454552abd629b7cc9d5155c886165a45649f5ce6167e355
+
+Skriv den til en USB-nøgle med Rufus. Vælg den normale ISO-tilstand, hvis Rufus spørger.
+Det er Debians egen fil, ikke Videojukebox-imagen.
+
+2. Installer Debian
+-------------------
+
+Sæt netværkskablet i. Start fra USB-nøglen.
+
+- Vælg Grafisk installation.
+- Sprog: Dansk. Land: Danmark. Tastatur: Dansk.
+- Værtsnavn: jukebox
+- Vælg en adgangskode til root, og skriv den ned.
+- Opret også en almindelig bruger.
+- Partitionering: Guidet - benyt hele disken. Alle filer i én partition.
+  Svar ja til at skrive ændringerne. Her sletter Debian den gamle disk.
+- Hent pakker fra internettet. Vælg et dansk spejl, hvis det tilbydes.
+- Programvalg: fjern flueben ved skrivebord. Behold kun almindelige systemværktøjer.
+- Installer GRUB på computerens disk.
+- Genstart, og tag Debian-nøglen ud.
+
+3. Læg programmet på
+-------------------
+
+På Windows: højreklik videojukebox-pakke.zip, vælg Udpak alle, og kopiér mappen
+videojukebox-pakke over på en USB-nøgle. Kopiér mappen, ikke kun zip-filen.
+
+Sæt nøglen i den maskine, der nu kører Debian. Log ind som root.
+Hvis du er logget ind som den almindelige bruger, så skriv først: su -
+
+Find nøglen:
+
+lsblk
+
+Den er den disk, der ikke er computerens egen, ofte sdb1. Så:
+
+mkdir -p /mnt/usb
+mount /dev/sdb1 /mnt/usb
+bash /mnt/usb/videojukebox-pakke/install.sh
+
+Kablet skal blive siddende. Scriptet henter afspiller og skærmprogram.
+Når det skriver at Videojukebox er installeret:
+
+umount /mnt/usb
+reboot
+
+Tag nøglen ud under genstarten.
+
+4. Bagefter
+-----------
+
+Touchskærmen viser hylden. HDMI viser filmene.
+Administration åbnes på maskinen: http://127.0.0.1:47123/admin
+PIN-koden er 2580.
+
+Et kabel virker uden mere opsætning. Trådløst net vælges under fanen netværk.
+Onlime sættes op under fanen onlime. Læg film i mappen media og plakater i events.
+
+Konsol: Ctrl+Alt+F2
+Bruger: jukebox
+Adgangskode: jukebox
+Tilbage til skærmen: Ctrl+Alt+F1

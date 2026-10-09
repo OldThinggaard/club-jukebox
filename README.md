@@ -61,11 +61,11 @@ When the queue is empty the television shows the club name, clock, date, welcome
 
 The QR code uses the public address in settings. Production should be `http://jukebox.local:47123` via Avahi. Phones get the same shelf. They do not get the PIN page from the shelf, and they cannot stream the film file. Full file playback is accepted only from the machine itself, so the sound stays on the club speakers.
 
-## Install from a USB stick
+## Install on a club PC
 
-`deploy/scripts/build-usb.sh` builds a Debian 13 installer ISO. Written to a USB stick, it boots a touchscreen PC into a Danish wizard that erases the chosen hard disk and installs Videojukebox. The install does not need a network. Onlime sync is set up afterwards in Administration. Flashing steps, Secure Boot, and the console password are in [docs/usb.md](docs/usb.md). The image is `publish/usb/jukebox-live-amd64.iso`.
+Install Debian 13 yourself, then add Videojukebox with `videojukebox-pakke.zip`. The package does not partition the disk. Debian's own installer does that. The operating system file, the package, and the steps are in [docs/pakke.md](docs/pakke.md).
 
-## Install on Debian
+## Install on Debian from this repository
 
 ```bash
 ./deploy/scripts/publish.sh
