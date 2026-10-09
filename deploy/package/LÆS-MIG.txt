@@ -1,22 +1,15 @@
 Videojukebox
 =============
 
-Når programmet kører, er der ingen kommandoer:
+Når hylden allerede kører, bruges filen videojukebox-opdater.iso.
+Læg den på en USB-nøgle med Etcher. Sluk computeren, sæt nøglen i, og tænd.
+Nøglen opdaterer selv og genstarter. Tag nøglen ud, når hylden er tilbage.
 
-1. Tryk Admin på hylden.
-2. Tast 2580 på skærmen.
-3. Tryk Hylden for at komme tilbage til filmene.
+Hylden viser filmene. Hold fingeren på klubnavnet i to sekunder, og tast 2580.
+Gæster ser ikke administration.
 
-En ny version lægges på sådan:
-
-1. Kopiér videojukebox.deb over på en USB-nøgle. Pak den ikke ud.
-2. Sæt nøglen i maskinen.
-3. Tryk Admin, tast 2580, og åbn Opdatering.
-4. Tryk Installer og genstart. Lad maskinen være, til hylden er tilbage.
-
-Første gang, på en Debian-computer der stadig viser skrivebordet:
-åbn nøglen, dobbeltklik på videojukebox.deb, og tryk Installér.
-Genstart, når den er færdig. Derefter bruges knappen Admin.
+Første gang, hvis skrivebordet stadig er fremme:
+åbn videojukebox.deb, og tryk Installér. Genstart, når den er færdig.
 
 Netværk og Onlime sættes op under Administration.
 Film lægges i mappen media. Plakater lægges i mappen events.

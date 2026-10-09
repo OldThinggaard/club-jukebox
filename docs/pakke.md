@@ -1,14 +1,24 @@
 # Videojukebox på Debian 13
 
+Når hylden allerede kører, og der ikke er noget at trykke på, lægges en ny udgave på med filen `videojukebox-opdater.iso`.
+
+1. Hent filen på den computer, hvor du plejer at hente filer.
+2. Læg den på en USB-nøgle med Etcher. Viser Etcher «Error opening source», så brug Rufus og vælg DD.
+3. Sluk jukebox-computeren, sæt nøglen i, og tænd.
+4. Kommer hylden frem med det samme, så sluk, tænd, tryk F12 én gang mens skærmen er sort, og vælg USB-nøglen.
+5. Skærmen skriver, at den opdaterer. Vent. Den genstarter selv.
+6. Tag nøglen ud, når hylden er tilbage.
+7. Hold fingeren på klubnavnet i to sekunder, og tast 2580.
+
+Nøglen sletter ikke disken. Gæster ser kun filmene.
+
 Debian 13 skal allerede være installeret. Programmet lægges på med én fil: `videojukebox.deb`. Filen pakkes ikke ud, og den sletter ikke disken.
 
 ## På maskinen, når hylden kører
 
-1. Tryk **Admin** på hylden.
-2. Tast **2580**.
-3. Tryk **Hylden** for at komme tilbage til filmene.
+Hold fingeren på klubnavnet i to sekunder, og tast **2580**. Gæster ser kun filmene. Tryk **Hylden** for at komme tilbage.
 
-En ny version: kopiér `videojukebox.deb` til en USB-nøgle, sæt den i, tryk Admin, åbn **Opdatering**, og tryk **Installer og genstart**. Der skal ikke skrives noget.
+Når koden er tastet, kan en ny `videojukebox.deb` på en USB-nøgle lægges på under **Opdatering**.
 
 ## Første gang, hvis skrivebordet stadig er fremme
 

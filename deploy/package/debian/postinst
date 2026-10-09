@@ -139,8 +139,8 @@ fi
 for dm in gdm.service gdm3.service lightdm.service sddm.service; do
   systemctl disable "$dm" >/dev/null 2>&1 || true
 done
-systemctl set-default multi-user.target
-systemctl daemon-reload
+systemctl set-default multi-user.target || true
+systemctl daemon-reload || true
 systemctl enable avahi-daemon.service || true
 systemctl enable NetworkManager.service || true
 systemctl enable jukebox-usb-mount.service

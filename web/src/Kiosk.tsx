@@ -141,9 +141,6 @@ export function Kiosk() {
           <span>{screen?.dateLabel}</span>
         </div>
         <div className="top-actions">
-          <button className="icon-button" type="button" onClick={() => setStaffPin(true)}>
-            Admin
-          </button>
           <button className="icon-button" type="button" onClick={() => setSearchOpen(true)}>
             Search
           </button>
