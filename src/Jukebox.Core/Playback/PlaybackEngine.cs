@@ -83,29 +83,27 @@ public sealed class MpvPlayer : IMediaPlayer
         start.ArgumentList.Add("--no-border");
         start.ArgumentList.Add("--ontop");
         start.ArgumentList.Add("--no-osc");
-        start.ArgumentList.Add("--hwdec=auto-safe");
+        start.ArgumentList.Add("--keep-open=no");
+        start.ArgumentList.Add("--audio-fallback-to-null=yes");
         start.ArgumentList.Add($"--fs-screen={job.ScreenIndex}");
         if (!string.IsNullOrWhiteSpace(job.AudioDevice))
             start.ArgumentList.Add($"--audio-device={job.AudioDevice}");
 
         if (job.Entry.MediaType == MediaTypes.Audio)
         {
-            var art = job.Entry.ThumbnailPath;
-            if (string.IsNullOrWhiteSpace(art) || !File.Exists(art))
-                return await new TimerPlayer().PlayAsync(job, position, cancellationToken);
-            var seconds = Math.Max(1, job.DurationMs / 1000.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
-            start.ArgumentList.Add($"--image-display-duration={seconds}");
-            start.ArgumentList.Add($"--audio-file={job.AbsolutePath}");
-            start.ArgumentList.Add(art);
+            start.ArgumentList.Add("--no-video");
+            start.ArgumentList.Add(job.AbsolutePath);
         }
         else if (job.Entry.MediaType == MediaTypes.Image)
         {
+            start.ArgumentList.Add("--hwdec=no");
             var seconds = Math.Max(1, job.DurationMs / 1000.0).ToString(System.Globalization.CultureInfo.InvariantCulture);
             start.ArgumentList.Add($"--image-display-duration={seconds}");
             start.ArgumentList.Add(job.AbsolutePath);
         }
         else
         {
+            start.ArgumentList.Add("--hwdec=auto-safe");
             start.ArgumentList.Add(job.AbsolutePath);
         }
 
@@ -119,12 +117,21 @@ public sealed class MpvPlayer : IMediaPlayer
             try { if (!process.HasExited) process.Kill(entireProcessTree: true); } catch { /* already gone */ }
         });
 
+        var limit = job.DurationMs + 20_000;
         while (!process.HasExited)
         {
+            if (Environment.TickCount64 - started > limit)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* the next song must start */ }
+                break;
+            }
+
             position(Math.Min(job.DurationMs, Environment.TickCount64 - started));
             await Task.Delay(250, stop.Token);
         }
 
+        if (!process.HasExited && !process.WaitForExit(1000))
+            return PlayResult.Done();
         position(Math.Min(job.DurationMs, Environment.TickCount64 - started));
         return process.ExitCode == 0 ? PlayResult.Done() : PlayResult.Failed($"mpv exited with code {process.ExitCode}");
     }
@@ -214,6 +221,8 @@ public sealed class PlaybackCoordinator
             var duration = item.MediaType == MediaTypes.Image
                 ? imageSeconds * 1000L
                 : Math.Max(1000, item.DurationMs ?? 10_000);
+            if (item.MediaType == MediaTypes.Audio)
+                duration += 1500;
             var job = new PlayJob
             {
                 Entry = next,

@@ -168,6 +168,8 @@ public class DisplayParserTests
         Assert.Equal("pulse/alsa_output.pci-0000_00_1f.3.analog-stereo", route.MpvDevice);
         Assert.Equal("analog-output-headphones", route.Port);
         Assert.Equal((null, null, null), DisplayAudioProbe.Route(""));
+        Assert.Equal(devices[0].Id, DisplayAudioProbe.ResolveOutput("", devices));
+        Assert.Equal(devices[1].Id, DisplayAudioProbe.ResolveOutput(devices[1].Id, devices));
     }
 }
 

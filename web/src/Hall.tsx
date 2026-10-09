@@ -44,7 +44,7 @@ export function Hall() {
         <video className="hall-video" src={playing.contentUrl} autoPlay playsInline onError={() => setHideVideo(true)} />
       )}
       {showBrowserMedia && playing.mediaType === "audio" && (
-        <audio src={playing.contentUrl} autoPlay onError={() => setHideVideo(true)} />
+        <audio key={playing.mediaId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => setHideVideo(true)} />
       )}
       {showBrowserMedia && playing.mediaType === "image" && (
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />

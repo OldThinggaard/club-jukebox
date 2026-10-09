@@ -309,7 +309,7 @@ function PlaybackPanel() {
         </Field>
         <Field label="Lydudgang">
           <select value={settings.audioDevice} onChange={(event) => set({ audioDevice: event.target.value })}>
-            <option value="">Som computeren selv vælger</option>
+            <option value="">Indbyggede højttalere</option>
             {audio.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
           </select>
         </Field>

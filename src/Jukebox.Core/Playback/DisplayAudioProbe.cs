@@ -147,11 +147,22 @@ public static partial class DisplayAudioProbe
         return (stored, null, null);
     }
 
+    public static string? ResolveOutput(string? stored, IReadOnlyList<AudioDevice> devices)
+    {
+        if (!string.IsNullOrWhiteSpace(stored))
+            return stored.Trim();
+        var speaker = devices.FirstOrDefault(item => item.Label == "Indbyggede højttalere");
+        if (speaker is not null)
+            return speaker.Id;
+        return devices.FirstOrDefault(item => item.Label == "Analog udgang")?.Id;
+    }
+
     public static void ApplyPort(string? sink, string? port)
     {
-        if (string.IsNullOrWhiteSpace(sink) || string.IsNullOrWhiteSpace(port))
+        if (string.IsNullOrWhiteSpace(sink) || sink.Contains(' ', StringComparison.Ordinal))
             return;
-        if (sink.Contains(' ', StringComparison.Ordinal) || port.Contains(' ', StringComparison.Ordinal))
+        Run("pactl", $"set-default-sink {sink}");
+        if (string.IsNullOrWhiteSpace(port) || port.Contains(' ', StringComparison.Ordinal))
             return;
         Run("pactl", $"set-sink-port {sink} {port}");
     }
@@ -252,13 +263,18 @@ public static partial class DisplayAudioProbe
             using var process = System.Diagnostics.Process.Start(start);
             if (process is null)
                 return null;
-            var text = process.StandardOutput.ReadToEnd();
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
             if (!process.WaitForExit(2000))
             {
                 try { process.Kill(entireProcessTree: true); } catch { /* probe is best effort */ }
                 return null;
             }
-            return process.ExitCode == 0 ? text : null;
+
+            if (!stdout.Wait(500))
+                return null;
+            _ = stderr.Wait(500);
+            return process.ExitCode == 0 ? stdout.Result : null;
         }
         catch
         {

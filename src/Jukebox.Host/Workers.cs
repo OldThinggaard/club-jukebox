@@ -78,7 +78,8 @@ public sealed class PlaybackWorker(
                 var connected = displays.Count(item => item.Connected && item.Width > 0);
                 var useMpv = config.PlaybackMode == "mpv" || (config.PlaybackMode == "auto" && connected >= 2 && MpvPlayer.IsInstalled());
                 var screen = DisplayAudioProbe.ScreenIndex(displays, club.PlaybackOutput);
-                var route = DisplayAudioProbe.Route(club.AudioDevice);
+                var output = DisplayAudioProbe.ResolveOutput(club.AudioDevice, DisplayAudioProbe.QueryAudio());
+                var route = DisplayAudioProbe.Route(output);
                 DisplayAudioProbe.ApplyPort(route.Sink, route.Port);
                 job = coordinator.ClaimNext(screen, route.MpvDevice, club.ImageSeconds);
                 if (job is null)
@@ -87,8 +88,17 @@ public sealed class PlaybackWorker(
                     continue;
                 }
 
-                IMediaPlayer player = useMpv ? _mpv : _timer;
-                coordinator.SetEngine(player.Name);
+                IMediaPlayer player;
+                if (job.Entry.MediaType == MediaTypes.Audio)
+                {
+                    player = _timer;
+                    coordinator.SetEngine("hall");
+                }
+                else
+                {
+                    player = useMpv ? _mpv : _timer;
+                    coordinator.SetEngine(player.Name);
+                }
                 var playing = player.PlayAsync(job, coordinator.SetPosition, stoppingToken);
                 while (!playing.IsCompleted)
                 {

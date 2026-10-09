@@ -166,10 +166,12 @@ public static class Endpoints
                 type = "image/webp";
             if (item.Extension.Equals(".wav", StringComparison.OrdinalIgnoreCase))
                 type = "audio/wav";
-            if (item.Extension.Equals(".ogg", StringComparison.OrdinalIgnoreCase))
+            if (item.Extension.Equals(".ogg", StringComparison.OrdinalIgnoreCase) || item.Extension.Equals(".opus", StringComparison.OrdinalIgnoreCase))
                 type = "audio/ogg";
             if (item.Extension.Equals(".flac", StringComparison.OrdinalIgnoreCase))
                 type = "audio/flac";
+            if (item.Extension.Equals(".m4a", StringComparison.OrdinalIgnoreCase) || item.Extension.Equals(".aac", StringComparison.OrdinalIgnoreCase))
+                type = "audio/mp4";
             return Results.File(path, type, enableRangeProcessing: true);
         });
 

@@ -67,6 +67,7 @@ Environment=HOME=/home/jukebox
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/jukebox/.Xauthority
 Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+Environment=PULSE_SERVER=unix:/run/user/${uid}/pulse/native
 ExecStart=/opt/jukebox/current/Jukebox.Host
 Restart=always
 RestartSec=2
