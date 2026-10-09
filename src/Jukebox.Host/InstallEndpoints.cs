@@ -87,7 +87,8 @@ public static class InstallEndpoints
             }
 
             Directory.CreateDirectory(StateDir);
-            File.WriteAllText(Path.Combine(StateDir, "status"), "Starter installationen.\n");
+            var statusPath = Path.Combine(StateDir, "status");
+            File.WriteAllText(statusPath, "Starter installationen.\n");
             var start = new ProcessStartInfo("sudo", "-n")
             {
                 UseShellExecute = false,
@@ -103,12 +104,42 @@ public static class InstallEndpoints
             start.ArgumentList.Add(StateDir);
             start.ArgumentList.Add("--reboot");
             var process = new Process { StartInfo = start, EnableRaisingEvents = true };
+            var output = new System.Text.StringBuilder();
+            process.OutputDataReceived += (_, eventArgs) => { if (eventArgs.Data is not null) output.AppendLine(eventArgs.Data); };
+            process.ErrorDataReceived += (_, eventArgs) => { if (eventArgs.Data is not null) output.AppendLine(eventArgs.Data); };
             process.Exited += (_, _) => Interlocked.Exchange(ref _installing, 0);
-            if (!process.Start())
+            try
+            {
+                if (!process.Start())
+                    throw new InvalidOperationException("sudo blev ikke startet.");
+            }
+            catch (Exception ex)
             {
                 Interlocked.Exchange(ref _installing, 0);
-                return Results.Json(new { ok = false, reason = "Installationen kunne ikke starte." }, statusCode: StatusCodes.Status500InternalServerError);
+                var reason = "Installationen kunne ikke starte. " + ex.Message;
+                File.AppendAllText(statusPath, "FEJL: " + reason + "\n");
+                return Results.Json(new { ok = false, reason }, statusCode: StatusCodes.Status500InternalServerError);
             }
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+            // sudo exits at once when it is not allowed to become root. The disk script keeps running.
+            if (process.WaitForExit(2500))
+            {
+                process.WaitForExit();
+                Interlocked.Exchange(ref _installing, 0);
+                if (process.ExitCode != 0)
+                {
+                    var detail = output.ToString().Trim();
+                    if (detail.Contains("no new privileges", StringComparison.OrdinalIgnoreCase))
+                        detail = "Programmet må ikke skrive til harddisken.";
+                    var line = detail.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault(item => item.StartsWith("FEJL:", StringComparison.Ordinal));
+                    var reason = line ?? (string.IsNullOrWhiteSpace(detail) ? "Installationen kunne ikke starte." : detail);
+                    File.AppendAllText(statusPath, reason.StartsWith("FEJL:", StringComparison.Ordinal) ? reason + "\n" : "FEJL: " + reason + "\n");
+                    return Results.Json(new { ok = false, reason }, statusCode: StatusCodes.Status500InternalServerError);
+                }
+            }
+
             return Results.Ok(new { ok = true });
         });
     }

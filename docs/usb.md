@@ -11,7 +11,7 @@ Den tidligere nøgle startede kun programmet midlertidigt og lod computerens dis
 3. Sletter den valgte disk, opretter en ny EFI- og systempartition, og kopierer Debian og Videojukebox over.
 4. Genstarter. Tag nøglen ud når skærmen bliver sort, ellers starter guiden forfra.
 
-Onlime og trådløst netværk sættes op efter genstart under Administration, PIN **2580**. Fanen netværk vælger Wi-Fi. Et kabel virker uden opsætning. Fanen onlime åbner Onlime, hvor koden kopieres, og sync henter filmene. Læg film i mappen `media` og plakater i `events`. Hele Sync-mappen bliver hentet, og den kan fylde en disk på 128 GB. Sync er tovejs: filer der lægges i sync-mappen på maskinen, bliver også lagt op i Onlime.
+Guiden starter uden at vente på kabel eller trådløst net. Onlime og trådløst netværk sættes op efter genstart under Administration, PIN **2580**. Fanen netværk vælger Wi-Fi. Et kabel virker uden opsætning. Fanen onlime åbner Onlime, hvor koden kopieres, og sync henter filmene. Læg film i mappen `media` og plakater i `events`. Hele Sync-mappen bliver hentet, og den kan fylde en disk på 128 GB. Sync er tovejs: filer der lægges i sync-mappen på maskinen, bliver også lagt op i Onlime.
 
 Eksempel-film bliver ikke lagt på den installerede maskine, så de ikke ryger op i kundens Onlime.
 

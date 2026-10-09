@@ -23,6 +23,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 mkdir -p "$STATE_DIR"
+exec 9>"$STATE_DIR/lock"
+if ! flock -n 9; then
+  printf '%s\n' "FEJL: Installationen kører allerede." >> "$STATE_DIR/status"
+  exit 1
+fi
 : > "$STATE_DIR/status"
 say() {
   printf '%s\n' "$*"
@@ -44,9 +49,20 @@ name="$(basename "$TARGET")"
 if ! [[ "$TARGET" =~ ^/dev/(sd[a-z]+|vd[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+)$ ]]; then
   fail "Disken kan ikke bruges."
 fi
-if lsblk -nr -o MOUNTPOINT "$TARGET" | awk 'NF { found=1 } END { exit !found }'; then
-  fail "Disken er i brug. Vælg computerens egen harddisk, ikke USB-nøglen."
-fi
+mapfile -t mounts < <(lsblk -nr -o MOUNTPOINT "$TARGET" | awk 'NF')
+for mp in "${mounts[@]}"; do
+  case "$mp" in
+    /|/run/live|/run/live/*|/lib/live|/lib/live/*|/cdrom|/cdrom/*|/mnt/jukebox-target|/mnt/jukebox-target/*)
+      fail "Det er USB-nøglen eller systemdisken."
+      ;;
+  esac
+done
+# Windows and other systems often mount the internal disk by themselves.
+# Unmount those partitions so the wipe can start. Deepest paths first.
+for ((i=${#mounts[@]}-1; i>=0; i--)); do
+  say "Afmonterer ${mounts[i]}."
+  umount -l "${mounts[i]}" || fail "Kunne ikke afmontere ${mounts[i]}."
+done
 while read -r node; do
   [[ -n "$node" ]] || continue
   label="$(blkid -s LABEL -o value "$node" 2>/dev/null || true)"
@@ -165,7 +181,9 @@ if [[ "$SKIP_BOOT" -eq 0 ]]; then
     mkdir -p "$MNT/$dir"
     mount --bind "/$dir" "$MNT/$dir"
   done
-  chroot "$MNT" apt-get remove -y live-boot live-config live-config-systemd >/dev/null 2>&1 || true
+  # dpkg does not need a network. apt-get would wait for a mirror and stall an offline install.
+  chroot "$MNT" dpkg --purge --force-depends live-boot live-config live-config-systemd live-tools >/dev/null 2>&1 \
+    || say "Live-opstarten blev ikke fjernet helt."
   chroot "$MNT" update-initramfs -u -k all
   chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=jukebox --removable --no-nvram
   KERNEL="$(basename "$(ls -1 "$MNT"/boot/vmlinuz-* | head -n 1)")"

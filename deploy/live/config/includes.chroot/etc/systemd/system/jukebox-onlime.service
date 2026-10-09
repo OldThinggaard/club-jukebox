@@ -1,7 +1,6 @@
 [Unit]
 Description=Onlime sync for the video jukebox
-After=network-online.target
-Wants=network-online.target
+After=network.target jukebox.service
 
 [Service]
 Type=oneshot
