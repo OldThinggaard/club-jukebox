@@ -189,14 +189,22 @@ public static class InstallEndpoints
         File.Delete(tokenPath);
         var safe = output.Replace(token, "••••", StringComparison.Ordinal);
         if (code != 0)
-            return Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(safe) ? "Onlime afviste login-koden. Lav en ny kode og prøv igen." : safe.Trim() });
+            return Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(safe) ? "Onlime afviste login-koden. Lav en ny kode og prøv igen." : LastLine(safe) });
+        var told = safe.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .LastOrDefault(line => line.StartsWith("Sync", StringComparison.Ordinal) || line.StartsWith("Onlime", StringComparison.Ordinal));
         return Results.Ok(new
         {
             ok = true,
-            message = startSync
-                ? "Onlime er logget ind. Sync henter filmene ned nu."
-                : "Onlime er logget ind. Sync-mappen hentes ned efter installationen."
+            message = told ?? (startSync
+                ? "Sync er i gang. Læg filmene i Onlime under Sync, i mappen reklamer."
+                : "Onlime er logget ind. Sync-mappen hentes ned efter installationen.")
         });
+    }
+
+    private static string LastLine(string text)
+    {
+        var line = text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault() ?? "";
+        return line.Length > 240 ? line[..240] : line;
     }
 
     private static bool IsLocal(HttpContext http)

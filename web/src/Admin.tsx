@@ -529,7 +529,7 @@ function OnlimePanel() {
       )}
       {sync?.installed && (
         <>
-          <p>Log ind på Onlime, og kopiér den lange kode. Sync henter reklamerne bagefter. Læg dem i mappen reklamer. Skærmen viser kun dem, når ingen har valgt en film.</p>
+          <p>Log ind på Onlime, og kopiér koden. Filmene skal ligge i Onlime under Sync, i mappen reklamer. Tryk Start sync. Skærmen viser reklamerne, når ingen har valgt en film.</p>
           <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
         </>
       )}
