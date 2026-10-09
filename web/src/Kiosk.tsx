@@ -210,8 +210,8 @@ export function Kiosk() {
       <footer className="nowbar">
         {screen?.nowPlaying?.thumbnailUrl ? <img src={screen.nowPlaying.thumbnailUrl} alt="" /> : <div className="now-fallback" />}
         <div>
-          <h2>{screen?.nowPlaying?.title ?? "Nothing playing"}</h2>
-          <p>{screen?.nowPlaying ? screen.nowPlaying.artist : "The television is on the welcome screen."}</p>
+          <h2>{screen?.nowPlaying?.title ?? "Intet spiller"}</h2>
+          <p>{screen?.nowPlaying ? screen.nowPlaying.artist : "Fjernsynet venter på en titel."}</p>
         </div>
         <button className="queue-button" type="button" onClick={() => setQueueOpen(true)}>
           Queue {screen?.queue.length ?? 0}

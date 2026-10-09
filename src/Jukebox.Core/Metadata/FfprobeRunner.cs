@@ -25,7 +25,14 @@ public sealed class FfprobeRunner
         using var process = Process.Start(start) ?? throw new InvalidOperationException("ffprobe did not start.");
         var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        var wait = process.WaitForExitAsync(cancellationToken);
+        var finished = await Task.WhenAny(wait, Task.Delay(TimeSpan.FromSeconds(20), cancellationToken));
+        if (finished != wait)
+        {
+            try { process.Kill(entireProcessTree: true); } catch { /* a stuck file must not stop the jukebox */ }
+            throw new InvalidOperationException("The file took too long to read.");
+        }
+        await wait;
         var stdout = await stdoutTask;
         _ = await stderrTask;
         if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(stdout))

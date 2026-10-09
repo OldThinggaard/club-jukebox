@@ -45,16 +45,17 @@ if [[ "$ready" -ne 1 ]]; then
 fi
 
 (
-  for _ in $(seq 1 40); do
+  for _ in $(seq 1 90); do
     if [[ -f /var/lib/jukebox/displays.env ]]; then
+      unset HALL_OUTPUT UI_OUTPUT
       # shellcheck disable=SC1091
       source /var/lib/jukebox/displays.env
       if [[ -n "${HALL_OUTPUT:-}" && "${HALL_OUTPUT}" != "${UI_OUTPUT:-}" ]]; then
         /opt/jukebox/bin/kiosk.sh hall &
+        exit 0
       fi
-      exit 0
     fi
-    sleep 1
+    sleep 2
   done
 ) &
 

@@ -54,7 +54,8 @@ public sealed class PlaybackWorker(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!indexer.InitialScanCompleted && !stoppingToken.IsCancellationRequested)
+        var waitUntil = DateTime.UtcNow.AddSeconds(8);
+        while (!indexer.InitialScanCompleted && DateTime.UtcNow < waitUntil && !stoppingToken.IsCancellationRequested)
             await Task.Delay(200, stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -86,17 +87,9 @@ public sealed class PlaybackWorker(
                     continue;
                 }
 
-                IMediaPlayer player;
-                if (job.Entry.MediaType == MediaTypes.Audio)
-                {
-                    player = _timer;
-                    coordinator.SetEngine("hall");
-                }
-                else
-                {
-                    player = useMpv ? _mpv : _timer;
-                    coordinator.SetEngine(player.Name);
-                }
+                IMediaPlayer player = useMpv ? _mpv : _timer;
+                coordinator.SetEngine(player.Name);
+                var started = Environment.TickCount64;
                 var playing = player.PlayAsync(job, coordinator.SetPosition, stoppingToken);
                 while (!playing.IsCompleted)
                 {
@@ -105,6 +98,11 @@ public sealed class PlaybackWorker(
                 }
 
                 var result = await playing;
+                if (!result.Ok && player.Name == "mpv" && Environment.TickCount64 - started < 3000)
+                {
+                    coordinator.SetEngine("hall");
+                    result = await _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
+                }
                 coordinator.Finish(job, result);
                 job = null;
             }
