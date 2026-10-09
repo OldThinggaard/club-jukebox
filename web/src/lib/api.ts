@@ -34,6 +34,7 @@ export type NowPlaying = {
   positionMs: number;
   durationMs: number;
   origin: string;
+  clientLabel?: string | null;
 };
 
 export type Screen = {

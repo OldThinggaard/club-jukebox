@@ -11,6 +11,7 @@ Gæster ser ikke administration.
 Netværk og Onlime sættes op under Administration.
 Mangler Onlime Sync, så sæt kablet i, åbn Onlime, og tryk Hent Onlime Sync.
 Log derefter ind, og kopiér koden.
-Film lægges i mappen media. Plakater lægges i mappen events.
+Reklamer lægges i mappen reklamer.
+Skærmen viser kun dem, når ingen har valgt en film.
 
 En ny videojukebox.deb på en USB-nøgle lægges på under Opdatering.

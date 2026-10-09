@@ -526,7 +526,8 @@ public static class Endpoints
             contentUrl = $"/api/content/{entry.MediaId}",
             positionMs = snap.PositionMs,
             durationMs = snap.Current.DurationMs,
-            origin = entry.Origin
+            origin = entry.Origin,
+            clientLabel = entry.ClientLabel
         };
     }
 

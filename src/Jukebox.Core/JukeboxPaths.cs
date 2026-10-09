@@ -12,6 +12,7 @@ public sealed class JukeboxPaths
     public string Library => Path.Combine(DataDirectory, "library");
     public string OnlimeMedia => Path.Combine(DataDirectory, "onlime-sync", "media");
     public string OnlimeEvents => Path.Combine(DataDirectory, "onlime-sync", "events");
+    public string OnlimeReklamer => Path.Combine(DataDirectory, "onlime-sync", "reklamer");
     public string OnlimeUpdates => Path.Combine(DataDirectory, "onlime-sync", "updates");
     public string Smb => Path.Combine(DataDirectory, "smb");
     public string LocalUpdates => Path.Combine(DataDirectory, "updates");
@@ -27,7 +28,7 @@ public sealed class JukeboxPaths
         foreach (var directory in new[]
                  {
                      DataDirectory, Thumbnails, Backups, Logs, Branding, Library,
-                     OnlimeMedia, OnlimeEvents, OnlimeUpdates, Smb, LocalUpdates, Cache
+                     OnlimeMedia, OnlimeEvents, OnlimeReklamer, OnlimeUpdates, Smb, LocalUpdates, Cache
                  })
         {
             Directory.CreateDirectory(directory);

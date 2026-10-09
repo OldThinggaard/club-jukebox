@@ -61,7 +61,8 @@ public sealed class QueueStore
                 recent = recentReader.Read();
             }
 
-            var block = QueuePolicy.Evaluate(ready, hidden, role == LibraryRoles.Catalog, playing == mediaId, queued, recent, count >= QueuePolicy.MaxQueueLength, Origins.IsHuman(origin));
+            var playable = role == LibraryRoles.Catalog || (role == LibraryRoles.Event && !Origins.IsHuman(origin));
+            var block = QueuePolicy.Evaluate(ready, hidden, playable, playing == mediaId, queued, recent, count >= QueuePolicy.MaxQueueLength, Origins.IsHuman(origin));
             if (block != QueueBlock.None)
                 return EnqueueResult.Rejected(QueuePolicy.Message(block)!);
 

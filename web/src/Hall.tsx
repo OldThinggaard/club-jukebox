@@ -53,7 +53,7 @@ export function Hall() {
         <p className="eyebrow">{screen?.clubName ?? "Clubhouse"}</p>
         {playing ? (
           <div className="play-meta">
-            <p className="date">{playing.origin === "auto" ? "House selection" : "From the queue"}</p>
+            <p className="date">{playing.clientLabel === "reklame" ? "Reklame" : playing.origin === "auto" ? "House selection" : "From the queue"}</p>
             <h2>{playing.title}</h2>
             <p>{playing.artist}</p>
             <div className="track" aria-hidden>

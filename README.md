@@ -36,7 +36,7 @@ Watched folders, in priority order:
 | 2 | SMB mount | `data/smb` |
 | 3 | Local disk | `data/library` |
 | 4 | USB | `/media` and `/run/media` |
-| — | Event screens | `data/onlime-sync/events` |
+| — | Advertisements | `data/onlime-sync/reklamer` |
 | — | Update packages | `data/onlime-sync/updates` and `data/updates` |
 
 Point the Onlime desktop client at `onlime-sync`. There is no Onlime API. If the sync stops, the films already on disk keep playing.
@@ -55,7 +55,7 @@ Supported files: MP4, MKV, AVI, MOV, WEBM, MP3, AAC, M4A, FLAC, WAV, OGG, JPG, P
 
 ## Idle hall
 
-When the queue is empty the television shows the club name, clock, date, welcome, instructions, a QR code, and posters from the events folder. It does not go black. After the idle timeout (90 seconds unless changed) the house plays something on its own: 80% least guest-played, 20% random. Those plays increment `auto_play_count` only.
+When the queue is empty and the `reklamer` folder has files, the television plays only those advertisements. A guest can still choose a film from the shelf. With no advertisements, the television shows the club name, clock, date, welcome, instructions, and a QR code, then plays something on its own after the idle timeout (90 seconds unless changed): 80% least guest-played, 20% random. Those plays increment `auto_play_count` only.
 
 ## Phone on the club network
 

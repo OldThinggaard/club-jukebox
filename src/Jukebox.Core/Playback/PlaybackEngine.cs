@@ -253,6 +253,19 @@ public sealed class PlaybackCoordinator
 
     private QueueEntry? MaybeAutoplay()
     {
+        var advertisement = _media.Events(DateTime.UtcNow)
+            .Where(item => item.MediaType is MediaTypes.Video or MediaTypes.Audio or MediaTypes.Image)
+            .OrderBy(item => string.IsNullOrEmpty(item.LastAutoPlayedAt) ? "" : item.LastAutoPlayedAt)
+            .ThenBy(item => item.FileName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+        if (advertisement is not null)
+        {
+            var queuedAd = _queue.TryEnqueue(advertisement.Id, Origins.Auto, "reklame");
+            if (!queuedAd.Ok)
+                return null;
+            return _queue.ClaimOldest();
+        }
+
         var settings = _settings.Get();
         if (settings.IdleTimeoutSeconds <= 0)
             return null;

@@ -196,6 +196,17 @@ public class LibrarySearchTests
         Assert.False(second.Ok);
         Assert.Equal("This is already in the queue.", second.Reason);
     }
+
+    [Fact]
+    public void Plays_an_advertisement_only_by_itself()
+    {
+        using var fixture = new TempLibrary();
+        var id = fixture.AddAdvertisement("Sommerfest.mp4");
+        var guest = fixture.Queue.TryEnqueue(id, Origins.User, "touch");
+        var house = fixture.Queue.TryEnqueue(id, Origins.Auto, "reklame");
+        Assert.False(guest.Ok);
+        Assert.True(house.Ok);
+    }
 }
 
 public sealed class TempLibrary : IDisposable
@@ -221,6 +232,16 @@ public sealed class TempLibrary : IDisposable
             Enabled = true,
             Role = LibraryRoles.Catalog
         });
+        Media.UpsertSource(new MediaSource
+        {
+            Id = "reklamer",
+            Name = "Reklamer",
+            Kind = "onlime",
+            Path = Path.Combine(Root, "onlime-sync", "reklamer"),
+            Priority = 1,
+            Enabled = true,
+            Role = LibraryRoles.Event
+        });
     }
 
     public string Root { get; }
@@ -237,13 +258,24 @@ public sealed class TempLibrary : IDisposable
             FilenameParser.Parse(file),
             null,
             file);
+        return Save(file, LibraryRoles.Catalog, "local", artist, title, genre, year, resolved);
+    }
+
+    public string AddAdvertisement(string fileName)
+    {
+        var resolved = MetadataMerger.Resolve(new ProbeTags { Title = Path.GetFileNameWithoutExtension(fileName), DurationMs = 8_000 }, FilenameParser.Parse(fileName), null, fileName);
+        return Save(fileName, LibraryRoles.Event, "reklamer", "", resolved.Title, "", null, resolved);
+    }
+
+    private string Save(string file, string role, string sourceId, string artist, string title, string genre, int? year, Jukebox.Core.Metadata.ResolvedMetadata resolved)
+    {
         return Media.SaveIndexed(new IndexedSave
         {
-            SourceId = "local",
+            SourceId = sourceId,
             RelativePath = file,
             FileName = file,
             MediaType = MediaTypes.Video,
-            LibraryRole = LibraryRoles.Catalog,
+            LibraryRole = role,
             FileSize = 1000,
             ModifiedUnix = 1,
             SampleHash = "abc",

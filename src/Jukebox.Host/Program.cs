@@ -72,7 +72,8 @@ var sources = new List<MediaSource>
     new() { Id = "onlime-media", Name = "Onlime sync", Kind = "onlime", Path = paths.OnlimeMedia, Priority = 1, Enabled = true, Role = LibraryRoles.Catalog },
     new() { Id = "smb-media", Name = "Network share", Kind = "smb", Path = paths.Smb, Priority = 2, Enabled = true, Role = LibraryRoles.Catalog },
     new() { Id = "local-media", Name = "Local library", Kind = "local", Path = paths.Library, Priority = 3, Enabled = true, Role = LibraryRoles.Catalog },
-    new() { Id = "onlime-events", Name = "Club screens", Kind = "onlime", Path = paths.OnlimeEvents, Priority = 1, Enabled = true, Role = LibraryRoles.Event }
+    new() { Id = "onlime-events", Name = "Club screens", Kind = "onlime", Path = paths.OnlimeEvents, Priority = 1, Enabled = true, Role = LibraryRoles.Event },
+    new() { Id = "onlime-reklamer", Name = "Reklamer", Kind = "onlime", Path = paths.OnlimeReklamer, Priority = 1, Enabled = true, Role = LibraryRoles.Event }
 };
 if (config.WatchUsb)
 {
@@ -81,6 +82,7 @@ if (config.WatchUsb)
 }
 
 media.SeedSources(sources);
+media.UpsertSource(sources.First(source => source.Id == "onlime-reklamer"));
 app.Services.GetRequiredService<QueueStore>().ResetInterrupted();
 if (config.SeedSampleMedia)
     await SampleLibrarySeeder.SeedAsync(paths, CancellationToken.None);
