@@ -80,8 +80,88 @@ public static partial class DisplayAudioProbe
         return string.IsNullOrWhiteSpace(output) ? [] : ParseXrandr(output);
     }
 
+    public static IReadOnlyList<AudioDevice> ParseSinks(string text)
+    {
+        var devices = new List<AudioDevice>();
+        string? sink = null;
+        var inPorts = false;
+        var portsIndent = -1;
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.TrimEnd('\r');
+            var trimmed = line.Trim();
+            if (trimmed.Length == 0)
+                continue;
+            var indent = line.Length - line.TrimStart().Length;
+
+            if (trimmed.StartsWith("Name:", StringComparison.Ordinal))
+            {
+                sink = trimmed["Name:".Length..].Trim();
+                inPorts = false;
+                continue;
+            }
+
+            if (sink is null)
+                continue;
+            if (trimmed.Equals("Ports:", StringComparison.Ordinal))
+            {
+                inPorts = true;
+                portsIndent = indent;
+                continue;
+            }
+
+            if (!inPorts || indent <= portsIndent)
+            {
+                inPorts = false;
+                continue;
+            }
+
+            var colon = trimmed.IndexOf(':');
+            if (colon <= 0)
+                continue;
+            var port = trimmed[..colon].Trim();
+            if (port.Length == 0 || port.Contains(' '))
+                continue;
+            var description = trimmed[(colon + 1)..].Trim();
+            var paren = description.IndexOf(" (type:", StringComparison.OrdinalIgnoreCase);
+            if (paren > 0)
+                description = description[..paren].Trim();
+            devices.Add(new AudioDevice($"pulse/{sink}#{port}", DanishOutput(port, description), "pulse"));
+        }
+
+        return devices;
+    }
+
+    public static (string? MpvDevice, string? Sink, string? Port) Route(string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored))
+            return (null, null, null);
+        var hash = stored.IndexOf('#');
+        if (hash > "pulse/".Length && stored.StartsWith("pulse/", StringComparison.Ordinal))
+        {
+            var sink = stored["pulse/".Length..hash];
+            var port = stored[(hash + 1)..];
+            return ($"pulse/{sink}", sink, port);
+        }
+
+        return (stored, null, null);
+    }
+
+    public static void ApplyPort(string? sink, string? port)
+    {
+        if (string.IsNullOrWhiteSpace(sink) || string.IsNullOrWhiteSpace(port))
+            return;
+        if (sink.Contains(' ', StringComparison.Ordinal) || port.Contains(' ', StringComparison.Ordinal))
+            return;
+        Run("pactl", $"set-sink-port {sink} {port}");
+    }
+
     public static IReadOnlyList<AudioDevice> QueryAudio()
     {
+        var listed = ParseSinks(Run("pactl", "list sinks") ?? "");
+        if (listed.Count > 0)
+            return listed;
+
         var devices = new List<AudioDevice>();
         var pactl = Run("pactl", "list short sinks");
         if (!string.IsNullOrWhiteSpace(pactl))
@@ -136,12 +216,26 @@ public static partial class DisplayAudioProbe
     private static string Geom(DisplayInfo? info) =>
         info is null ? "" : $"{info.Width}x{info.Height}+{info.X}+{info.Y}";
 
+    private static string DanishOutput(string port, string description)
+    {
+        var text = $"{port} {description}";
+        if (text.Contains("headphone", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("headset", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("hovedtelefon", StringComparison.OrdinalIgnoreCase))
+            return "Hovedtelefonudgang";
+        if (text.Contains("speaker", StringComparison.OrdinalIgnoreCase) || text.Contains("højttaler", StringComparison.OrdinalIgnoreCase))
+            return "Indbyggede højttalere";
+        if (text.Contains("hdmi", StringComparison.OrdinalIgnoreCase))
+            return "Lyd på HDMI";
+        return string.IsNullOrWhiteSpace(description) ? port : description;
+    }
+
     private static string HumanAudio(string name)
     {
-        if (name.Contains("analog", StringComparison.OrdinalIgnoreCase))
-            return "Analog line out";
         if (name.Contains("hdmi", StringComparison.OrdinalIgnoreCase))
-            return "HDMI audio";
+            return "Lyd på HDMI";
+        if (name.Contains("analog", StringComparison.OrdinalIgnoreCase))
+            return "Analog udgang";
         return name;
     }
 

@@ -133,7 +133,7 @@ export function Admin() {
           ["overview", "overview"],
           ["library", "library"],
           ["sources", "sources"],
-          ["playback", "playback"],
+          ["playback", "lyd"],
           ["backups", "backups"],
           ["updates", "opdatering"],
           ["netværk", "netværk"],
@@ -307,9 +307,9 @@ function PlaybackPanel() {
             <option value="random">Random</option>
           </select>
         </Field>
-        <Field label="Audio output">
+        <Field label="Lydudgang">
           <select value={settings.audioDevice} onChange={(event) => set({ audioDevice: event.target.value })}>
-            <option value="">System default</option>
+            <option value="">Som computeren selv vælger</option>
             {audio.map((device) => <option key={device.id} value={device.id}>{device.label}</option>)}
           </select>
         </Field>
@@ -331,7 +331,8 @@ function PlaybackPanel() {
       <Field label="Welcome"><textarea value={settings.welcomeMessage} onChange={(event) => set({ welcomeMessage: event.target.value })} /></Field>
       <Field label="Instructions"><textarea value={settings.instructions} onChange={(event) => set({ instructions: event.target.value })} /></Field>
       <div className="actions">
-        <Button type="button" onClick={() => void admin("/api/admin/settings", { method: "PUT", body: JSON.stringify(settings) })}>Save</Button>
+        <p className="muted">Indbyggede højttalere er lyden i skærmen. Hovedtelefonudgangen er stikket bagi.</p>
+        <Button type="button" onClick={() => void admin("/api/admin/settings", { method: "PUT", body: JSON.stringify(settings) })}>Gem</Button>
       </div>
       <PinChange />
     </section>

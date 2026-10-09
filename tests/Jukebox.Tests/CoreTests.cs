@@ -146,6 +146,29 @@ public class DisplayParserTests
         Assert.Equal("HDMI-1", playback);
         Assert.Equal(1, DisplayAudioProbe.ScreenIndex(displays, "HDMI-1"));
     }
+
+    [Fact]
+    public void Names_the_speaker_and_the_headphone_jack()
+    {
+        const string text =
+            "Sink #0\n" +
+            "\tName: alsa_output.pci-0000_00_1f.3.analog-stereo\n" +
+            "\tPorts:\n" +
+            "\t\tanalog-output-speaker: Speakers (type: Speaker, priority: 10000, not available)\n" +
+            "\t\tanalog-output-headphones: Headphones (type: Headphones, priority: 9900, availability unknown)\n" +
+            "\tActive Port: analog-output-speaker\n" +
+            "Sink #1\n" +
+            "    Name: alsa_output.pci-0000_00_1f.3.hdmi-stereo\n" +
+            "    Ports:\n" +
+            "        hdmi-output-0: HDMI / DisplayPort (type: HDMI, priority: 5900, available)\n" +
+            "    Active Port: hdmi-output-0\n";
+        var devices = DisplayAudioProbe.ParseSinks(text);
+        Assert.Equal(["Indbyggede højttalere", "Hovedtelefonudgang", "Lyd på HDMI"], devices.Select(item => item.Label).ToArray());
+        var route = DisplayAudioProbe.Route(devices[1].Id);
+        Assert.Equal("pulse/alsa_output.pci-0000_00_1f.3.analog-stereo", route.MpvDevice);
+        Assert.Equal("analog-output-headphones", route.Port);
+        Assert.Equal((null, null, null), DisplayAudioProbe.Route(""));
+    }
 }
 
 public class SearchSyntaxTests

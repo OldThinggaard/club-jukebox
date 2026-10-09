@@ -78,7 +78,9 @@ public sealed class PlaybackWorker(
                 var connected = displays.Count(item => item.Connected && item.Width > 0);
                 var useMpv = config.PlaybackMode == "mpv" || (config.PlaybackMode == "auto" && connected >= 2 && MpvPlayer.IsInstalled());
                 var screen = DisplayAudioProbe.ScreenIndex(displays, club.PlaybackOutput);
-                job = coordinator.ClaimNext(screen, string.IsNullOrWhiteSpace(club.AudioDevice) ? null : club.AudioDevice, club.ImageSeconds);
+                var route = DisplayAudioProbe.Route(club.AudioDevice);
+                DisplayAudioProbe.ApplyPort(route.Sink, route.Port);
+                job = coordinator.ClaimNext(screen, route.MpvDevice, club.ImageSeconds);
                 if (job is null)
                 {
                     await Task.Delay(400, stoppingToken);
@@ -87,7 +89,15 @@ public sealed class PlaybackWorker(
 
                 IMediaPlayer player = useMpv ? _mpv : _timer;
                 coordinator.SetEngine(player.Name);
-                var result = await player.PlayAsync(job, coordinator.SetPosition, stoppingToken);
+                var playing = player.PlayAsync(job, coordinator.SetPosition, stoppingToken);
+                while (!playing.IsCompleted)
+                {
+                    var chosen = DisplayAudioProbe.Route(settings.Get().AudioDevice);
+                    DisplayAudioProbe.ApplyPort(chosen.Sink, chosen.Port);
+                    await Task.WhenAny(playing, Task.Delay(2000, stoppingToken));
+                }
+
+                var result = await playing;
                 coordinator.Finish(job, result);
                 job = null;
             }
