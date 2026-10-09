@@ -1,0 +1,153 @@
+#!/bin/bash
+# Runs as root when the package is installed. Does not partition a disk.
+set -euo pipefail
+if [[ "${1:-}" != "configure" ]]; then
+  exit 0
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+
+if ! id jukebox >/dev/null 2>&1; then
+  useradd --create-home --home-dir /home/jukebox --shell /bin/bash --user-group jukebox
+fi
+echo 'jukebox:jukebox' | chpasswd
+for group in audio video render input plugdev netdev sudo; do
+  if getent group "$group" >/dev/null; then
+    usermod -aG "$group" jukebox
+  fi
+done
+install -d -o jukebox -g jukebox /home/jukebox /var/lib/jukebox
+printf '%s\n' 'jukebox ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/jukebox
+chmod 440 /etc/sudoers.d/jukebox
+
+if [[ -f /etc/locale.gen ]]; then
+  sed -i 's/^# *\(da_DK.UTF-8 UTF-8\)/\1/' /etc/locale.gen || true
+fi
+if ! grep -q 'da_DK.UTF-8 UTF-8' /etc/locale.gen 2>/dev/null; then
+  echo 'da_DK.UTF-8 UTF-8' >> /etc/locale.gen
+fi
+locale-gen
+update-locale LANG=da_DK.UTF-8 || true
+ln -sfn /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime
+echo Europe/Copenhagen > /etc/timezone
+
+chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.UpdateAgent \
+  /opt/jukebox/bin/kiosk.sh /opt/jukebox/bin/session.sh \
+  /opt/jukebox/lib/onlime-open.sh /opt/jukebox/lib/onlime-login.sh \
+  /opt/jukebox/lib/onlime-boot.sh /opt/jukebox/lib/wifi-connect.sh \
+  /opt/jukebox/lib/onlime_prompts.py
+chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
+
+mkdir -p /etc/systemd/system
+for target in sleep.target suspend.target hibernate.target hybrid-sleep.target; do
+  ln -sfn /dev/null "/etc/systemd/system/${target}"
+done
+
+uid="$(id -u jukebox)"
+cat > /etc/systemd/system/jukebox.service <<EOF
+[Unit]
+Description=Club video jukebox
+After=network.target sound.target jukebox-update.service
+Wants=avahi-daemon.service
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+Type=notify
+User=jukebox
+Group=jukebox
+WorkingDirectory=/opt/jukebox/current
+Environment=JUKEBOX_DATA_DIR=/var/lib/jukebox
+Environment=JUKEBOX_SUPERVISED=1
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://0.0.0.0:47123
+Environment=Jukebox__PublicBaseUrl=http://jukebox.local:47123
+Environment=Jukebox__SeedSampleMedia=false
+Environment=HOME=/home/jukebox
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/jukebox/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+ExecStart=/opt/jukebox/current/Jukebox.Host
+Restart=always
+RestartSec=2
+TimeoutStartSec=300
+WatchdogSec=30
+MemoryMax=1200M
+Nice=-5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/jukebox-graphical.service <<EOF
+[Unit]
+Description=Jukebox touchscreen session
+After=jukebox.service systemd-user-sessions.service
+Wants=jukebox.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=jukebox
+Group=jukebox
+PAMName=login
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+WorkingDirectory=/home/jukebox
+Environment=HOME=/home/jukebox
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/jukebox/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+ExecStartPre=+/usr/bin/install -d -o jukebox -g jukebox -m 700 /run/user/${uid}
+ExecStart=/usr/bin/xinit /opt/jukebox/bin/session.sh -- /usr/bin/Xorg :0 vt1 -keeptty -nolisten tcp -logfile /home/jukebox/xorg.log
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/jukebox-onlime.service <<EOF
+[Unit]
+Description=Onlime sync for the video jukebox
+After=network.target jukebox.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=jukebox
+Group=jukebox
+Environment=HOME=/home/jukebox
+Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+ExecStartPre=+/usr/bin/install -d -o jukebox -g jukebox -m 700 /run/user/${uid}
+ExecStart=/opt/jukebox/lib/onlime-boot.sh
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+if [[ -f /usr/share/jukebox/jotta.gpg ]]; then
+  install -d /etc/apt/keyrings
+  install -m 644 /usr/share/jukebox/jotta.gpg /etc/apt/keyrings/jotta.gpg
+  printf '%s\n' 'deb [signed-by=/etc/apt/keyrings/jotta.gpg] https://repo.jotta.cloud/debian debian main' > /etc/apt/sources.list.d/jotta.list
+  apt-get update >/dev/null 2>&1 && apt-get install -y jotta-cli >/dev/null 2>&1 || true
+fi
+
+for dm in gdm.service gdm3.service lightdm.service sddm.service; do
+  systemctl disable "$dm" >/dev/null 2>&1 || true
+done
+systemctl set-default multi-user.target
+systemctl daemon-reload
+systemctl enable avahi-daemon.service || true
+systemctl enable NetworkManager.service || true
+systemctl enable jukebox-update.service
+systemctl enable jukebox.service
+systemctl enable jukebox-graphical.service
+systemctl enable jukebox-onlime.service
+
+echo "Videojukebox er installeret. Genstart computeren."
+wall "Videojukebox er installeret. Genstart computeren." || true
+exit 0

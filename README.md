@@ -63,7 +63,7 @@ The QR code uses the public address in settings. Production should be `http://ju
 
 ## Install on a club PC
 
-Install Debian 13 yourself, then add Videojukebox with `videojukebox-pakke.zip`. The package does not partition the disk. Debian's own installer does that. The operating system file, the package, and the steps are in [docs/pakke.md](docs/pakke.md).
+Install Debian 13, then double-click `videojukebox.deb`. The package does not partition the disk. Steps are in [docs/pakke.md](docs/pakke.md).
 
 ## Install on Debian from this repository
 
