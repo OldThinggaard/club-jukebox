@@ -50,7 +50,6 @@ public sealed class PlaybackWorker(
     ILogger<PlaybackWorker> logger) : BackgroundService
 {
     private readonly TimerPlayer _timer = new();
-    private readonly MpvPlayer _mpv = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -76,8 +75,6 @@ public sealed class PlaybackWorker(
                 }
 
                 DisplayAudioProbe.WriteDisplayFile(paths.DisplaysFile, displays, club.UiOutput, club.PlaybackOutput);
-                var connected = displays.Count(item => item.Connected && item.Width > 0);
-                var useMpv = config.PlaybackMode == "mpv" || (config.PlaybackMode == "auto" && connected >= 2 && MpvPlayer.IsInstalled());
                 var screen = DisplayAudioProbe.ScreenIndex(displays, club.PlaybackOutput);
                 var route = ApplySavedAudio();
                 job = coordinator.ClaimNext(screen, route.MpvDevice, club.ImageSeconds);
@@ -87,10 +84,10 @@ public sealed class PlaybackWorker(
                     continue;
                 }
 
-                IMediaPlayer player = useMpv ? _mpv : _timer;
-                coordinator.SetEngine(player.Name);
-                var started = Environment.TickCount64;
-                var playing = player.PlayAsync(job, coordinator.SetPosition, stoppingToken);
+                // The picture and the sound are started by hall-player.sh in the
+                // graphical session. This timer only keeps the queue moving.
+                coordinator.SetEngine("mpv");
+                var playing = _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
                 while (!playing.IsCompleted)
                 {
                     ApplySavedAudio();
@@ -98,11 +95,6 @@ public sealed class PlaybackWorker(
                 }
 
                 var result = await playing;
-                if (!result.Ok && player.Name == "mpv" && Environment.TickCount64 - started < 3000)
-                {
-                    coordinator.SetEngine("hall");
-                    result = await _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
-                }
                 coordinator.Finish(job, result);
                 job = null;
             }

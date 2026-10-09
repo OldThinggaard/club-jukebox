@@ -44,20 +44,26 @@ if [[ "$ready" -ne 1 ]]; then
   echo "Jukebox did not answer on port 47123" >&2
 fi
 
+hall_geom() {
+  xrandr --query 2>/dev/null | awk '
+    $2 == "connected" && $1 !~ /^(eDP|LVDS|DSI)/ {
+      for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+[0-9]+\+[0-9]+$/) { print $i; exit }
+    }
+  '
+}
+
 (
   for _ in $(seq 1 90); do
-    if [[ -f /var/lib/jukebox/displays.env ]]; then
-      unset HALL_OUTPUT UI_OUTPUT
-      # shellcheck disable=SC1091
-      source /var/lib/jukebox/displays.env
-      if [[ -n "${HALL_OUTPUT:-}" && "${HALL_OUTPUT}" != "${UI_OUTPUT:-}" ]]; then
-        /opt/jukebox/bin/kiosk.sh hall &
-        exit 0
-      fi
+    geom="$(hall_geom || true)"
+    if [[ -n "$geom" ]]; then
+      HALL_GEOM="$geom" /opt/jukebox/bin/kiosk.sh hall &
+      exit 0
     fi
     sleep 2
   done
 ) &
+
+/opt/jukebox/bin/hall-player.sh >/var/log/jukebox-hall-player.log 2>&1 &
 
 if [[ -f /etc/jukebox-installer ]]; then
   export JUKEBOX_KIOSK_URL="http://127.0.0.1:47123/install"

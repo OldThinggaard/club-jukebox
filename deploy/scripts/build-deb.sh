@@ -20,6 +20,7 @@ mkdir -p \
 cp -a "$ROOT/publish/app/." "$pkg/opt/jukebox/current/"
 cp -a "$ROOT/publish/updater/." "$pkg/opt/jukebox/updater/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
+install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
 sed '/jukebox-installer/,/^fi$/d' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/bin/session.sh" > "$pkg/opt/jukebox/bin/session.sh"
 chmod 0755 "$pkg/opt/jukebox/bin/session.sh"
 if grep -q jukebox-installer "$pkg/opt/jukebox/bin/session.sh"; then
