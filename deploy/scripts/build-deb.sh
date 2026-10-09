@@ -36,8 +36,10 @@ install -m 0755 "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/onlime
 install -m 0644 "$ROOT/deploy/live/apt/jotta.key.chroot" "$pkg/usr/share/jukebox/jotta.gpg"
 install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/jukebox.service"
 install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
+install -m 0755 "$ROOT/deploy/package/apply-pending.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"
 install -m 0755 "$ROOT/deploy/package/onlime-install.sh" "$pkg/opt/jukebox/lib/onlime-install.sh"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
+install -m 0644 "$ROOT/deploy/systemd/jukebox-pending.service" "$pkg/etc/systemd/system/jukebox-pending.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-usb-mount.service" "$pkg/etc/systemd/system/jukebox-usb-mount.service"
 printf '%s\n' 'allowed_users=anybody' 'needs_root_rights=no' > "$pkg/etc/X11/Xwrapper.config"
 cat > "$pkg/etc/systemd/logind.conf.d/jukebox.conf" <<'EOF'

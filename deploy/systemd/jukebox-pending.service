@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply a pending Videojukebox package
+After=local-fs.target
+Before=jukebox.service jukebox-graphical.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=150
+ExecStart=/opt/jukebox/lib/apply-pending.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -208,37 +208,13 @@ def install():
     except OSError:
         log = sys.stderr
     print(f"install {path}", file=log, flush=True)
-    local = "/tmp/videojukebox.deb"
+    # Copy only. dpkg runs on the next boot, so turning the machine off now leaves Debian as it is.
+    os.makedirs("/var/lib/jukebox/pending", exist_ok=True)
+    local = "/var/lib/jukebox/pending/videojukebox.deb"
     copied = subprocess.run(["timeout", "90", "cp", "-f", path, local], stdout=log, stderr=log, check=False)
-    if copied.returncode != 0:
+    if copied.returncode != 0 or not os.path.isfile(local):
         print("could not copy the package off the USB stick", file=log, flush=True)
         return copied.returncode or 1
-    env = os.environ.copy()
-    env["DEBIAN_FRONTEND"] = "noninteractive"
-    # dpkg installs the file already on the machine. apt-get would wait on the network.
-    installed = subprocess.run(
-        ["timeout", "180", "dpkg", "-i", local],
-        env=env,
-        stdout=log,
-        stderr=log,
-        check=False,
-    )
-    if installed.returncode == 124:
-        subprocess.run(["timeout", "60", "dpkg", "--configure", "-a"], env=env, stdout=log, stderr=log, check=False)
-    elif installed.returncode != 0:
-        subprocess.run(
-            [
-                "timeout", "90", "apt-get",
-                "-o", "Acquire::http::Timeout=15",
-                "-o", "Acquire::https::Timeout=15",
-                "-o", "DPkg::Lock::Timeout=20",
-                "install", "-y", "-f",
-            ],
-            env=env,
-            stdout=log,
-            stderr=log,
-            check=False,
-        )
     subprocess.run(["sync"], check=False, timeout=20)
     subprocess.run(["systemctl", "reboot"], check=False, timeout=20)
     return 0

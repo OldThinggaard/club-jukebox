@@ -141,6 +141,7 @@ systemctl daemon-reload || true
 systemctl enable avahi-daemon.service || true
 systemctl enable NetworkManager.service || true
 systemctl enable jukebox-update.service
+systemctl enable jukebox-pending.service
 systemctl enable jukebox.service
 systemctl enable jukebox-graphical.service
 systemctl enable jukebox-onlime.service
