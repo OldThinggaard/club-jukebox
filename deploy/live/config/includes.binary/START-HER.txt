@@ -11,8 +11,9 @@ Sådan installerer du
 1. Start fra USB.
    Hvis maskinen nægter at boote, så slå Secure Boot fra i UEFI/BIOS.
 2. Vælg det trådløse netværk, eller brug et netværkskabel.
-3. Lav en personlig login-kode på https://cloud.onlime.dk/web/secure
-   og skriv den på skærmen. Filmene hentes fra Onlime efter installationen.
+3. Tryk Åbn Onlime, log ind, og kopiér den lange kode.
+   Sæt koden ind. Den skal ikke tastes.
+   Filmene hentes fra Onlime bagefter.
    Læg film i mappen media og plakater i mappen events.
 4. Vælg computerens harddisk. Bekræft at den må slettes.
 5. Vent. Tag nøglen ud når skærmen bliver sort, så guiden ikke starter igen.

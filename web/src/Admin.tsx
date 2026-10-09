@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
+import { OnlimeCode } from "./OnlimeCode";
 
-type Tab = "overview" | "library" | "sources" | "playback" | "backups" | "updates";
+type Tab = "overview" | "library" | "sources" | "playback" | "backups" | "updates" | "onlime";
 
 type Overview = {
   cpuPercent: number;
@@ -123,7 +124,7 @@ export function Admin() {
         <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); setAuthed(false); }}>Sign out</Button>
       </header>
       <nav className="admin-nav">
-        {(["overview", "library", "sources", "playback", "backups", "updates"] as Tab[]).map((item) => (
+        {(["overview", "library", "sources", "playback", "backups", "updates", "onlime"] as Tab[]).map((item) => (
           <button key={item} className={tab === item ? "active" : ""} type="button" onClick={() => setTab(item)}>{item}</button>
         ))}
       </nav>
@@ -133,6 +134,7 @@ export function Admin() {
       {tab === "playback" && <PlaybackPanel />}
       {tab === "backups" && <BackupsPanel />}
       {tab === "updates" && <UpdatesPanel />}
+      {tab === "onlime" && <OnlimePanel />}
     </main>
   );
 }
@@ -359,6 +361,45 @@ function BackupsPanel() {
         </tbody>
       </table>
       {rows.length === 0 && <p className="muted">No backups yet. A daily copy is taken at the configured hour.</p>}
+    </section>
+  );
+}
+
+function OnlimePanel() {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [bad, setBad] = useState(false);
+
+  async function start(token: string) {
+    setBusy(true);
+    setBad(false);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/onlime", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, device: "videojukebox" }),
+      });
+      const body = await response.json();
+      if (!response.ok || body.ok === false) {
+        setBad(true);
+        setMessage(body.reason ?? "Onlime afviste koden.");
+        return;
+      }
+      setMessage(body.message ?? "Sync er startet.");
+    } catch {
+      setBad(true);
+      setMessage("Kunne ikke starte sync.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="panel">
+      <h2 className="font-serif text-3xl">Onlime</h2>
+      <p>Log ind på Onlime og kopiér den lange kode. Sync henter filmene bagefter. Læg film i mappen media og plakater i mappen events.</p>
+      <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
     </section>
   );
 }

@@ -26,7 +26,7 @@ if [[ -f /opt/jukebox/current/Jukebox.Host ]]; then
 fi
 chmod 0755 /opt/jukebox/bin/session.sh /opt/jukebox/bin/kiosk.sh /etc/jukebox/9990-jukebox-user \
   /opt/jukebox/lib/install-to-disk.sh /opt/jukebox/lib/onlime-login.sh /opt/jukebox/lib/onlime-boot.sh \
-  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/wifi-connect.sh
+  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/wifi-connect.sh /opt/jukebox/lib/onlime-open.sh
 
 # The Onlime repo is HTTPS. ca-certificates is installed with the package list,
 # so the repo is added here rather than during the earlier apt update.

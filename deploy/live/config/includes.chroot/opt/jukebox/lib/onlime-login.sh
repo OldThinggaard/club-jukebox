@@ -24,4 +24,9 @@ sudo -u jukebox env HOME=/home/jukebox XDG_RUNTIME_DIR=/run/user/1000 \
   python3 /opt/jukebox/lib/onlime_prompts.py login "$TOKEN_FILE" "$DEVICE"
 sudo -u jukebox env HOME=/home/jukebox XDG_RUNTIME_DIR=/run/user/1000 \
   python3 /opt/jukebox/lib/onlime_prompts.py sync "$SYNC_ROOT"
-echo "Onlime er logget ind. Filmene hentes ned til $SYNC_ROOT når disken er installeret."
+if [[ "${4:-}" == "--start" ]]; then
+  sudo -u jukebox env HOME=/home/jukebox XDG_RUNTIME_DIR=/run/user/1000 jotta-cli sync start
+  echo "Onlime Sync henter nu filer ned til $SYNC_ROOT"
+else
+  echo "Onlime er logget ind. Filmene hentes ned til $SYNC_ROOT når disken er installeret."
+fi

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DanishKeyboard } from "./components/Keyboard";
+import { OnlimeCode } from "./OnlimeCode";
 
 type Disk = { name: string; path: string; size: string; model: string; transport: string; removable: boolean };
 type Wifi = { ssid: string; signal: number; secure: boolean };
@@ -13,9 +14,7 @@ export function Install() {
   const [networks, setNetworks] = useState<Wifi[]>([]);
   const [ssid, setSsid] = useState("");
   const [psk, setPsk] = useState("");
-  const [token, setToken] = useState("");
   const [shift, setShift] = useState(false);
-  const [field, setField] = useState<"psk" | "token">("psk");
   const [message, setMessage] = useState("");
   const [bad, setBad] = useState(false);
   const [lines, setLines] = useState<string[]>([]);
@@ -89,12 +88,7 @@ export function Install() {
     }
   }
 
-  async function loginOnlime(skip: boolean) {
-    if (skip) {
-      await loadDisks();
-      setStep("disk");
-      return;
-    }
+  async function loginOnlime(token: string) {
     setBusy(true);
     setBad(false);
     setMessage("");
@@ -174,7 +168,7 @@ export function Install() {
             <div className="choice-list">
               {networks.length === 0 && <p>{busy ? "Leder efter netværk…" : "Ingen trådløse netværk fundet. Et netværkskabel kan bruges i stedet."}</p>}
               {networks.map((network) => (
-                <button key={network.ssid} className={ssid === network.ssid ? "choice active" : "choice"} type="button" onClick={() => { setSsid(network.ssid); setField("psk"); }}>
+                <button key={network.ssid} className={ssid === network.ssid ? "choice active" : "choice"} type="button" onClick={() => setSsid(network.ssid)}>
                   <span>{network.ssid}</span>
                   <span className="muted">{network.signal}%</span>
                 </button>
@@ -183,7 +177,7 @@ export function Install() {
             {ssid && (
               <>
                 <p>Adgangskode til {ssid}</p>
-                <input aria-label="Wi-Fi-adgangskode" value={psk} onChange={(event) => setPsk(event.target.value)} onFocus={() => setField("psk")} />
+                <input aria-label="Wi-Fi-adgangskode" value={psk} onChange={(event) => setPsk(event.target.value)} />
                 <DanishKeyboard uppercase={shift} onKey={typeInto(psk, setPsk)} onBackspace={() => setPsk((value) => value.slice(0, -1))} onClear={() => setPsk("")} onSpace={() => setPsk((value) => value + " ")} onShift={() => setShift((value) => !value)} />
               </>
             )}
@@ -197,29 +191,10 @@ export function Install() {
         )}
         {step === "onlime" && (
           <section className="install-card">
-            <h2>Hent filer fra Onlime</h2>
-            <p>Åbn sikkerhedssiden på telefonen, lav en personlig login-kode, og skriv den her. Koden kan kun bruges én gang. Hele Sync-mappen hentes ned efter installationen, så en stor mappe kan fylde en disk på 128 GB. Læg film i <strong>media</strong> og plakater i <strong>events</strong>.</p>
-            <img className="qr" src="/api/install/onlime-qr.svg" alt="QR-kode til Onlime" />
-            <p className="muted">cloud.onlime.dk/web/secure</p>
-            <input aria-label="Onlime login-kode" value={token} onChange={(event) => setToken(event.target.value)} onFocus={() => setField("token")} />
-            <div className="symbol-row">
-              {["-", "_", ".", "/", "+", "="].map((symbol) => (
-                <button key={symbol} className="key" type="button" onClick={() => setToken((value) => value + symbol)}>{symbol}</button>
-              ))}
-            </div>
-            <DanishKeyboard
-              uppercase={shift}
-              onKey={(key) => field === "token" ? setToken((value) => value + key) : undefined}
-              onBackspace={() => setToken((value) => value.slice(0, -1))}
-              onClear={() => setToken("")}
-              onSpace={() => setToken((value) => value + " ")}
-              onShift={() => setShift((value) => !value)}
-            />
-            {message && <p className={bad ? "warn" : "ok"}>{message}</p>}
-            <div className="install-actions">
-              <button className="icon-button" type="button" disabled={busy || token.trim().length < 8} onClick={() => void loginOnlime(false)}>Hent fra Onlime</button>
-              <button className="quiet-button" type="button" onClick={() => void loginOnlime(true)}>Spring over</button>
-            </div>
+            <h2>Hent koden fra Onlime</h2>
+            <p>Log ind på Onlime og kopiér den lange kode. Sync henter hele mappen bagefter. Læg film i <strong>media</strong> og plakater i <strong>events</strong>.</p>
+            <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/install/open-onlime" submitLabel="Start sync" onSubmit={(token) => void loginOnlime(token)} />
+            <button className="quiet-button" type="button" onClick={() => { void loadDisks().then(() => setStep("disk")); }}>Spring over</button>
           </section>
         )}
         {step === "disk" && (

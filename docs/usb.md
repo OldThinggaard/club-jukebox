@@ -8,7 +8,7 @@ Den tidligere nøgle startede kun programmet midlertidigt og lod computerens dis
 
 1. Advarer om at harddisken bliver slettet.
 2. Viser de trådløse netværk. Adgangskoden tastes på skærmen. Et netværkskabel kan bruges i stedet.
-3. Logger på Onlime med en engangskode fra [cloud.onlime.dk/web/secure](https://cloud.onlime.dk/web/secure). Login sker før disken slettes, så en forkert kode ikke ødelægger noget.
+3. Åbner Onlime, hvor du logger ind og kopierer den lange engangskode. Koden sættes ind. Den skal ikke tastes. Login sker før disken slettes, så en forkert kode ikke ødelægger noget. Sync henter filmene bagefter.
 4. Viser de fundne diske. USB-nøglen selv, mærket JUKEBOX, er skjult.
 5. Sletter den valgte disk, opretter en ny EFI- og systempartition, og kopierer Debian og Videojukebox over.
 6. Genstarter. Tag nøglen ud når skærmen bliver sort, ellers starter guiden forfra.

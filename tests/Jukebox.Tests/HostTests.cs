@@ -41,6 +41,14 @@ public class HostTests : IClassFixture<JukeboxFactory>
 
         var wipe = await client.PostAsJsonAsync("/api/install/run", new { path = "/dev/sda", confirm = "sda" });
         Assert.Equal(HttpStatusCode.Forbidden, wipe.StatusCode);
+
+        var open = await client.PostAsync("/api/install/open-onlime", null);
+        Assert.Equal(HttpStatusCode.OK, open.StatusCode);
+        var opened = await open.Content.ReadFromJsonAsync<OpenOnlimeDto>();
+        Assert.False(opened!.Opened);
+
+        var adminOnlime = await client.PostAsJsonAsync("/api/admin/onlime", new { token = "copied-from-onlime", device = "videojukebox" });
+        Assert.Equal(HttpStatusCode.Unauthorized, adminOnlime.StatusCode);
     }
 
     [Fact]
@@ -61,6 +69,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
 
     private sealed record HealthDto(string Status);
     private sealed record InstallStateDto(bool InstallerMode);
+    private sealed record OpenOnlimeDto(bool Opened);
     private sealed record QueueDto(bool Ok, string? Reason);
     private sealed record ScreenDto(string ClubName);
 }

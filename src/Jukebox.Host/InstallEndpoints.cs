@@ -20,6 +20,12 @@ public static class InstallEndpoints
             onlimeUrl = OnlimeUrl
         }));
         group.MapGet("/onlime-qr.svg", () => Results.Text(QrImages.Svg(OnlimeUrl), "image/svg+xml"));
+        group.MapPost("/open-onlime", (HttpContext http) =>
+        {
+            if (!IsLocal(http))
+                return Results.Json(new { opened = false, reason = "Kun touchskærmen kan åbne Onlime." }, statusCode: StatusCodes.Status403Forbidden);
+            return OpenOnlimeBrowser();
+        });
         group.MapGet("/disks", () =>
         {
             var json = Run("lsblk", "-J", "-o", "NAME,SIZE,TYPE,MODEL,TRAN,RM,LABEL,MOUNTPOINT");
@@ -74,23 +80,7 @@ public static class InstallEndpoints
                 return Results.Json(new { ok = false, reason = "Onlime kan først hentes fra installations-USB'en." }, statusCode: StatusCodes.Status403Forbidden);
             if (!IsLocal(http))
                 return Results.Json(new { ok = false, reason = "Kun touchskærmen kan logge på Onlime." }, statusCode: StatusCodes.Status403Forbidden);
-            var token = (body.Token ?? "").Trim();
-            var device = string.IsNullOrWhiteSpace(body.Device) ? "videojukebox" : body.Device.Trim();
-            if (token.Length < 8 || token.Contains('\n') || token.Contains('\r') || device.Contains('\n'))
-                return Results.BadRequest(new { ok = false, reason = "Login-koden fra Onlime ser ikke rigtig ud." });
-            Directory.CreateDirectory(StateDir);
-            var tokenPath = Path.Combine(StateDir, "onlime.token");
-            await File.WriteAllTextAsync(tokenPath, token);
-            try { File.SetUnixFileMode(tokenPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { /* Windows tests never reach this. */ }
-            var script = "/opt/jukebox/lib/onlime-login.sh";
-            if (!File.Exists(script))
-                return Results.Json(new { ok = false, reason = "Onlime-programmet findes kun på USB-nøglen." }, statusCode: StatusCodes.Status400BadRequest);
-            var (code, output) = RunWait("sudo", "-n", script, tokenPath, device);
-            File.Delete(tokenPath);
-            var safe = output.Replace(token, "••••", StringComparison.Ordinal);
-            return code == 0
-                ? Results.Ok(new { ok = true, message = "Onlime er logget ind. Sync-mappen hentes ned efter installationen." })
-                : Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(safe) ? "Onlime afviste login-koden. Lav en ny kode og prøv igen." : safe.Trim() });
+            return await Begin(body.Token, body.Device, startSync: false);
         });
         group.MapPost("/run", (InstallBody body, HttpContext http) =>
         {
@@ -137,6 +127,50 @@ public static class InstallEndpoints
                 return Results.Json(new { ok = false, reason = "Installationen kunne ikke starte." }, statusCode: StatusCodes.Status500InternalServerError);
             }
             return Results.Ok(new { ok = true });
+        });
+    }
+
+    public static IResult OpenOnlimeBrowser()
+    {
+        var script = "/opt/jukebox/lib/onlime-open.sh";
+        if (!File.Exists(script))
+            return Results.Ok(new { opened = false, url = OnlimeUrl });
+        var start = new ProcessStartInfo(script) { UseShellExecute = false };
+        if (Process.Start(start) is null)
+            return Results.Ok(new { opened = false, url = OnlimeUrl });
+        return Results.Ok(new { opened = true, url = OnlimeUrl });
+    }
+
+    public static async Task<IResult> Begin(string? rawToken, string? rawDevice, bool startSync)
+    {
+        var token = new string((rawToken ?? "").Where(ch => !char.IsWhiteSpace(ch)).ToArray());
+        var device = string.IsNullOrWhiteSpace(rawDevice) ? "videojukebox" : rawDevice.Trim();
+        if (token.Length < 8 || device.Any(ch => char.IsWhiteSpace(ch)))
+            return Results.BadRequest(new { ok = false, reason = "Login-koden fra Onlime ser ikke rigtig ud." });
+        Directory.CreateDirectory(StateDir);
+        var tokenPath = Path.Combine(StateDir, "onlime.token");
+        await File.WriteAllTextAsync(tokenPath, token);
+        try { File.SetUnixFileMode(tokenPath, UnixFileMode.UserRead | UnixFileMode.UserWrite); } catch { /* Windows tests never reach this. */ }
+        var script = "/opt/jukebox/lib/onlime-login.sh";
+        if (!File.Exists(script))
+        {
+            File.Delete(tokenPath);
+            return Results.Json(new { ok = false, reason = "Onlime-programmet findes kun på den installerede maskine." }, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var (code, output) = startSync
+            ? RunWait("sudo", "-n", script, tokenPath, device, "/var/lib/jukebox/onlime-sync", "--start")
+            : RunWait("sudo", "-n", script, tokenPath, device);
+        File.Delete(tokenPath);
+        var safe = output.Replace(token, "••••", StringComparison.Ordinal);
+        if (code != 0)
+            return Results.BadRequest(new { ok = false, reason = string.IsNullOrWhiteSpace(safe) ? "Onlime afviste login-koden. Lav en ny kode og prøv igen." : safe.Trim() });
+        return Results.Ok(new
+        {
+            ok = true,
+            message = startSync
+                ? "Onlime er logget ind. Sync henter filmene ned nu."
+                : "Onlime er logget ind. Sync-mappen hentes ned efter installationen."
         });
     }
 
