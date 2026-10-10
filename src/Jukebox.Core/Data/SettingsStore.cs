@@ -6,6 +6,7 @@ namespace Jukebox.Core.Data;
 public sealed class ClubSettings
 {
     public string ClubName { get; init; } = "Oak & Iron Clubhouse";
+    public bool ShowClubNameOnHall { get; init; }
     public string WelcomeMessage { get; init; } = "Welcome. Choose a film on the touchscreen, or scan the code with your phone.";
     public string Instructions { get; init; } = "The queue plays in order. A film cannot be skipped, moved, or removed. You can pick it again after the cooldown.";
     public string PublicBaseUrl { get; init; } = "http://jukebox.local:47123";
@@ -38,6 +39,7 @@ public sealed class SettingsStore
             PutIfMissing(connection, tx, SettingKeys.IdleTimeoutSeconds, defaults.IdleTimeoutSeconds.ToString());
             PutIfMissing(connection, tx, SettingKeys.IdleStrategy, defaults.IdleStrategy);
             PutIfMissing(connection, tx, SettingKeys.ClubName, defaults.ClubName);
+            PutIfMissing(connection, tx, SettingKeys.ShowClubNameOnHall, defaults.ShowClubNameOnHall ? "1" : "0");
             PutIfMissing(connection, tx, SettingKeys.WelcomeMessage, defaults.WelcomeMessage);
             PutIfMissing(connection, tx, SettingKeys.Instructions, defaults.Instructions);
             PutIfMissing(connection, tx, SettingKeys.PublicBaseUrl, defaults.PublicBaseUrl);
@@ -57,6 +59,7 @@ public sealed class SettingsStore
         return new ClubSettings
         {
             ClubName = Get(map, SettingKeys.ClubName, "Oak & Iron Clubhouse"),
+            ShowClubNameOnHall = Flag(map, SettingKeys.ShowClubNameOnHall, false),
             WelcomeMessage = Get(map, SettingKeys.WelcomeMessage, ""),
             Instructions = Get(map, SettingKeys.Instructions, ""),
             PublicBaseUrl = Get(map, SettingKeys.PublicBaseUrl, "http://jukebox.local:47123"),
@@ -82,6 +85,7 @@ public sealed class SettingsStore
         var pairs = new Dictionary<string, string>
         {
             [SettingKeys.ClubName] = settings.ClubName.Trim(),
+            [SettingKeys.ShowClubNameOnHall] = settings.ShowClubNameOnHall ? "1" : "0",
             [SettingKeys.WelcomeMessage] = settings.WelcomeMessage.Trim(),
             [SettingKeys.Instructions] = settings.Instructions.Trim(),
             [SettingKeys.PublicBaseUrl] = settings.PublicBaseUrl.Trim(),
@@ -153,4 +157,11 @@ public sealed class SettingsStore
 
     private static int Int(Dictionary<string, string> map, string key, int fallback) =>
         map.TryGetValue(key, out var value) && int.TryParse(value, out var number) ? number : fallback;
+
+    private static bool Flag(Dictionary<string, string> map, string key, bool fallback)
+    {
+        if (!map.TryGetValue(key, out var value))
+            return fallback;
+        return value is "1" or "true" or "True" or "yes";
+    }
 }

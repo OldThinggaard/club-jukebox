@@ -91,17 +91,10 @@ public sealed class MpvPlayer : IMediaPlayer
         if (job.Entry.MediaType == MediaTypes.Audio)
         {
             start.ArgumentList.Add("--force-window=immediate");
-            var art = job.Entry.ThumbnailPath;
-            if (!string.IsNullOrWhiteSpace(art) && File.Exists(art))
-            {
-                start.ArgumentList.Add("--image-display-duration=inf");
-                start.ArgumentList.Add($"--audio-file={job.AbsolutePath}");
-                start.ArgumentList.Add(art);
-            }
-            else
-            {
-                start.ArgumentList.Add(job.AbsolutePath);
-            }
+            start.ArgumentList.Add("--audio-display=no");
+            start.ArgumentList.Add("--loop-file=no");
+            start.ArgumentList.Add("--idle=no");
+            start.ArgumentList.Add(job.AbsolutePath);
         }
         else if (job.Entry.MediaType == MediaTypes.Image)
         {

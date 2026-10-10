@@ -4,22 +4,24 @@ set -euo pipefail
 ROLE="${1:-ui}"
 ENV_FILE="${JUKEBOX_DISPLAYS:-/var/lib/jukebox/displays.env}"
 incoming_hall="${HALL_GEOM:-}"
+incoming_ui="${UI_GEOM:-}"
 # shellcheck disable=SC1090
 [[ -f "$ENV_FILE" ]] && source "$ENV_FILE"
 if [[ -n "$incoming_hall" ]]; then
   HALL_GEOM="$incoming_hall"
+fi
+if [[ -n "$incoming_ui" ]]; then
+  UI_GEOM="$incoming_ui"
 fi
 
 if [[ "$ROLE" == "hall" ]]; then
   GEOM="${HALL_GEOM:-}"
   URL="http://127.0.0.1:47123/player"
   PROFILE="${HOME}/.config/jukebox-hall"
-  FULLSCREEN=0
 else
   GEOM="${UI_GEOM:-}"
   URL="${JUKEBOX_KIOSK_URL:-http://127.0.0.1:47123/}"
   PROFILE="${HOME}/.config/jukebox-shelf"
-  FULLSCREEN=1
 fi
 
 SIZE="1280,800"
@@ -35,16 +37,17 @@ if [[ -z "$BROWSER" ]]; then
   exit 1
 fi
 
+# A fullscreen window covers both monitors, so a press lands beside the button.
 args=(
   --app="$URL"
   --user-data-dir="$PROFILE"
   --window-position="${POSITION%%,*},${POSITION##*,}"
   --window-size="${SIZE%%,*},${SIZE##*,}"
+  --force-device-scale-factor=1
+  --ozone-platform=x11
+  --touch-events=enabled
   --no-first-run
 )
-if [[ "$FULLSCREEN" == "1" ]]; then
-  args+=(--kiosk --start-fullscreen)
-fi
 exec "$BROWSER" \
   "${args[@]}" \
   --disable-translate \

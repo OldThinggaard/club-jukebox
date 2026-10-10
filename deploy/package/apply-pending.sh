@@ -18,7 +18,11 @@ if dpkg -i "$deb"; then
   rm -f "$deb" "$updating" /var/lib/jukebox/update-error
   sync
   printf '%s\n' "Videojukebox er opdateret. Maskinen genstarter." > /dev/console || true
-  systemctl reboot || reboot || true
+  # A polite reboot talks to systemd. If that waits, the machine looks frozen
+  # and the power gets pulled. The forced reboot below does not wait.
+  timeout 15 reboot || true
+  sleep 2
+  /sbin/reboot -f || reboot -f || true
   exit 0
 fi
 

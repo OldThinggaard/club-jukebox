@@ -33,6 +33,7 @@ public static class Endpoints
             return Results.Ok(new
             {
                 clubName = club.ClubName,
+                showClubName = club.ShowClubNameOnHall,
                 welcomeMessage = club.WelcomeMessage,
                 instructions = club.Instructions,
                 publicUrl = club.PublicBaseUrl,

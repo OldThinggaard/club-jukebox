@@ -33,11 +33,25 @@ def request(sock, payload):
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.settimeout(0.4)
 sock.connect(path)
+def prop(name):
+    reply = request(sock, {"command": ["get_property", name]})
+    if reply.get("error") not in (None, "success"):
+        return None
+    return reply.get("data")
+
+
 try:
     if volume != "-":
         request(sock, {"command": ["set_property", "volume", int(volume)]})
-    reply = request(sock, {"command": ["get_property", "eof-reached"]})
-    if reply.get("data") is True:
-        raise SystemExit(2)
+    else:
+        eof = prop("eof-reached")
+        if eof is True:
+            raise SystemExit(2)
+        # Idle alone is true before the file starts. Only treat it as the end
+        # once playback has already moved.
+        idle = prop("idle-active")
+        percent = prop("percent-pos")
+        if idle is True and isinstance(percent, (int, float)) and percent >= 95:
+            raise SystemExit(2)
 finally:
     sock.close()

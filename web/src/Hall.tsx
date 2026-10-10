@@ -49,7 +49,7 @@ export function Hall() {
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />
       )}
       <section className="hall-copy">
-        <p className="eyebrow">{playing && screen?.engine === "mpv" ? "" : screen?.clubName ?? "Clubhouse"}</p>
+        {screen?.showClubName && screen.clubName ? <p className="eyebrow">{screen.clubName}</p> : null}
         {playing && screen?.engine !== "mpv" ? (
           <div className="play-meta">
             <p className="date">{playing.clientLabel === "reklame" ? "Reklame" : playing.origin === "auto" ? "House selection" : "From the queue"}</p>

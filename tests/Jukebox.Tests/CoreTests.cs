@@ -193,11 +193,12 @@ public class HallPlaybackTests
     }
 
     [Fact]
-    public void Does_not_finish_a_long_file_after_two_minutes()
+    public void Moves_on_a_few_seconds_after_a_real_song()
     {
-        Assert.Equal(TimeSpan.FromHours(3), HallPlayback.PlaybackCap(12 * 60 * 1000));
+        Assert.Equal(TimeSpan.FromMinutes(12) + TimeSpan.FromSeconds(8), HallPlayback.PlaybackCap(12 * 60 * 1000));
+        Assert.Equal(TimeSpan.FromHours(4) + TimeSpan.FromSeconds(8), HallPlayback.PlaybackCap(4L * 60 * 60 * 1000, "video"));
         Assert.Equal(TimeSpan.FromHours(3), HallPlayback.PlaybackCap(10_000));
-        Assert.True(HallPlayback.PlaybackCap(4L * 60 * 60 * 1000) > TimeSpan.FromHours(4));
+        Assert.Equal(TimeSpan.FromSeconds(14), HallPlayback.PlaybackCap(12_000, "image"));
     }
 
     [Fact]

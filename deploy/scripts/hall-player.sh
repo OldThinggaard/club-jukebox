@@ -111,6 +111,9 @@ monitor_index() {
 }
 
 play_pid=""
+play_ms=0
+play_kind=""
+started_epoch=0
 stop_play() {
   if [[ -n "${play_pid}" ]]; then
     kill "${play_pid}" >/dev/null 2>&1 || true
@@ -127,7 +130,8 @@ start_play() {
   local -a args
   rm -f "$SOCK"
   args=(
-    --no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no
+    --no-config --no-terminal --really-quiet --no-border --ontop
+    --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
     --force-window=immediate --ao=pulse --volume="$VOLUME"
     --input-ipc-server="$SOCK"
@@ -147,9 +151,9 @@ start_play() {
     fi
     args+=(--image-display-duration="$seconds" "$path")
   else
-    # The file itself must be what mpv is waiting on. A cover with an infinite
-    # timer never ends, so the next queued song never starts.
-    args+=(--audio-display=attachment "$path")
+    # The file itself must be what mpv is waiting on. A cover picture keeps
+    # the player open after the song, so the next one in the queue never starts.
+    args+=("$path")
   fi
   mpv "${args[@]}" >"$LOG" 2>&1 &
   play_pid=$!
@@ -157,13 +161,16 @@ start_play() {
   sleep 0.8
   push_volume
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
+    play_ms="$duration"
+    play_kind="$kind"
+    started_epoch=$(date +%s)
     return 0
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   # Pulse was not ready. Play through ALSA so the speakers still get the sound.
   local -a fallback
   rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else
@@ -172,13 +179,30 @@ start_play() {
   if [[ "$kind" == "image" ]]; then
     fallback+=(--image-display-duration="$seconds" "$path")
   else
-    fallback+=(--audio-display=attachment "$path")
+    fallback+=("$path")
   fi
   mpv "${fallback[@]}" >>"$LOG" 2>&1 &
   play_pid=$!
   applied_volume=""
   sleep 0.4
   push_volume
+  play_ms="$duration"
+  play_kind="$kind"
+  started_epoch=$(date +%s)
+}
+
+past_limit() {
+  [[ "$play_ms" -gt 0 && "$started_epoch" -gt 0 ]] || return 1
+  local extra=8
+  if [[ "$play_kind" == "image" ]]; then
+    extra=2
+  elif [[ "$play_ms" -lt 20000 ]]; then
+    return 1
+  fi
+  local now limit
+  now=$(date +%s)
+  limit=$((play_ms / 1000 + extra))
+  [[ $((now - started_epoch)) -ge $limit ]]
 }
 
 note_finished() {
@@ -194,6 +218,14 @@ finish_if_stopped() {
   if [[ -z "${play_pid}" ]]; then
     return 0
   fi
+  if past_limit; then
+    note_finished "${last}"
+    kill "${play_pid}" >/dev/null 2>&1 || true
+    wait "${play_pid}" >/dev/null 2>&1 || true
+    play_pid=""
+    started_epoch=0
+    return 0
+  fi
   if [[ -S "$SOCK" ]]; then
     python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - >/dev/null 2>&1
     if [[ "$?" -eq 2 ]]; then
@@ -201,6 +233,7 @@ finish_if_stopped() {
       kill "${play_pid}" >/dev/null 2>&1 || true
       wait "${play_pid}" >/dev/null 2>&1 || true
       play_pid=""
+      started_epoch=0
       return 0
     fi
   fi
@@ -209,6 +242,7 @@ finish_if_stopped() {
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
+  started_epoch=0
   note_finished "${last}"
 }
 

@@ -1,13 +1,13 @@
 [Unit]
 Description=Restore the Debian desktop if Videojukebox did not start
+DefaultDependencies=no
 After=local-fs.target
-Before=display-manager.service gdm.service gdm3.service jukebox-graphical.service
+Before=sysinit.target
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
-TimeoutStartSec=15
+TimeoutStartSec=20
 ExecStart=/opt/jukebox/lib/boot-guard.sh
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=sysinit.target

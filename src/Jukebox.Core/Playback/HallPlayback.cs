@@ -8,14 +8,19 @@ public static class HallPlayback
     public static string Request(string queueId, string absolutePath, string mediaType, long durationMs, string? artPath) =>
         string.Join('\n', Clean(queueId), Clean(absolutePath), Clean(mediaType), Math.Max(0, durationMs).ToString(), Clean(artPath)) + "\n";
 
-    public static TimeSpan PlaybackCap(long durationMs)
+    public static TimeSpan PlaybackCap(long durationMs, string? mediaType = null)
     {
-        // The file itself decides when it ends. This cap only moves the queue
-        // on if the player gets stuck. It must not cut a film off after a
-        // couple of minutes and start the same file again.
-        var probed = TimeSpan.FromMilliseconds(Math.Max(0, durationMs)) + TimeSpan.FromMinutes(2);
-        var floor = TimeSpan.FromHours(3);
-        return probed > floor ? probed : floor;
+        // A missed end signal used to hold the queue for three hours, so the
+        // next song never started. A real length moves on a few seconds after
+        // the file. A failed probe comes back as about ten seconds, and that
+        // must not cut a film off.
+        var known = TimeSpan.FromMilliseconds(Math.Max(0, durationMs));
+        var slack = TimeSpan.FromSeconds(8);
+        if (string.Equals(mediaType, "image", StringComparison.OrdinalIgnoreCase))
+            return known + TimeSpan.FromSeconds(2);
+        if (known < TimeSpan.FromSeconds(20))
+            return TimeSpan.FromHours(3);
+        return known + slack;
     }
 
     public static void AtomicWrite(string path, string text)

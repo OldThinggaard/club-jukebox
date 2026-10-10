@@ -1,14 +1,13 @@
 [Unit]
-Description=Apply a pending Videojukebox package
-After=jukebox-graphical.service
-# Must not be Before= the screen. Boot has to reach a picture even if this fails.
+Description=A pending Videojukebox package is installed from the screen, not at boot
+After=local-fs.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-TimeoutStartSec=infinity
-TimeoutStopSec=90
-ExecStart=/opt/jukebox/lib/apply-pending.sh
+# dpkg during boot is what has forced a Debian reinstall. The screen starts
+# the installer itself. This unit must not install anything.
+ExecStart=/bin/true
 
 [Install]
 WantedBy=multi-user.target

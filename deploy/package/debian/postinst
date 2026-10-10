@@ -26,8 +26,10 @@ fi
 if ! grep -q 'da_DK.UTF-8 UTF-8' /etc/locale.gen 2>/dev/null; then
   echo 'da_DK.UTF-8 UTF-8' >> /etc/locale.gen
 fi
-timeout 120 locale-gen || true
-update-locale LANG=da_DK.UTF-8 || true
+if ! locale -a 2>/dev/null | grep -qiE '^da_DK\.utf-?8$'; then
+  timeout 120 locale-gen || true
+  update-locale LANG=da_DK.UTF-8 || true
+fi
 ln -sfn /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime
 echo Europe/Copenhagen > /etc/timezone
 
@@ -134,21 +136,45 @@ if [[ -x /opt/jukebox/lib/onlime-install.sh ]]; then
   timeout 90 /opt/jukebox/lib/onlime-install.sh || true
 fi
 
-# Enable the jukebox before the desktop is turned off. Every systemctl call
-# has a deadline so a busy boot cannot sit here until the power is pulled.
-timeout 20 systemctl daemon-reload >/dev/null 2>&1 || true
-timeout 15 systemctl enable avahi-daemon.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable NetworkManager.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox-update.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox-boot-guard.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox-pending.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox-graphical.service >/dev/null 2>&1 || true
-timeout 15 systemctl enable jukebox-onlime.service >/dev/null 2>&1 || true
-for dm in gdm.service gdm3.service lightdm.service sddm.service; do
-  timeout 8 systemctl disable "$dm" >/dev/null 2>&1 || true
-done
-timeout 8 systemctl set-default multi-user.target >/dev/null 2>&1 || true
+# Symlinks only. Talking to the service manager from here deadlocks the next boot.
+unit_file() {
+  local name="$1"
+  if [[ -f "/etc/systemd/system/${name}" ]]; then
+    printf '%s\n' "/etc/systemd/system/${name}"
+    return 0
+  fi
+  if [[ -f "/usr/lib/systemd/system/${name}" ]]; then
+    printf '%s\n' "/usr/lib/systemd/system/${name}"
+    return 0
+  fi
+  if [[ -f "/lib/systemd/system/${name}" ]]; then
+    printf '%s\n' "/lib/systemd/system/${name}"
+    return 0
+  fi
+  return 1
+}
+
+enable_wants() {
+  local name="$1" target="${2:-multi-user.target}" src
+  src="$(unit_file "$name")" || return 0
+  install -d "/etc/systemd/system/${target}.wants"
+  ln -sfn "$src" "/etc/systemd/system/${target}.wants/${name}"
+}
+
+if [[ -e /usr/lib/systemd/system/multi-user.target ]]; then
+  ln -sfn /usr/lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+elif [[ -e /lib/systemd/system/multi-user.target ]]; then
+  ln -sfn /lib/systemd/system/multi-user.target /etc/systemd/system/default.target
+fi
+enable_wants avahi-daemon.service
+enable_wants NetworkManager.service
+enable_wants jukebox-update.service
+enable_wants jukebox-pending.service
+enable_wants jukebox.service
+enable_wants jukebox-graphical.service
+enable_wants jukebox-onlime.service
+rm -f /etc/systemd/system/multi-user.target.wants/jukebox-boot-guard.service
+enable_wants jukebox-boot-guard.service sysinit.target
 
 echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren."
 wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren." || true

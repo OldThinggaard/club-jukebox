@@ -34,6 +34,11 @@ internal_output() {
   xrandr --query 2>/dev/null | awk '$2=="connected" && $1 ~ /^(eDP|LVDS|DSI)/ { print $1; exit }'
 }
 
+panel_geom() {
+  local panel="$1"
+  xrandr --query 2>/dev/null | awk -v name="$panel" '$1==name && $2=="connected" { for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+x[0-9]+\+[0-9]+\+[0-9]+$/) { print $i; exit } }'
+}
+
 layout_screens() {
   local panel hall
   panel="$(internal_output || true)"
@@ -46,18 +51,59 @@ layout_screens() {
   fi
 }
 
+xinput_bin() {
+  if [[ -x /opt/jukebox/lib/xinput ]]; then
+    printf '%s\n' /opt/jukebox/lib/xinput
+  elif command -v xinput >/dev/null 2>&1; then
+    command -v xinput
+  fi
+}
+
 map_touch() {
-  local panel id
+  local panel bin name id key ev props devname take
   panel="$(internal_output || true)"
   [[ -n "$panel" ]] || return 0
-  command -v xinput >/dev/null 2>&1 || return 0
-  while read -r id; do
-    [[ "$id" =~ ^[0-9]+$ ]] || continue
-    if ! xinput list-props "$id" 2>/dev/null | grep -q "Abs .*Position X"; then
-      continue
+  bin="$(xinput_bin || true)"
+  if [[ -z "$bin" ]]; then
+    printf '%s\n' "xinput mangler" >> /var/log/jukebox-touch.log
+    return 0
+  fi
+  declare -A want=()
+  for ev in /dev/input/event*; do
+    [[ -c "$ev" ]] || continue
+    props="$(udevadm info --query=property --name="$ev" 2>/dev/null || true)"
+    printf '%s\n' "$props" | grep -qx 'ID_INPUT_TOUCHSCREEN=1' || continue
+    devname="$(printf '%s\n' "$props" | sed -n 's/^NAME="\{0,1\}\(.*\)"\{0,1\}$/\1/p' | head -1)"
+    [[ -n "$devname" ]] && want["$devname"]=1
+  done
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
+    case "$name" in
+      Virtual*|*"XTEST"*) continue ;;
+      *[Tt]ouch[Pp]ad*|*[Tt]rack[Pp]ad*) continue ;;
+    esac
+    take=0
+    if [[ -n "${want[$name]:-}" ]]; then
+      take=1
+    elif [[ ${#want[@]} -gt 0 ]]; then
+      for key in "${!want[@]}"; do
+        if [[ "$name" == *"$key"* || "$key" == *"$name"* ]]; then
+          take=1
+        fi
+      done
     fi
-    xinput map-to-output "$id" "$panel" >/dev/null 2>&1 || true
-  done < <(xinput list --id-only 2>/dev/null || true)
+    if [[ "$take" -eq 0 ]]; then
+      case "$name" in
+        *[Tt]ouch[Ss]creen*|*[Tt]ouchscreen*|*[Mm]ultitouch*|*Goodix*|*eGalax*|*ILITEK*|*Weida*|*G2TOUCH*|*Melfas*|*ft5x06*|*FT5406*|*hid-multitouch*) take=1 ;;
+      esac
+    fi
+    [[ "$take" -eq 1 ]] || continue
+    while IFS= read -r id; do
+      [[ "$id" =~ ^[0-9]+$ ]] || continue
+      "$bin" map-to-output "$id" "$panel" >/dev/null 2>&1 || true
+      printf '%s\n' "touch $id ($name) -> $panel" >> /var/log/jukebox-touch.log
+    done < <("$bin" list --id-only "$name" 2>/dev/null || true)
+  done < <("$bin" list --name-only 2>/dev/null || true)
 }
 
 (
@@ -87,7 +133,17 @@ if [[ "$ready" -ne 1 ]]; then
   echo "Jukebox did not answer on port 47123" >&2
 else
   # boot-guard.sh leaves this file. Removing it means this boot reached the screen.
-  rm -f /var/lib/jukebox/booting
+  rm -f /var/lib/jukebox/booting /var/lib/jukebox/recover /var/lib/jukebox/updating
+fi
+
+layout_screens
+map_touch
+panel="$(internal_output || true)"
+if [[ -n "$panel" ]]; then
+  geom="$(panel_geom "$panel" || true)"
+  if [[ -n "$geom" ]]; then
+    export UI_GEOM="$geom"
+  fi
 fi
 
 hall_geom() {

@@ -43,6 +43,7 @@ type AdminMedia = {
 
 type Settings = {
   clubName: string;
+  showClubNameOnHall: boolean;
   welcomeMessage: string;
   instructions: string;
   publicBaseUrl: string;
@@ -351,7 +352,15 @@ function PlaybackPanel() {
       </Field>
       {soundNote && <p>{soundNote}</p>}
       <div className="form-grid">
-        <Field label="Club name"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
+        <Field label="Klubnavn"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
+        <label className="field flex items-center gap-3 text-sm text-[#b7ab9c]">
+          <input
+            type="checkbox"
+            checked={settings.showClubNameOnHall}
+            onChange={(event) => void saveSound({ showClubNameOnHall: event.target.checked })}
+          />
+          Vis klubnavn på fjernsynet
+        </label>
         <Field label="Public address"><input value={settings.publicBaseUrl} onChange={(event) => set({ publicBaseUrl: event.target.value })} /></Field>
         <Field label="Cooldown minutes"><input type="number" value={settings.cooldownMinutes} onChange={(event) => set({ cooldownMinutes: Number(event.target.value) })} /></Field>
         <Field label="Idle seconds"><input type="number" value={settings.idleTimeoutSeconds} onChange={(event) => set({ idleTimeoutSeconds: Number(event.target.value) })} /></Field>

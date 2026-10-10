@@ -40,6 +40,7 @@ install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/ju
 install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
 install -m 0755 "$ROOT/deploy/package/apply-pending.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"
 install -m 0755 "$ROOT/deploy/package/boot-guard.sh" "$pkg/opt/jukebox/lib/boot-guard.sh"
+install -m 0755 "$ROOT/deploy/package/xinput" "$pkg/opt/jukebox/lib/xinput"
 install -m 0755 "$ROOT/deploy/package/onlime-install.sh" "$pkg/opt/jukebox/lib/onlime-install.sh"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-pending.service" "$pkg/etc/systemd/system/jukebox-pending.service"
@@ -102,6 +103,31 @@ if grep -q 'image-display-duration=inf' "$pkg/opt/jukebox/bin/hall-player.sh"; t
   echo "A cover image must not keep the player open after the song." >&2
   exit 1
 fi
+if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must leave when the song ends." >&2
+  exit 1
+fi
+if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then
+  echo "An update must not talk to systemd." >&2
+  exit 1
+fi
+if ! grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then
+  echo "A failed boot must force a restart onto the Debian desktop." >&2
+  exit 1
+fi
+if grep -q -- '--kiosk' "$pkg/opt/jukebox/bin/kiosk.sh"; then
+  echo "The touch window must stay on one screen." >&2
+  exit 1
+fi
+if ! grep -q 'map-to-output' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Touch must be mapped to the panel." >&2
+  exit 1
+fi
+if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The package is missing the club-name switch." >&2
+  exit 1
+fi
+test -x "$pkg/opt/jukebox/lib/xinput"
 python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 
 out="$ROOT/publish/pakke"

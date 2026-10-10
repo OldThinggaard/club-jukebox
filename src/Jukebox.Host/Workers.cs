@@ -159,7 +159,7 @@ public sealed class PlaybackWorker(
             art = "";
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
         var started = Environment.TickCount64;
-        var cap = HallPlayback.PlaybackCap(job.DurationMs);
+        var cap = HallPlayback.PlaybackCap(job.DurationMs, job.Entry.MediaType);
         while (!stoppingToken.IsCancellationRequested)
         {
             var elapsed = Environment.TickCount64 - started;
