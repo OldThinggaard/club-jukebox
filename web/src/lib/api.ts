@@ -24,6 +24,7 @@ export type QueueCard = {
 };
 
 export type NowPlaying = {
+  queueId: string;
   mediaId: string;
   title: string;
   artist: string;
@@ -89,4 +90,10 @@ export const api = {
     }).then((response) => read<{ ok: boolean; reason?: string }>(response)),
   activity: () => fetch("/api/activity", { method: "POST" }),
   heartbeat: () => fetch("/api/hall/heartbeat", { method: "POST" }),
+  finished: (queueId: string) =>
+    fetch("/api/hall/finished", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ queueId }),
+    }),
 };

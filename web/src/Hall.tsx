@@ -30,6 +30,11 @@ export function Hall() {
   useEffect(() => setHideVideo(false), [screen?.nowPlaying?.mediaId]);
 
   const playing = screen?.nowPlaying;
+
+  function songEnded(queueId: string | undefined) {
+    if (!queueId) return;
+    void api.finished(queueId);
+  }
   const events = screen?.events ?? [];
   const event = events.length ? events[eventIndex % events.length] : null;
   const backdrop = playing?.thumbnailUrl || event?.imageUrl || screen?.logoUrl;
@@ -40,10 +45,10 @@ export function Hall() {
       {backdrop && <img className="hall-bg" src={backdrop} alt="" />}
       <div className="hall-shade" />
       {showBrowserMedia && playing.mediaType === "video" && (
-        <video className="hall-video" src={playing.contentUrl} autoPlay playsInline onError={() => setHideVideo(true)} />
+        <video key={playing.queueId} className="hall-video" src={playing.contentUrl} autoPlay playsInline onEnded={() => songEnded(playing.queueId)} onError={() => setHideVideo(true)} />
       )}
       {showBrowserMedia && playing.mediaType === "audio" && (
-        <audio key={playing.mediaId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => setHideVideo(true)} />
+        <audio key={playing.queueId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => { setHideVideo(true); songEnded(playing.queueId); }} />
       )}
       {showBrowserMedia && playing.mediaType === "image" && (
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />

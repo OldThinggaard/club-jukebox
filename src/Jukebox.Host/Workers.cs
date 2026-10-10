@@ -49,7 +49,6 @@ public sealed class PlaybackWorker(
     JukeboxPaths paths,
     ILogger<PlaybackWorker> logger) : BackgroundService
 {
-    private readonly TimerPlayer _timer = new();
     private IReadOnlyList<DisplayInfo> _displays = [];
     private long _displaysAt = long.MinValue;
 
@@ -92,7 +91,7 @@ public sealed class PlaybackWorker(
                 coordinator.SetEngine(playerReady ? "mpv" : "timer");
                 var result = playerReady
                     ? await WaitForHallPlayer(job, stoppingToken)
-                    : await _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
+                    : await WaitForShownMedia(job, stoppingToken);
                 coordinator.Finish(job, result);
                 job = null;
             }
@@ -193,6 +192,21 @@ public sealed class PlaybackWorker(
                 return PlayResult.Done();
             ApplySavedAudio();
             await Task.Delay(400, stoppingToken);
+        }
+
+        return PlayResult.Done();
+    }
+
+    private async Task<PlayResult> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
+    {
+        var started = Environment.TickCount64;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var elapsed = Environment.TickCount64 - started;
+            coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
+            if (coordinator.IsFinished(job.Entry.Id) || elapsed >= job.DurationMs)
+                return PlayResult.Done();
+            await Task.Delay(200, stoppingToken);
         }
 
         return PlayResult.Done();

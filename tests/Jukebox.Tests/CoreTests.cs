@@ -332,6 +332,18 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_finished_signal_releases_only_that_song()
+    {
+        using var fixture = new TempLibrary();
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        coordinator.MarkFinished("song-1");
+        Assert.True(coordinator.IsFinished("song-1"));
+        Assert.False(coordinator.IsFinished("song-2"));
+        coordinator.MarkFinished(null);
+        Assert.False(coordinator.IsFinished("song-1"));
+    }
+
+    [Fact]
     public void Plays_an_advertisement_only_by_itself()
     {
         using var fixture = new TempLibrary();

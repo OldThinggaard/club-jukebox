@@ -139,6 +139,10 @@ if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js
   echo "The package is missing the club-name switch." >&2
   exit 1
 fi
+if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The television page must say when a song has ended." >&2
+  exit 1
+fi
 test -x "$pkg/opt/jukebox/lib/xinput"
 python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 

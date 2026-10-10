@@ -550,6 +550,7 @@ public static class Endpoints
         var entry = snap.Current!.Entry;
         return new
         {
+            queueId = entry.Id,
             mediaId = entry.MediaId,
             title = entry.Title,
             artist = entry.Artist,
