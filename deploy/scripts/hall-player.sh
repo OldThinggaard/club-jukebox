@@ -22,7 +22,7 @@ applied_port=""
 applied_volume=""
 hw_volume=""
 hw_epoch=0
-SOCK=/var/lib/jukebox/mpv.sock
+SOCK=/tmp/jukebox-mpv.sock
 
 for _ in $(seq 1 30); do
   if [[ -S "${runtime}/pulse/native" ]]; then
@@ -207,6 +207,7 @@ start_play() {
   play_pid=$!
   applied_volume=""
   sleep 0.8
+  [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
   push_volume
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     play_ms="$duration"
@@ -233,6 +234,7 @@ start_play() {
   play_pid=$!
   applied_volume=""
   sleep 0.4
+  [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
   push_volume
   play_ms="$duration"
   play_kind="$kind"

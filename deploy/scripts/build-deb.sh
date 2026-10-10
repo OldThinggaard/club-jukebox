@@ -131,6 +131,10 @@ if ! grep -q 'map-to-output' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "Touch must be mapped to the panel." >&2
   exit 1
 fi
+if ! grep -q 'Sendt til lyden' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The volume screen must say when the number was sent." >&2
+  exit 1
+fi
 if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The package is missing the club-name switch." >&2
   exit 1

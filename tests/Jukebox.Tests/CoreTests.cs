@@ -231,6 +231,57 @@ public class HallPlaybackTests
     }
 }
 
+public class LiveVolumeTests
+{
+    [Fact]
+    public void Sends_zero_to_the_player_that_is_already_running()
+    {
+        var root = Directory.CreateTempSubdirectory("jukebox-vol-");
+        var sock = Path.Combine(root.FullName, "mpv.sock");
+        using var server = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
+        server.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(sock));
+        server.Listen(1);
+        var seen = new System.Text.StringBuilder();
+        var serve = Task.Run(() =>
+        {
+            using var client = server.Accept();
+            var buffer = new byte[1024];
+            var idle = 0;
+            while (idle < 20)
+            {
+                if (client.Available == 0)
+                {
+                    Thread.Sleep(20);
+                    idle++;
+                    continue;
+                }
+
+                var read = client.Receive(buffer);
+                if (read <= 0)
+                    break;
+                var text = System.Text.Encoding.UTF8.GetString(buffer, 0, read);
+                seen.Append(text);
+                var replies = text.Count(ch => ch == '\n');
+                var answer = System.Text.Encoding.UTF8.GetBytes("{\"error\":\"success\"}\n");
+                for (var i = 0; i < Math.Max(1, replies); i++)
+                    client.Send(answer);
+                idle = 0;
+            }
+        });
+
+        var report = LiveVolume.Apply(root.FullName, 0, sock);
+        serve.Wait(TimeSpan.FromSeconds(2));
+        Assert.True(report.Socket);
+        Assert.Contains("\"volume\"", seen.ToString());
+        Assert.Contains("0", seen.ToString());
+        var heard = LiveVolume.Read(root.FullName);
+        Assert.NotNull(heard);
+        Assert.Equal(0, heard!.Percent);
+        Assert.True(heard.Socket);
+        root.Delete(true);
+    }
+}
+
 public class SearchSyntaxTests
 {
     [Fact]
