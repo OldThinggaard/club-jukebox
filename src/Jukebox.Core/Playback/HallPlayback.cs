@@ -5,6 +5,19 @@ public static class HallPlayback
     public static string AudioEnv(string? sink, string? port, int volume) =>
         $"SINK={SafeToken(sink)}\nPORT={SafeToken(port)}\nVOLUME={Math.Clamp(volume, 0, 100)}\n";
 
+    /// <summary>
+    /// Volume for the player. The sink is left blank on purpose: looking it up
+    /// from the service calls pactl, and that call was blocking the queue and
+    /// the volume buttons. The player finds the analog output itself.
+    /// </summary>
+    public static string RouteFile(string? audioDevice, int volumePercent)
+    {
+        var port = DisplayAudioProbe.WantsHeadphones(audioDevice)
+            ? "analog-output-headphones"
+            : "analog-output-speaker";
+        return AudioEnv(null, port, volumePercent);
+    }
+
     public static string Request(string queueId, string absolutePath, string mediaType, long durationMs, string? artPath) =>
         string.Join('\n', Clean(queueId), Clean(absolutePath), Clean(mediaType), Math.Max(0, durationMs).ToString(), Clean(artPath)) + "\n";
 
@@ -37,15 +50,38 @@ public static class HallPlayback
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(queueId) || !File.Exists(clockPath))
-                return false;
-            var lines = File.ReadAllLines(clockPath);
-            return lines.Length >= 4 && lines[0].Trim() == queueId && lines[3].Trim() == "1";
+            var lines = ReadClock(clockPath, queueId);
+            return lines is not null && lines.Length >= 4 && lines[3].Trim() == "1";
         }
         catch (IOException)
         {
             return false;
         }
+    }
+
+    public static long ClockDurationMs(string clockPath, string queueId)
+    {
+        try
+        {
+            var lines = ReadClock(clockPath, queueId);
+            if (lines is null || lines.Length < 3)
+                return 0;
+            return long.TryParse(lines[2].Trim(), out var ms) && ms > 0 ? ms : 0;
+        }
+        catch (IOException)
+        {
+            return 0;
+        }
+    }
+
+    private static string[]? ReadClock(string clockPath, string queueId)
+    {
+        if (string.IsNullOrWhiteSpace(queueId) || !File.Exists(clockPath))
+            return null;
+        var lines = File.ReadAllLines(clockPath);
+        if (lines.Length == 0 || lines[0].Trim() != queueId)
+            return null;
+        return lines;
     }
 
     public static bool DoneIs(string donePath, string queueId)

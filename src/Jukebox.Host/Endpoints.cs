@@ -371,12 +371,17 @@ public static class Endpoints
         }).AddEndpointFilter(Gate);
 
         admin.MapGet("/settings", (SettingsStore settings) => Results.Ok(settings.Get())).AddEndpointFilter(Gate);
-        admin.MapPut("/settings", (ClubSettings body, SettingsStore settings) =>
+        admin.MapPut("/settings", (ClubSettings body, SettingsStore settings, JukeboxPaths paths) =>
         {
             settings.Save(body);
-            var output = DisplayAudioProbe.ResolveOutput(body.AudioDevice, DisplayAudioProbe.QueryAudio());
-            var route = DisplayAudioProbe.Route(output);
-            DisplayAudioProbe.ApplyPort(route.Sink, route.Port, body.VolumePercent);
+            try
+            {
+                HallPlayback.AtomicWrite(paths.AudioEnv, HallPlayback.RouteFile(body.AudioDevice, body.VolumePercent));
+            }
+            catch (IOException)
+            {
+                // The player reads the saved value on its next pass.
+            }
             settings.Audit("settings", body.IdleStrategy);
             return Results.Ok(settings.Get());
         }).AddEndpointFilter(Gate);

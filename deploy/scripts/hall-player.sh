@@ -21,6 +21,7 @@ applied_sink=""
 applied_port=""
 applied_volume=""
 hw_volume=""
+hw_epoch=0
 SOCK="${runtime}/jukebox-mpv.sock"
 
 for _ in $(seq 1 30); do
@@ -52,6 +53,11 @@ read_audio() {
 
 apply_audio() {
   read_audio
+  # Keep the sink we already found. Asking pactl on every pass stalled the
+  # loop, so a finished song was never handed to the next one.
+  if [[ -z "$SINK" && -n "$applied_sink" ]]; then
+    SINK="$applied_sink"
+  fi
   if [[ -z "$SINK" ]] && command -v pactl >/dev/null 2>&1; then
     SINK="$(timeout 2 pactl list short sinks 2>/dev/null | awk '$2 ~ /analog/ { print $2; exit }')"
   fi
@@ -83,26 +89,51 @@ apply_audio() {
 }
 
 apply_hw_volume() {
-  [[ "$VOLUME" == "$hw_volume" ]] && return 0
-  if command -v amixer >/dev/null 2>&1; then
-    timeout 2 amixer -q sset Master "${VOLUME}%" unmute >/dev/null 2>&1 || true
-    timeout 2 amixer -q sset Speaker "${VOLUME}%" unmute >/dev/null 2>&1 || true
-    timeout 2 amixer -q sset Headphone "${VOLUME}%" unmute >/dev/null 2>&1 || true
-    timeout 2 amixer -q sset PCM "${VOLUME}%" unmute >/dev/null 2>&1 || true
+  local now
+  now=$(date +%s)
+  if [[ "$VOLUME" == "$hw_volume" && $((now - hw_epoch)) -lt 4 ]]; then
+    return 0
   fi
-  if command -v pactl >/dev/null 2>&1; then
-    timeout 2 pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
-    timeout 2 pactl set-sink-volume @DEFAULT_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
-    if [[ -n "$SINK" ]]; then
-      timeout 2 pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-      timeout 2 pactl set-sink-volume "$SINK" "${VOLUME}%" >/dev/null 2>&1 || true
+  # One short pass for every sound card. The default card is often HDMI,
+  # while the speakers the room hears are on another card.
+  timeout 3 sh -c '
+    vol="$1"
+    sink="$2"
+    if [ -r /proc/asound/cards ]; then
+      while read -r card _; do
+        case "$card" in
+          ""|*[!0-9]*) continue ;;
+        esac
+        amixer -c "$card" -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
+      done < /proc/asound/cards
     fi
-  fi
-  if command -v wpctl >/dev/null 2>&1; then
-    timeout 2 wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-    timeout 2 wpctl set-volume @DEFAULT_AUDIO_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
-  fi
+    amixer -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
+    if command -v pactl >/dev/null 2>&1; then
+      pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
+      pactl set-sink-volume @DEFAULT_SINK@ "${vol}%" >/dev/null 2>&1 || true
+      if [ -n "$sink" ]; then
+        pactl set-sink-mute "$sink" 0 >/dev/null 2>&1 || true
+        pactl set-sink-volume "$sink" "${vol}%" >/dev/null 2>&1 || true
+      fi
+      pactl list short sinks 2>/dev/null | while read -r _ name _; do
+        [ -n "$name" ] || continue
+        pactl set-sink-mute "$name" 0 >/dev/null 2>&1 || true
+        pactl set-sink-volume "$name" "${vol}%" >/dev/null 2>&1 || true
+      done
+    fi
+    if command -v wpctl >/dev/null 2>&1; then
+      wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+      wpctl set-volume @DEFAULT_AUDIO_SINK@ "${vol}%" >/dev/null 2>&1 || true
+    fi
+  ' _ "$VOLUME" "$SINK" >/dev/null 2>&1 || true
   hw_volume="$VOLUME"
+  hw_epoch="$now"
 }
 
 probe_ms() {
@@ -125,7 +156,7 @@ push_volume() {
 }
 
 monitor_index() {
-  xrandr --listmonitors 2>/dev/null | awk '
+  timeout 2 xrandr --listmonitors 2>/dev/null | awk '
     /^ *[0-9]+:/ {
       idx = $1
       gsub(":", "", idx)

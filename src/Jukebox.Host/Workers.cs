@@ -50,6 +50,8 @@ public sealed class PlaybackWorker(
     ILogger<PlaybackWorker> logger) : BackgroundService
 {
     private readonly TimerPlayer _timer = new();
+    private IReadOnlyList<DisplayInfo> _displays = [];
+    private long _displaysAt = long.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -63,7 +65,8 @@ public sealed class PlaybackWorker(
             try
             {
                 var club = settings.Get();
-                var displays = DisplayAudioProbe.QueryDisplays();
+                ApplySavedAudio();
+                var displays = CurrentDisplays();
                 if (string.IsNullOrWhiteSpace(club.UiOutput) || string.IsNullOrWhiteSpace(club.PlaybackOutput))
                 {
                     var (ui, hall) = DisplayAudioProbe.AutoAssign(displays);
@@ -76,8 +79,7 @@ public sealed class PlaybackWorker(
 
                 DisplayAudioProbe.WriteDisplayFile(paths.DisplaysFile, displays, club.UiOutput, club.PlaybackOutput);
                 var screen = DisplayAudioProbe.ScreenIndex(displays, club.PlaybackOutput);
-                var route = ApplySavedAudio();
-                job = coordinator.ClaimNext(screen, route.MpvDevice, club.ImageSeconds);
+                job = coordinator.ClaimNext(screen, null, club.ImageSeconds);
                 if (job is null)
                 {
                     await Task.Delay(400, stoppingToken);
@@ -108,22 +110,37 @@ public sealed class PlaybackWorker(
         }
     }
 
-    private (string? MpvDevice, string? Sink, string? Port) ApplySavedAudio()
+    private void ApplySavedAudio()
     {
         var fresh = settings.Get();
-        var output = DisplayAudioProbe.ResolveOutput(fresh.AudioDevice, DisplayAudioProbe.QueryAudio());
-        var route = DisplayAudioProbe.Route(output);
-        DisplayAudioProbe.ApplyPort(route.Sink, route.Port, fresh.VolumePercent);
         try
         {
-            HallPlayback.AtomicWrite(paths.AudioEnv, HallPlayback.AudioEnv(route.Sink, route.Port, fresh.VolumePercent));
+            HallPlayback.AtomicWrite(paths.AudioEnv, HallPlayback.RouteFile(fresh.AudioDevice, fresh.VolumePercent));
         }
         catch (IOException ex)
         {
             logger.LogDebug(ex, "Could not write the audio route");
         }
+    }
 
-        return route;
+    private IReadOnlyList<DisplayInfo> CurrentDisplays()
+    {
+        var now = Environment.TickCount64;
+        if (_displays.Count > 0 && now - _displaysAt < 30_000)
+            return _displays;
+        _displaysAt = now;
+        try
+        {
+            var found = DisplayAudioProbe.QueryDisplays();
+            if (found.Count > 0)
+                _displays = found;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Display probe failed");
+        }
+
+        return _displays;
     }
 
     private async Task<bool> HallPlayerReady(CancellationToken stoppingToken)
@@ -161,18 +178,20 @@ public sealed class PlaybackWorker(
             art = "";
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
         var started = Environment.TickCount64;
-        var cap = HallPlayback.PlaybackCap(job.DurationMs, job.Entry.MediaType);
         while (!stoppingToken.IsCancellationRequested)
         {
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
-            ApplySavedAudio();
             if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
                 || coordinator.IsFinished(job.Entry.Id)
                 || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id))
                 return PlayResult.Done();
-            if (TimeSpan.FromMilliseconds(elapsed) >= cap)
+            var known = job.DurationMs;
+            if (!string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase))
+                known = Math.Max(known, HallPlayback.ClockDurationMs(paths.PlayClock, job.Entry.Id));
+            if (TimeSpan.FromMilliseconds(elapsed) >= HallPlayback.PlaybackCap(known, job.Entry.MediaType))
                 return PlayResult.Done();
+            ApplySavedAudio();
             await Task.Delay(400, stoppingToken);
         }
 

@@ -305,17 +305,19 @@ public static partial class DisplayAudioProbe
             using var process = System.Diagnostics.Process.Start(start);
             if (process is null)
                 return null;
+            // WaitForExit(timeout) can sit forever once the redirected pipe fills.
+            // That froze the queue and the volume buttons whenever pactl was slow.
             var stdout = process.StandardOutput.ReadToEndAsync();
             var stderr = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(2000))
+            if (!process.WaitForExitAsync().Wait(TimeSpan.FromSeconds(2)))
             {
                 try { process.Kill(entireProcessTree: true); } catch { /* probe is best effort */ }
                 return null;
             }
 
-            if (!stdout.Wait(500))
+            if (!stdout.Wait(TimeSpan.FromMilliseconds(500)))
                 return null;
-            _ = stderr.Wait(500);
+            _ = stderr.Wait(TimeSpan.FromMilliseconds(200));
             return process.ExitCode == 0 ? stdout.Result : null;
         }
         catch

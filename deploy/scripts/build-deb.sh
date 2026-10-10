@@ -107,6 +107,14 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
+if ! grep -q '/proc/asound/cards' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The volume buttons must reach every sound card." >&2
+  exit 1
+fi
+if ! grep -q 'ao-volume' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must reach the playing file." >&2
+  exit 1
+fi
 if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then
   echo "An update must not talk to systemd." >&2
   exit 1

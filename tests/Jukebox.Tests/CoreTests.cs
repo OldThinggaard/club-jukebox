@@ -190,6 +190,8 @@ public class HallPlaybackTests
         Assert.Contains("PORT=analog-output-headphones", text);
         Assert.Contains("VOLUME=100", text);
         Assert.Equal("SINK=\nPORT=\nVOLUME=80\n", HallPlayback.AudioEnv("sink name", "port;rm", 80));
+        Assert.Equal("SINK=\nPORT=analog-output-speaker\nVOLUME=40\n", HallPlayback.RouteFile("speakers", 40));
+        Assert.Equal("SINK=\nPORT=analog-output-headphones\nVOLUME=12\n", HallPlayback.RouteFile("headphones", 12));
     }
 
     [Fact]
@@ -217,6 +219,8 @@ public class HallPlaybackTests
             Assert.False(HallPlayback.ClockEnded(clock, "this"));
             HallPlayback.AtomicWrite(clock, "this\n180000\n180000\n1\n");
             Assert.True(HallPlayback.ClockEnded(clock, "this"));
+            Assert.Equal(180_000, HallPlayback.ClockDurationMs(clock, "this"));
+            Assert.Equal(0, HallPlayback.ClockDurationMs(clock, "other"));
             var request = HallPlayback.Request("this", "/media/song.mp4", "video", 180_000, null);
             Assert.StartsWith("this\n/media/song.mp4\nvideo\n180000\n", request);
         }

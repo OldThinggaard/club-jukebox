@@ -54,6 +54,7 @@ def write_clock(time_pos, duration, ended):
     time_ms = int(time_pos * 1000) if time_pos is not None else 0
     duration_ms = int(duration * 1000) if duration is not None else 0
     text = f"{queue_id}\n{time_ms}\n{duration_ms}\n{1 if ended else 0}\n"
+    os.makedirs(os.path.dirname(clock_path), exist_ok=True)
     temporary = clock_path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
         handle.write(text)
@@ -75,7 +76,13 @@ sock.settimeout(0.4)
 sock.connect(path)
 try:
     if volume != "-":
-        request(sock, {"command": ["set_property", "volume", int(volume)]})
+        level = max(0, min(100, int(volume)))
+        request(sock, {"command": ["set_property", "volume", level]})
+        for name, value in (("ao-volume", level), ("mute", False), ("ao-mute", False)):
+            try:
+                request(sock, {"command": ["set_property", name, value]})
+            except OSError:
+                break
     else:
         eof = prop(sock, "eof-reached")
         time_pos = number(prop(sock, "time-pos"))
