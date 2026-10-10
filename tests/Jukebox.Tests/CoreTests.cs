@@ -234,55 +234,44 @@ public class HallPlaybackTests
 public class LiveVolumeTests
 {
     [Fact]
-    public void Sends_zero_to_the_player_that_is_already_running()
+    public void Turns_off_the_idle_jack_and_sets_the_one_in_use()
     {
         var root = Directory.CreateTempSubdirectory("jukebox-vol-");
-        var sock = Path.Combine(root.FullName, "mpv.sock");
-        using var server = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
-        server.Bind(new System.Net.Sockets.UnixDomainSocketEndPoint(sock));
-        server.Listen(1);
-        var seen = new System.Text.StringBuilder();
-        var serve = Task.Run(() =>
+        var log = Path.Combine(root.FullName, "amixer.log");
+        File.WriteAllText(Path.Combine(root.FullName, "cards"), " 0 [PCH]: HDA Intel\n");
+        var wpctl = Path.Combine(root.FullName, "wpctl");
+        var amixer = Path.Combine(root.FullName, "amixer");
+        File.WriteAllText(wpctl, "#!/bin/sh\nprintf '%s\\n' '  * analog-output-headphones: Headphones' '    analog-output-speaker: Speakers'\n");
+        File.WriteAllText(amixer, "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$AMIXER_LOG\"\n");
+        File.SetUnixFileMode(wpctl, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        File.SetUnixFileMode(amixer, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        var previousPath = Environment.GetEnvironmentVariable("PATH");
+        var previousScript = Environment.GetEnvironmentVariable("JUKEBOX_VOLUME_SCRIPT");
+        var previousCards = Environment.GetEnvironmentVariable("JUKEBOX_CARDS");
+        var previousLog = Environment.GetEnvironmentVariable("AMIXER_LOG");
+        Environment.SetEnvironmentVariable("PATH", root.FullName + ":" + previousPath);
+        Environment.SetEnvironmentVariable("JUKEBOX_VOLUME_SCRIPT", "/workspace/deploy/scripts/mpv-volume.py");
+        Environment.SetEnvironmentVariable("JUKEBOX_CARDS", Path.Combine(root.FullName, "cards"));
+        Environment.SetEnvironmentVariable("AMIXER_LOG", log);
+        try
         {
-            using var client = server.Accept();
-            var buffer = new byte[1024];
-            var idle = 0;
-            while (idle < 20)
-            {
-                if (client.Available == 0)
-                {
-                    Thread.Sleep(20);
-                    idle++;
-                    continue;
-                }
-
-                var read = client.Receive(buffer);
-                if (read <= 0)
-                    break;
-                var text = System.Text.Encoding.UTF8.GetString(buffer, 0, read);
-                seen.Append(text);
-                var replies = text.Count(ch => ch == '\n');
-                var answer = System.Text.Encoding.UTF8.GetBytes("{\"error\":\"success\"}\n");
-                for (var i = 0; i < Math.Max(1, replies); i++)
-                    client.Send(answer);
-                idle = 0;
-            }
-        });
-
-        var report = LiveVolume.Apply(root.FullName, 0, sock);
-        serve.Wait(TimeSpan.FromSeconds(2));
-        Assert.True(report.Socket);
-        Assert.False(report.Pipe);
-        Assert.False(report.Alsa);
-        Assert.Contains("\"volume\"", seen.ToString());
-        Assert.DoesNotContain("ao-volume", seen.ToString());
-        Assert.Contains("0", seen.ToString());
-        Assert.DoesNotContain("mute", seen.ToString());
-        var heard = LiveVolume.Read(root.FullName);
-        Assert.NotNull(heard);
-        Assert.Equal(0, heard!.Percent);
-        Assert.True(heard.Socket);
-        root.Delete(true);
+            var report = LiveVolume.Apply(root.FullName, 40);
+            var seen = File.ReadAllText(log);
+            Assert.True(report.Alsa);
+            Assert.False(report.Socket);
+            Assert.Contains("sset Headphone 40% unmute", seen);
+            Assert.Contains("sset Speaker 0% mute", seen);
+            Assert.DoesNotContain("sset Speaker 40% unmute", seen);
+            Assert.DoesNotContain("sset Headphone 0% mute", seen);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("PATH", previousPath);
+            Environment.SetEnvironmentVariable("JUKEBOX_VOLUME_SCRIPT", previousScript);
+            Environment.SetEnvironmentVariable("JUKEBOX_CARDS", previousCards);
+            Environment.SetEnvironmentVariable("AMIXER_LOG", previousLog);
+            root.Delete(true);
+        }
     }
 }
 

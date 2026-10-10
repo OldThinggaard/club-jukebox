@@ -1,14 +1,12 @@
-using System.Net.Sockets;
-using System.Text;
-using System.Text.Json;
+using System.Diagnostics;
 
 namespace Jukebox.Core.Playback;
 
 public sealed record VolumeReport(int Percent, bool Socket, bool Pipe, bool Alsa);
 
 /// <summary>
-/// Sends the on-screen percent to the song that is playing.
-/// Debian's own volume stays at full on the output already in use.
+/// Turns the idle jack off and sets the one output that is already playing.
+/// Both jacks at once cancel the bass.
 /// </summary>
 public static class LiveVolume
 {
@@ -17,7 +15,7 @@ public static class LiveVolume
     public static VolumeReport Apply(string dataDirectory, int percent, string? socketPath = null)
     {
         percent = Math.Clamp(percent, 0, 100);
-        var report = new VolumeReport(percent, TryMpv(socketPath ?? SocketPath, percent), false, false);
+        var report = new VolumeReport(percent, false, false, TryActive(percent));
         try
         {
             HallPlayback.AtomicWrite(Path.Combine(dataDirectory, "volume.heard"), HeardText(report));
@@ -69,38 +67,38 @@ public static class LiveVolume
     public static string HeardText(VolumeReport report) =>
         $"PERCENT={report.Percent}\nSOCKET={(report.Socket ? "1" : "0")}\nPIPE={(report.Pipe ? "1" : "0")}\nALSA={(report.Alsa ? "1" : "0")}\n";
 
-    private static bool TryMpv(string socketPath, int percent)
+    private static bool TryActive(int percent)
     {
+        var script = Environment.GetEnvironmentVariable("JUKEBOX_VOLUME_SCRIPT");
+        if (string.IsNullOrWhiteSpace(script))
+            script = "/opt/jukebox/lib/mpv-volume.py";
+        if (!File.Exists(script))
+            return false;
         try
         {
-            using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-            var connect = socket.ConnectAsync(new UnixDomainSocketEndPoint(socketPath));
-            if (!connect.Wait(TimeSpan.FromMilliseconds(400)))
+            var start = new ProcessStartInfo("python3")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            start.ArgumentList.Add(script);
+            start.ArgumentList.Add("active");
+            start.ArgumentList.Add(percent.ToString());
+            using var process = Process.Start(start);
+            if (process is null)
                 return false;
-            socket.SendTimeout = 400;
-            socket.ReceiveTimeout = 400;
-            return Send(socket, "volume", percent);
+            if (!process.WaitForExitAsync().Wait(2000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { /* best effort */ }
+                return false;
+            }
+
+            return process.ExitCode == 0;
         }
         catch
         {
             return false;
         }
-    }
-
-    private static bool Send(Socket socket, string property, object value)
-    {
-        var json = JsonSerializer.Serialize(new { command = new object[] { "set_property", property, value } }) + "\n";
-        socket.Send(Encoding.UTF8.GetBytes(json));
-        var got = new StringBuilder();
-        var buffer = new byte[512];
-        while (got.ToString().IndexOf('\n') < 0)
-        {
-            var read = socket.Receive(buffer);
-            if (read <= 0)
-                return false;
-            got.Append(Encoding.UTF8.GetString(buffer, 0, read));
-        }
-
-        return got.ToString().Contains("success", StringComparison.Ordinal);
     }
 }

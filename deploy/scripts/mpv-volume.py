@@ -61,6 +61,73 @@ def write_clock(time_pos, duration, ended):
     os.replace(temporary, clock_path)
 
 
+def active_output(level):
+    """Turn the idle jack off and set the one that is already playing.
+
+    Both jacks at once cancel the bass. The headset selects itself, so this
+    only follows that choice.
+    """
+    import subprocess
+
+    level = max(0, min(100, int(level)))
+    try:
+        inspected = subprocess.run(
+            ["wpctl", "inspect", "@DEFAULT_AUDIO_SINK@"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        raise SystemExit(1)
+    chosen = ""
+    for line in inspected.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("*"):
+            continue
+        low = stripped.lower()
+        if "headphone" in low:
+            chosen = "headphone"
+            break
+        if "speaker" in low:
+            chosen = "speaker"
+            break
+    if not chosen:
+        raise SystemExit(1)
+    live = "Headphone" if chosen == "headphone" else "Speaker"
+    idle_name = "Speaker" if chosen == "headphone" else "Headphone"
+    cards = []
+    cards_path = os.environ.get("JUKEBOX_CARDS", "/proc/asound/cards")
+    if os.path.isfile(cards_path):
+        with open(cards_path, encoding="utf-8", errors="replace") as handle:
+            for row in handle:
+                parts = row.split()
+                if parts and parts[0].isdigit():
+                    cards.append(parts[0])
+    if not cards:
+        cards = [None]
+
+    def sset(card, name, value, switch):
+        args = ["amixer"]
+        if card is not None:
+            args += ["-c", card]
+        args += ["-q", "sset", name, value, switch]
+        try:
+            subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+    for card in cards:
+        sset(card, live, f"{level}%", "unmute")
+        sset(card, idle_name, "0%", "mute")
+        sset(card, "Master", f"{level}%", "unmute")
+
+
+if path == "active":
+    active_output(volume)
+    raise SystemExit(0)
+
+
 def reached_end(eof, idle, percent, time_pos, duration):
     if eof is True:
         return True

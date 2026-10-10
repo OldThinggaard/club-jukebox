@@ -10,13 +10,6 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && command -v dbus-launch >/dev/null
   eval "$(dbus-launch --sh-syntax)"
 fi
 
-# An earlier version moved the sound card's own knobs with the volume
-# buttons. That changes the sound itself. Put the card back once, then
-# leave it alone. PipeWire starts afterwards and keeps this state.
-if command -v alsactl >/dev/null 2>&1; then
-  alsactl init >/dev/null 2>&1 || true
-fi
-
 if command -v pipewire >/dev/null 2>&1; then
   pipewire >/var/log/jukebox-pipewire.log 2>&1 &
   sleep 0.3
@@ -26,17 +19,6 @@ if command -v pipewire >/dev/null 2>&1; then
   if command -v pipewire-pulse >/dev/null 2>&1; then
     pipewire-pulse >/var/log/jukebox-pipewire-pulse.log 2>&1 &
   fi
-fi
-
-# Debian's volume stays at full on the one output already selected.
-# The other jack is not opened, so the two cannot cancel the bass.
-if command -v wpctl >/dev/null 2>&1; then
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    wpctl status >/dev/null 2>&1 && break
-    sleep 0.3
-  done
-  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
 fi
 
 xset s off || true

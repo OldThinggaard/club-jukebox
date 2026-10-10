@@ -107,32 +107,28 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
-if ! grep -q 'set_property", "volume"' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must turn the song." >&2
+if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must use the output that is already playing." >&2
   exit 1
 fi
-if grep -q 'ao-volume\|amixer\|set-volume\|Headphone\|Speaker' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must not move Debian or the other output." >&2
+if ! grep -q 'mpv-volume.py active' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must keep the idle output off." >&2
   exit 1
 fi
-if ! grep -q -- '--volume="$VOLUME"' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "The song must follow the on-screen percent." >&2
+if grep -q 'set-sink-port' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must not switch the jack." >&2
   exit 1
 fi
-if ! grep -q -- '--ao-volume=100' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "Debian's stream volume must stay at full." >&2
+if ! grep -q -- '--volume=100' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The file itself must stay at full level." >&2
   exit 1
 fi
-if ! grep -q 'set-volume @DEFAULT_AUDIO_SINK@ 1.0' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "Debian's volume must stay at full on the selected output." >&2
+if grep -q 'alsactl init' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Startup must not reset the sound card." >&2
   exit 1
 fi
 if grep -q 'mpv-volume.py pipewire\|mpv-volume.py alsa' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "The player must not move the sound card." >&2
-  exit 1
-fi
-if ! grep -q 'alsactl init' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "The sound card must be put back before PipeWire starts." >&2
+  echo "The player must not move every output." >&2
   exit 1
 fi
 if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then

@@ -64,23 +64,10 @@ apply_audio() {
     PORT="analog-output-speaker"
   fi
   if [[ "$SINK" != "$applied_sink" || "$PORT" != "$applied_port" ]]; then
-    if command -v pactl >/dev/null 2>&1; then
-      while read -r _ name _; do
-        [[ -n "$name" ]] || continue
-        timeout 2 pactl set-card-profile "$name" output:analog-stereo >/dev/null 2>&1 || true
-      done < <(timeout 2 pactl list short cards 2>/dev/null || true)
-      timeout 2 pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
-      if [[ -n "$SINK" ]]; then
-        timeout 2 pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
-        timeout 2 pactl set-sink-port "$SINK" "$PORT" >/dev/null 2>&1 || true
-        timeout 2 pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-      fi
-    fi
     # The headset jack switches the output by itself. Leave that alone.
     applied_sink="$SINK"
     applied_port="$PORT"
   fi
-  # Only the playing file's own level. The sound card's knobs stay put.
   push_volume
 }
 
@@ -95,10 +82,10 @@ probe_ms() {
 }
 
 push_volume() {
-  if [[ "$VOLUME" == "$applied_volume" || ! -S "$SOCK" ]]; then
+  if [[ "$VOLUME" == "$applied_volume" ]]; then
     return 0
   fi
-  if python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" "$VOLUME"; then
+  if python3 /opt/jukebox/lib/mpv-volume.py active "$VOLUME"; then
     applied_volume="$VOLUME"
   fi
 }
@@ -162,7 +149,7 @@ start_play() {
     --no-config --no-terminal --really-quiet --no-border --ontop
     --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --ao=pulse --volume="$VOLUME" --ao-volume=100
+    --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
   if [[ -n "$SINK" ]]; then
@@ -200,7 +187,7 @@ start_play() {
   # Pulse was not ready. Play through ALSA so the speakers still get the sound.
   local -a fallback
   rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume="$VOLUME" --ao-volume=100 --input-ipc-server="$SOCK")
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume=100 --input-ipc-server="$SOCK")
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else
