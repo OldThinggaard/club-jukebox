@@ -59,8 +59,26 @@ xinput_bin() {
   fi
 }
 
+screen_size() {
+  xrandr --query 2>/dev/null | awk '/^Screen / { for (i=1;i<=NF;i++) if ($i=="current") { print $(i+1), $(i+3); exit } }'
+}
+
+set_matrix() {
+  local bin="$1" id="$2" panel="$3" sw sh geom ow oh ox oy c0 c2 c4 c5
+  read -r sw sh < <(screen_size || true)
+  geom="$(panel_geom "$panel" || true)"
+  [[ "$geom" =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]] || return 0
+  ow="${BASH_REMATCH[1]}"
+  oh="${BASH_REMATCH[2]}"
+  ox="${BASH_REMATCH[3]}"
+  oy="${BASH_REMATCH[4]}"
+  [[ -n "${sw:-}" && "${sw:-0}" -gt 0 && -n "${sh:-}" && "${sh:-0}" -gt 0 ]] || return 0
+  read -r c0 c2 c4 c5 < <(awk -v sw="$sw" -v sh="$sh" -v ow="$ow" -v oh="$oh" -v ox="$ox" -v oy="$oy" 'BEGIN { printf "%.6f %.6f %.6f %.6f\n", ow/sw, ox/sw, oh/sh, oy/sh }')
+  "$bin" set-prop "$id" "Coordinate Transformation Matrix" "$c0" 0 "$c2" 0 "$c4" "$c5" 0 0 1 >/dev/null 2>&1 || true
+}
+
 map_touch() {
-  local panel bin name id key ev props devname take
+  local panel bin name id
   panel="$(internal_output || true)"
   [[ -n "$panel" ]] || return 0
   bin="$(xinput_bin || true)"
@@ -68,42 +86,36 @@ map_touch() {
     printf '%s\n' "xinput mangler" >> /var/log/jukebox-touch.log
     return 0
   fi
-  declare -A want=()
-  for ev in /dev/input/event*; do
-    [[ -c "$ev" ]] || continue
-    props="$(udevadm info --query=property --name="$ev" 2>/dev/null || true)"
-    printf '%s\n' "$props" | grep -qx 'ID_INPUT_TOUCHSCREEN=1' || continue
-    devname="$(printf '%s\n' "$props" | sed -n 's/^NAME="\{0,1\}\(.*\)"\{0,1\}$/\1/p' | head -1)"
-    [[ -n "$devname" ]] && want["$devname"]=1
-  done
   while IFS= read -r name; do
+    name="${name%"${name##*[![:space:]]}"}"
     [[ -n "$name" ]] || continue
     case "$name" in
       Virtual*|*"XTEST"*) continue ;;
-      *[Tt]ouch[Pp]ad*|*[Tt]rack[Pp]ad*) continue ;;
     esac
-    take=0
-    if [[ -n "${want[$name]:-}" ]]; then
-      take=1
-    elif [[ ${#want[@]} -gt 0 ]]; then
-      for key in "${!want[@]}"; do
-        if [[ "$name" == *"$key"* || "$key" == *"$name"* ]]; then
-          take=1
-        fi
-      done
-    fi
-    if [[ "$take" -eq 0 ]]; then
-      case "$name" in
-        *[Tt]ouch[Ss]creen*|*[Tt]ouchscreen*|*[Mm]ultitouch*|*Goodix*|*eGalax*|*ILITEK*|*Weida*|*G2TOUCH*|*Melfas*|*ft5x06*|*FT5406*|*hid-multitouch*) take=1 ;;
-      esac
-    fi
-    [[ "$take" -eq 1 ]] || continue
     while IFS= read -r id; do
       [[ "$id" =~ ^[0-9]+$ ]] || continue
       "$bin" map-to-output "$id" "$panel" >/dev/null 2>&1 || true
+      set_matrix "$bin" "$id" "$panel"
       printf '%s\n' "touch $id ($name) -> $panel" >> /var/log/jukebox-touch.log
     done < <("$bin" list --id-only "$name" 2>/dev/null || true)
   done < <("$bin" list --name-only 2>/dev/null || true)
+}
+
+prepare_openbox() {
+  local src="${HOME}/.config/openbox" system=/etc/xdg/openbox/rc.xml
+  mkdir -p "$src"
+  [[ -f "$system" ]] || return 0
+  awk '
+    /<\/applications>/ && !done {
+      print "  <application class=\"*\">"
+      print "    <decor>no</decor>"
+      print "    <fullscreen>no</fullscreen>"
+      print "    <maximized>no</maximized>"
+      print "  </application>"
+      done=1
+    }
+    { print }
+  ' "$system" > "$src/rc.xml"
 }
 
 (
@@ -117,6 +129,7 @@ map_touch() {
   done
 ) >/var/log/jukebox-touch.log 2>&1 &
 
+prepare_openbox
 openbox >/var/log/jukebox-openbox.log 2>&1 &
 openbox_pid=$!
 

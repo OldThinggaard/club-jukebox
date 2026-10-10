@@ -20,6 +20,7 @@ VOLUME=80
 applied_sink=""
 applied_port=""
 applied_volume=""
+hw_volume=""
 SOCK="${runtime}/jukebox-mpv.sock"
 
 for _ in $(seq 1 30); do
@@ -64,29 +65,54 @@ apply_audio() {
         timeout 2 pactl set-card-profile "$name" output:analog-stereo >/dev/null 2>&1 || true
       done < <(timeout 2 pactl list short cards 2>/dev/null || true)
       timeout 2 pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
-      timeout 2 pactl set-sink-volume @DEFAULT_SINK@ 100% >/dev/null 2>&1 || true
       if [[ -n "$SINK" ]]; then
         timeout 2 pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
         timeout 2 pactl set-sink-port "$SINK" "$PORT" >/dev/null 2>&1 || true
         timeout 2 pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-        timeout 2 pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
       fi
     fi
-    if command -v wpctl >/dev/null 2>&1; then
-      timeout 2 wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-      timeout 2 wpctl set-volume @DEFAULT_AUDIO_SINK@ 100% >/dev/null 2>&1 || true
-    fi
     if command -v amixer >/dev/null 2>&1; then
-      timeout 2 amixer -q sset Master 100% unmute >/dev/null 2>&1 || true
-      timeout 2 amixer -q sset Speaker 100% unmute >/dev/null 2>&1 || true
-      timeout 2 amixer -q sset Headphone 100% unmute >/dev/null 2>&1 || true
-      timeout 2 amixer -q sset PCM 100% unmute >/dev/null 2>&1 || true
       timeout 2 amixer -q sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
     fi
     applied_sink="$SINK"
     applied_port="$PORT"
+    hw_volume=""
   fi
+  apply_hw_volume
   push_volume
+}
+
+apply_hw_volume() {
+  [[ "$VOLUME" == "$hw_volume" ]] && return 0
+  if command -v amixer >/dev/null 2>&1; then
+    timeout 2 amixer -q sset Master "${VOLUME}%" unmute >/dev/null 2>&1 || true
+    timeout 2 amixer -q sset Speaker "${VOLUME}%" unmute >/dev/null 2>&1 || true
+    timeout 2 amixer -q sset Headphone "${VOLUME}%" unmute >/dev/null 2>&1 || true
+    timeout 2 amixer -q sset PCM "${VOLUME}%" unmute >/dev/null 2>&1 || true
+  fi
+  if command -v pactl >/dev/null 2>&1; then
+    timeout 2 pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
+    timeout 2 pactl set-sink-volume @DEFAULT_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
+    if [[ -n "$SINK" ]]; then
+      timeout 2 pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+      timeout 2 pactl set-sink-volume "$SINK" "${VOLUME}%" >/dev/null 2>&1 || true
+    fi
+  fi
+  if command -v wpctl >/dev/null 2>&1; then
+    timeout 2 wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+    timeout 2 wpctl set-volume @DEFAULT_AUDIO_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
+  fi
+  hw_volume="$VOLUME"
+}
+
+probe_ms() {
+  local file="$1" raw
+  raw="$(timeout 8 ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" 2>/dev/null || true)"
+  raw="${raw%%.*}"
+  case "$raw" in
+    ''|*[!0-9]*) printf '%s\n' 0; return 0 ;;
+  esac
+  printf '%s\n' "$((raw * 1000))"
 }
 
 push_volume() {
@@ -140,7 +166,15 @@ stop_play() {
 
 start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
-  local screen seconds
+  local screen seconds probed
+  if [[ "$kind" != "image" ]]; then
+    probed="$(probe_ms "$path")"
+    if [[ "$probed" -ge 3000 ]]; then
+      duration="$probed"
+    elif [[ "$duration" -lt 20000 ]]; then
+      duration=0
+    fi
+  fi
   apply_audio
   screen="$(monitor_index || true)"
   local -a args
@@ -212,7 +246,7 @@ past_limit() {
   local extra=8
   if [[ "$play_kind" == "image" ]]; then
     extra=2
-  elif [[ "$play_ms" -lt 20000 ]]; then
+  elif [[ "$play_ms" -lt 3000 ]]; then
     return 1
   fi
   local now limit

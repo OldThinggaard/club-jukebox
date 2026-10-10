@@ -21,7 +21,8 @@ if [[ "$ROLE" == "hall" ]]; then
 else
   GEOM="${UI_GEOM:-}"
   URL="${JUKEBOX_KIOSK_URL:-http://127.0.0.1:47123/}"
-  PROFILE="${HOME}/.config/jukebox-shelf"
+  # A new folder, so an old fullscreen size cannot cover both screens.
+  PROFILE="${HOME}/.config/jukebox-ui"
 fi
 
 SIZE="1280,800"
