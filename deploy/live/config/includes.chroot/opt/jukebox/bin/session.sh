@@ -28,6 +28,49 @@ if command -v unclutter >/dev/null 2>&1; then
   unclutter -idle 3 -root >/dev/null 2>&1 &
 fi
 
+# The touch panel must not share its coordinates with the television.
+# Otherwise a press lands beside the button it was aimed at.
+internal_output() {
+  xrandr --query 2>/dev/null | awk '$2=="connected" && $1 ~ /^(eDP|LVDS|DSI)/ { print $1; exit }'
+}
+
+layout_screens() {
+  local panel hall
+  panel="$(internal_output || true)"
+  hall="$(xrandr --query 2>/dev/null | awk '$2=="connected" && $1 !~ /^(eDP|LVDS|DSI)/ { print $1; exit }')"
+  if [[ -n "$panel" ]]; then
+    xrandr --output "$panel" --auto --primary --pos 0x0 >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$hall" && -n "$panel" ]]; then
+    xrandr --output "$hall" --auto --right-of "$panel" >/dev/null 2>&1 || true
+  fi
+}
+
+map_touch() {
+  local panel id
+  panel="$(internal_output || true)"
+  [[ -n "$panel" ]] || return 0
+  command -v xinput >/dev/null 2>&1 || return 0
+  while read -r id; do
+    [[ "$id" =~ ^[0-9]+$ ]] || continue
+    if ! xinput list-props "$id" 2>/dev/null | grep -q "Abs .*Position X"; then
+      continue
+    fi
+    xinput map-to-output "$id" "$panel" >/dev/null 2>&1 || true
+  done < <(xinput list --id-only 2>/dev/null || true)
+}
+
+(
+  while true; do
+    panel="$(internal_output || true)"
+    if [[ -n "$panel" ]] && ! xrandr --query 2>/dev/null | awk -v name="$panel" '$1==name && $2=="connected" { for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+x[0-9]+\+0\+0$/) ok=1 } END { exit !ok }'; then
+      layout_screens
+    fi
+    map_touch
+    sleep 3
+  done
+) >/var/log/jukebox-touch.log 2>&1 &
+
 openbox >/var/log/jukebox-openbox.log 2>&1 &
 openbox_pid=$!
 

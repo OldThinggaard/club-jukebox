@@ -158,6 +158,7 @@ public sealed class PlaybackCoordinator
     private PlayJob? _current;
     private string _engine = "timer";
     private string? _lastError;
+    private string? _finishedQueueId;
 
     public PlaybackCoordinator(QueueStore queue, MediaStore media, SettingsStore settings)
     {
@@ -185,6 +186,18 @@ public sealed class PlaybackCoordinator
     {
         lock (_gate)
             _engine = name;
+    }
+
+    public void MarkFinished(string? queueId)
+    {
+        lock (_gate)
+            _finishedQueueId = string.IsNullOrWhiteSpace(queueId) ? null : queueId.Trim();
+    }
+
+    public bool IsFinished(string queueId)
+    {
+        lock (_gate)
+            return queueId.Length > 0 && _finishedQueueId == queueId;
     }
 
     public void SetPosition(long position)

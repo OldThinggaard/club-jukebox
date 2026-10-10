@@ -261,8 +261,6 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .qr-card img { width: 100%; height: auto; display: block; }
 .qr-card p { margin: 8px 0 0; font-size: 13px; text-align: center; }
 .play-meta h2 { font-family: Fraunces, serif; font-size: clamp(40px, 6vw, 84px); margin: 0; }
-.track { height: 6px; background: rgba(255,255,255,0.2); border-radius: 99px; overflow: hidden; }
-.track span { display: block; height: 100%; background: #e2b15a; }
 
 .admin { background: #110e0b; color: #f4efe6; padding: 20px; }
 .admin-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }

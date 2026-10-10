@@ -143,6 +143,7 @@ public sealed class PlaybackWorker(
 
     private async Task<PlayResult> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
     {
+        coordinator.MarkFinished(null);
         try
         {
             if (File.Exists(paths.PlayDone))
@@ -164,7 +165,7 @@ public sealed class PlaybackWorker(
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
             ApplySavedAudio();
-            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id))
+            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id) || coordinator.IsFinished(job.Entry.Id))
                 return PlayResult.Done();
             if (TimeSpan.FromMilliseconds(elapsed) >= cap)
                 return PlayResult.Done();

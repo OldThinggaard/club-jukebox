@@ -69,6 +69,15 @@ public static class Endpoints
             return Results.NoContent();
         });
 
+        app.MapPost("/api/hall/finished", (FinishedBody body, HttpContext http, PlaybackCoordinator playback) =>
+        {
+            var remote = http.Connection.RemoteIpAddress;
+            if (remote is null || !IPAddress.IsLoopback(remote))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            playback.MarkFinished(body.QueueId);
+            return Results.NoContent();
+        });
+
         app.MapGet("/api/media", (string? q, string? category, string? artist, string? letter, string? type, int? limit, int? offset, MediaStore media, SettingsStore settings, QueueStore queue) =>
         {
             var items = media.Query(new CatalogFilter
@@ -602,6 +611,7 @@ public static class Endpoints
     }
 
     private sealed record EnqueueBody(string MediaId, string? Origin, string? ClientLabel);
+    private sealed record FinishedBody(string? QueueId);
     private sealed record LoginBody(string? Pin);
     private sealed record MediaEdit(string? Title, string? Artist, string? Album, string? Genre, int? Year, bool? Hidden, string? AvailableFrom, string? AvailableUntil, List<string>? CategoryIds);
     private sealed record NameBody(string? Name);

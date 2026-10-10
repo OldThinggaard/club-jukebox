@@ -128,6 +128,7 @@ start_play() {
   rm -f "$SOCK"
   args=(
     --no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no
+    --no-osc --osd-level=0 --cursor-autohide=always
     --force-window=immediate --ao=pulse --volume="$VOLUME"
     --input-ipc-server="$SOCK"
   )
@@ -162,7 +163,7 @@ start_play() {
   # Pulse was not ready. Play through ALSA so the speakers still get the sound.
   local -a fallback
   rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else
@@ -180,18 +181,35 @@ start_play() {
   push_volume
 }
 
+note_finished() {
+  local id="$1"
+  [[ -n "$id" ]] || return 0
+  printf '%s\n' "$id" > "$DONE"
+  curl -fsS --max-time 2 -X POST http://127.0.0.1:47123/api/hall/finished \
+    -H 'Content-Type: application/json' \
+    -d "{\"queueId\":\"${id}\"}" >/dev/null 2>&1 || true
+}
+
 finish_if_stopped() {
   if [[ -z "${play_pid}" ]]; then
     return 0
+  fi
+  if [[ -S "$SOCK" ]]; then
+    python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - >/dev/null 2>&1
+    if [[ "$?" -eq 2 ]]; then
+      note_finished "${last}"
+      kill "${play_pid}" >/dev/null 2>&1 || true
+      wait "${play_pid}" >/dev/null 2>&1 || true
+      play_pid=""
+      return 0
+    fi
   fi
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     return 0
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
-  if [[ -n "${last}" ]]; then
-    printf '%s\n' "${last}" > "$DONE"
-  fi
+  note_finished "${last}"
 }
 
 last=""

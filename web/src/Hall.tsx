@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { api, type Screen } from "./lib/api";
-import { percent } from "./lib/utils";
 
 export function Hall() {
   const [screen, setScreen] = useState<Screen | null>(null);
@@ -50,17 +49,14 @@ export function Hall() {
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />
       )}
       <section className="hall-copy">
-        <p className="eyebrow">{screen?.clubName ?? "Clubhouse"}</p>
-        {playing ? (
+        <p className="eyebrow">{playing && screen?.engine === "mpv" ? "" : screen?.clubName ?? "Clubhouse"}</p>
+        {playing && screen?.engine !== "mpv" ? (
           <div className="play-meta">
             <p className="date">{playing.clientLabel === "reklame" ? "Reklame" : playing.origin === "auto" ? "House selection" : "From the queue"}</p>
             <h2>{playing.title}</h2>
             <p>{playing.artist}</p>
-            <div className="track" aria-hidden>
-              <span style={{ width: `${percent(playing.positionMs, playing.durationMs)}%` }} />
-            </div>
           </div>
-        ) : (
+        ) : playing ? null : (
           <>
             <h1>{screen?.clock ?? "—"}</h1>
             <p className="date">{screen?.dateLabel}</p>
