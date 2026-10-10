@@ -212,6 +212,11 @@ public class HallPlaybackTests
             Assert.False(HallPlayback.DoneIs(done, "this"));
             HallPlayback.AtomicWrite(done, "this\n");
             Assert.True(HallPlayback.DoneIs(done, "this"));
+            var clock = Path.Combine(root.FullName, "play.clock");
+            HallPlayback.AtomicWrite(clock, "other\n1000\n180000\n1\n");
+            Assert.False(HallPlayback.ClockEnded(clock, "this"));
+            HallPlayback.AtomicWrite(clock, "this\n180000\n180000\n1\n");
+            Assert.True(HallPlayback.ClockEnded(clock, "this"));
             var request = HallPlayback.Request("this", "/media/song.mp4", "video", 180_000, null);
             Assert.StartsWith("this\n/media/song.mp4\nvideo\n180000\n", request);
         }

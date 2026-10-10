@@ -148,6 +148,8 @@ public sealed class PlaybackWorker(
         {
             if (File.Exists(paths.PlayDone))
                 File.Delete(paths.PlayDone);
+            if (File.Exists(paths.PlayClock))
+                File.Delete(paths.PlayClock);
         }
         catch (IOException)
         {
@@ -165,7 +167,9 @@ public sealed class PlaybackWorker(
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
             ApplySavedAudio();
-            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id) || coordinator.IsFinished(job.Entry.Id))
+            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
+                || coordinator.IsFinished(job.Entry.Id)
+                || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id))
                 return PlayResult.Done();
             if (TimeSpan.FromMilliseconds(elapsed) >= cap)
                 return PlayResult.Done();

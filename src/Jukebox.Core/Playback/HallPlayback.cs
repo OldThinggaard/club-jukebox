@@ -33,6 +33,21 @@ public static class HallPlayback
         File.Move(temp, path, true);
     }
 
+    public static bool ClockEnded(string clockPath, string queueId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(queueId) || !File.Exists(clockPath))
+                return false;
+            var lines = File.ReadAllLines(clockPath);
+            return lines.Length >= 4 && lines[0].Trim() == queueId && lines[3].Trim() == "1";
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
     public static bool DoneIs(string donePath, string queueId)
     {
         try

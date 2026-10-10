@@ -22,6 +22,7 @@ public sealed class JukeboxPaths
     public string DisplaysFile => Path.Combine(DataDirectory, "displays.env");
     public string PlayRequest => Path.Combine(DataDirectory, "play.request");
     public string PlayDone => Path.Combine(DataDirectory, "play.done");
+    public string PlayClock => Path.Combine(DataDirectory, "play.clock");
     public string PlayerStamp => Path.Combine(DataDirectory, "player.stamp");
     public string AudioEnv => Path.Combine(DataDirectory, "audio.env");
 

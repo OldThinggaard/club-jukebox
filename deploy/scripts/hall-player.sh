@@ -52,7 +52,7 @@ read_audio() {
 apply_audio() {
   read_audio
   if [[ -z "$SINK" ]] && command -v pactl >/dev/null 2>&1; then
-    SINK="$(pactl list short sinks 2>/dev/null | awk '$2 ~ /analog/ { print $2; exit }')"
+    SINK="$(timeout 2 pactl list short sinks 2>/dev/null | awk '$2 ~ /analog/ { print $2; exit }')"
   fi
   if [[ -z "$PORT" ]]; then
     PORT="analog-output-speaker"
@@ -61,27 +61,27 @@ apply_audio() {
     if command -v pactl >/dev/null 2>&1; then
       while read -r _ name _; do
         [[ -n "$name" ]] || continue
-        pactl set-card-profile "$name" output:analog-stereo >/dev/null 2>&1 || true
-      done < <(pactl list short cards 2>/dev/null || true)
-      pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
-      pactl set-sink-volume @DEFAULT_SINK@ 100% >/dev/null 2>&1 || true
+        timeout 2 pactl set-card-profile "$name" output:analog-stereo >/dev/null 2>&1 || true
+      done < <(timeout 2 pactl list short cards 2>/dev/null || true)
+      timeout 2 pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
+      timeout 2 pactl set-sink-volume @DEFAULT_SINK@ 100% >/dev/null 2>&1 || true
       if [[ -n "$SINK" ]]; then
-        pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
-        pactl set-sink-port "$SINK" "$PORT" >/dev/null 2>&1 || true
-        pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-        pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
+        timeout 2 pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
+        timeout 2 pactl set-sink-port "$SINK" "$PORT" >/dev/null 2>&1 || true
+        timeout 2 pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+        timeout 2 pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
       fi
     fi
     if command -v wpctl >/dev/null 2>&1; then
-      wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-      wpctl set-volume @DEFAULT_AUDIO_SINK@ 100% >/dev/null 2>&1 || true
+      timeout 2 wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+      timeout 2 wpctl set-volume @DEFAULT_AUDIO_SINK@ 100% >/dev/null 2>&1 || true
     fi
     if command -v amixer >/dev/null 2>&1; then
-      amixer -q sset Master 100% unmute >/dev/null 2>&1 || true
-      amixer -q sset Speaker 100% unmute >/dev/null 2>&1 || true
-      amixer -q sset Headphone 100% unmute >/dev/null 2>&1 || true
-      amixer -q sset PCM 100% unmute >/dev/null 2>&1 || true
-      amixer -q sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
+      timeout 2 amixer -q sset Master 100% unmute >/dev/null 2>&1 || true
+      timeout 2 amixer -q sset Speaker 100% unmute >/dev/null 2>&1 || true
+      timeout 2 amixer -q sset Headphone 100% unmute >/dev/null 2>&1 || true
+      timeout 2 amixer -q sset PCM 100% unmute >/dev/null 2>&1 || true
+      timeout 2 amixer -q sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
     fi
     applied_sink="$SINK"
     applied_port="$PORT"
@@ -114,12 +114,28 @@ play_pid=""
 play_ms=0
 play_kind=""
 started_epoch=0
+kill_play() {
+  [[ -n "${play_pid}" ]] || return 0
+  local pid="${play_pid}" n
+  kill "$pid" >/dev/null 2>&1 || true
+  for n in 1 2 3 4 5 6 7 8 9 10; do
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
+      wait "$pid" >/dev/null 2>&1 || true
+      play_pid=""
+      return 0
+    fi
+    if [[ "$n" -eq 4 ]]; then
+      kill -9 "$pid" >/dev/null 2>&1 || true
+    fi
+    sleep 0.2
+  done
+  kill -9 "$pid" >/dev/null 2>&1 || true
+  wait "$pid" >/dev/null 2>&1 || true
+  play_pid=""
+}
+
 stop_play() {
-  if [[ -n "${play_pid}" ]]; then
-    kill "${play_pid}" >/dev/null 2>&1 || true
-    wait "${play_pid}" >/dev/null 2>&1 || true
-    play_pid=""
-  fi
+  kill_play
 }
 
 start_play() {
@@ -205,6 +221,21 @@ past_limit() {
   [[ $((now - started_epoch)) -ge $limit ]]
 }
 
+learn_length() {
+  [[ -f /var/lib/jukebox/play.clock ]] || return 0
+  [[ "$play_kind" == "image" ]] && return 0
+  local cid ms
+  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  ms="$(sed -n '3p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  [[ "$cid" == "$last" ]] || return 0
+  case "$ms" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  if [[ "$ms" -ge 20000 ]]; then
+    play_ms="$ms"
+  fi
+}
+
 note_finished() {
   local id="$1"
   [[ -n "$id" ]] || return 0
@@ -215,27 +246,22 @@ note_finished() {
 }
 
 finish_if_stopped() {
+  local ended=0
   if [[ -z "${play_pid}" ]]; then
     return 0
   fi
-  if past_limit; then
+  if [[ -S "$SOCK" ]]; then
+    python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - "$last" >/dev/null 2>&1
+    if [[ "$?" -eq 2 ]]; then
+      ended=1
+    fi
+  fi
+  learn_length
+  if [[ "$ended" -eq 1 ]] || past_limit; then
     note_finished "${last}"
-    kill "${play_pid}" >/dev/null 2>&1 || true
-    wait "${play_pid}" >/dev/null 2>&1 || true
-    play_pid=""
+    kill_play
     started_epoch=0
     return 0
-  fi
-  if [[ -S "$SOCK" ]]; then
-    python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - >/dev/null 2>&1
-    if [[ "$?" -eq 2 ]]; then
-      note_finished "${last}"
-      kill "${play_pid}" >/dev/null 2>&1 || true
-      wait "${play_pid}" >/dev/null 2>&1 || true
-      play_pid=""
-      started_epoch=0
-      return 0
-    fi
   fi
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     return 0
