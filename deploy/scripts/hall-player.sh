@@ -19,6 +19,8 @@ PORT=""
 VOLUME=80
 applied_sink=""
 applied_port=""
+applied_volume=""
+SOCK="${runtime}/jukebox-mpv.sock"
 
 for _ in $(seq 1 30); do
   if [[ -S "${runtime}/pulse/native" ]]; then
@@ -61,31 +63,38 @@ apply_audio() {
         [[ -n "$name" ]] || continue
         pactl set-card-profile "$name" output:analog-stereo >/dev/null 2>&1 || true
       done < <(pactl list short cards 2>/dev/null || true)
+      pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
+      pactl set-sink-volume @DEFAULT_SINK@ 100% >/dev/null 2>&1 || true
       if [[ -n "$SINK" ]]; then
         pactl set-default-sink "$SINK" >/dev/null 2>&1 || true
         pactl set-sink-port "$SINK" "$PORT" >/dev/null 2>&1 || true
+        pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
+        pactl set-sink-volume "$SINK" 100% >/dev/null 2>&1 || true
       fi
+    fi
+    if command -v wpctl >/dev/null 2>&1; then
+      wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+      wpctl set-volume @DEFAULT_AUDIO_SINK@ 100% >/dev/null 2>&1 || true
+    fi
+    if command -v amixer >/dev/null 2>&1; then
+      amixer -q sset Master 100% unmute >/dev/null 2>&1 || true
+      amixer -q sset Speaker 100% unmute >/dev/null 2>&1 || true
+      amixer -q sset Headphone 100% unmute >/dev/null 2>&1 || true
+      amixer -q sset PCM 100% unmute >/dev/null 2>&1 || true
+      amixer -q sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
     fi
     applied_sink="$SINK"
     applied_port="$PORT"
   fi
-  if command -v pactl >/dev/null 2>&1; then
-    if [[ -n "$SINK" ]]; then
-      pactl set-sink-mute "$SINK" 0 >/dev/null 2>&1 || true
-      pactl set-sink-volume "$SINK" "${VOLUME}%" >/dev/null 2>&1 || true
-    fi
-    pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
+  push_volume
+}
+
+push_volume() {
+  if [[ "$VOLUME" == "$applied_volume" || ! -S "$SOCK" ]]; then
+    return 0
   fi
-  if command -v wpctl >/dev/null 2>&1; then
-    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
-    wpctl set-volume @DEFAULT_AUDIO_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
-  fi
-  if command -v amixer >/dev/null 2>&1; then
-    amixer -q sset Master "${VOLUME}%" unmute >/dev/null 2>&1 || true
-    amixer -q sset Speaker unmute >/dev/null 2>&1 || true
-    amixer -q sset Headphone unmute >/dev/null 2>&1 || true
-    amixer -q sset PCM unmute >/dev/null 2>&1 || true
-    amixer -q sset 'Auto-Mute Mode' Disabled >/dev/null 2>&1 || true
+  if python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" "$VOLUME"; then
+    applied_volume="$VOLUME"
   fi
 }
 
@@ -116,9 +125,11 @@ start_play() {
   apply_audio
   screen="$(monitor_index || true)"
   local -a args
+  rm -f "$SOCK"
   args=(
-    --no-terminal --really-quiet --no-border --ontop --keep-open=no
+    --no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no
     --force-window=immediate --ao=pulse --volume="$VOLUME"
+    --input-ipc-server="$SOCK"
   )
   if [[ -n "$SINK" ]]; then
     args+=(--audio-device="pulse/${SINK}")
@@ -134,21 +145,24 @@ start_play() {
       seconds=8
     fi
     args+=(--image-display-duration="$seconds" "$path")
-  elif [[ "$kind" == "audio" && -n "$art" && -f "$art" ]]; then
-    args+=(--image-display-duration=inf --audio-file="$path" "$art")
   else
-    args+=("$path")
+    # The file itself must be what mpv is waiting on. A cover with an infinite
+    # timer never ends, so the next queued song never starts.
+    args+=(--audio-display=attachment "$path")
   fi
   mpv "${args[@]}" >"$LOG" 2>&1 &
   play_pid=$!
+  applied_volume=""
   sleep 0.8
+  push_volume
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     return 0
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   # Pulse was not ready. Play through ALSA so the speakers still get the sound.
   local -a fallback
-  fallback=(--no-terminal --really-quiet --no-border --ontop --keep-open=no --force-window=immediate --ao=alsa --volume="$VOLUME")
+  rm -f "$SOCK"
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else
@@ -156,13 +170,14 @@ start_play() {
   fi
   if [[ "$kind" == "image" ]]; then
     fallback+=(--image-display-duration="$seconds" "$path")
-  elif [[ "$kind" == "audio" && -n "$art" && -f "$art" ]]; then
-    fallback+=(--image-display-duration=inf --audio-file="$path" "$art")
   else
-    fallback+=("$path")
+    fallback+=(--audio-display=attachment "$path")
   fi
   mpv "${fallback[@]}" >>"$LOG" 2>&1 &
   play_pid=$!
+  applied_volume=""
+  sleep 0.4
+  push_volume
 }
 
 finish_if_stopped() {

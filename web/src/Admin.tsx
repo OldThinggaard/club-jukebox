@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
 import { DanishKeyboard } from "./components/Keyboard";
@@ -287,15 +287,36 @@ function PlaybackPanel() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [displays, setDisplays] = useState<{ name: string; connected: boolean; width: number }[]>([]);
   const [soundNote, setSoundNote] = useState("");
+  const volumeTicket = useRef(0);
   useEffect(() => {
     void admin<Settings>("/api/admin/settings").then(setSettings);
     void admin<{ displays: { name: string; connected: boolean; width: number }[] }>("/api/admin/displays").then((body) => setDisplays(body.displays));
   }, []);
   if (!settings) return <p>Henter lyd…</p>;
-  const set = (patch: Partial<Settings>) => setSettings({ ...settings, ...patch });
-  const headphones = settings.audioDevice === "headphones" || settings.audioDevice.includes("headphone");
+  const current = settings;
+  const set = (patch: Partial<Settings>) => setSettings({ ...current, ...patch });
+  const headphones = current.audioDevice === "headphones" || current.audioDevice.includes("headphone");
+  function chooseVolume(value: number) {
+    const next = Math.max(0, Math.min(100, value));
+    const ticket = ++volumeTicket.current;
+    const body: Settings = { ...current, volumePercent: next };
+    setSettings(body);
+    setSoundNote("Gemmer…");
+    window.setTimeout(() => {
+      if (ticket !== volumeTicket.current) return;
+      void admin<Settings>("/api/admin/settings", { method: "PUT", body: JSON.stringify(body) })
+        .then((saved) => {
+          if (ticket !== volumeTicket.current) return;
+          setSettings(saved);
+          setSoundNote("Gemt");
+        })
+        .catch(() => {
+          if (ticket === volumeTicket.current) setSoundNote("Lyden blev ikke gemt");
+        });
+    }, 180);
+  }
   async function saveSound(patch: Partial<Settings>) {
-    const next = { ...settings!, ...patch };
+    const next: Settings = { ...current, ...patch };
     setSettings(next);
     setSoundNote("Gemmer…");
     try {
@@ -316,16 +337,15 @@ function PlaybackPanel() {
       <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme.</p>
       <Field label="Lydstyrke">
         <div className="volume-row">
-          <button type="button" onClick={() => void saveSound({ volumePercent: Math.max(0, settings.volumePercent - 5) })}>−</button>
+          <button type="button" onClick={() => chooseVolume(settings.volumePercent - 5)}>−</button>
           <input
             type="range"
             min={0}
             max={100}
             value={settings.volumePercent}
-            onChange={(event) => set({ volumePercent: Number(event.target.value) })}
-            onPointerUp={(event) => void saveSound({ volumePercent: Number((event.target as HTMLInputElement).value) })}
+            onInput={(event) => chooseVolume(Number((event.target as HTMLInputElement).value))}
           />
-          <button type="button" onClick={() => void saveSound({ volumePercent: Math.min(100, settings.volumePercent + 5) })}>+</button>
+          <button type="button" onClick={() => chooseVolume(settings.volumePercent + 5)}>+</button>
           <strong>{settings.volumePercent}%</strong>
         </div>
       </Field>

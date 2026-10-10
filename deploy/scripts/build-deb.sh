@@ -21,6 +21,7 @@ cp -a "$ROOT/publish/app/." "$pkg/opt/jukebox/current/"
 cp -a "$ROOT/publish/updater/." "$pkg/opt/jukebox/updater/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
+install -m 0755 "$ROOT/deploy/scripts/mpv-volume.py" "$pkg/opt/jukebox/lib/mpv-volume.py"
 sed '/jukebox-installer/,/^fi$/d' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/bin/session.sh" > "$pkg/opt/jukebox/bin/session.sh"
 chmod 0755 "$pkg/opt/jukebox/bin/session.sh"
 if grep -q jukebox-installer "$pkg/opt/jukebox/bin/session.sh"; then
@@ -95,6 +96,10 @@ if grep -q 'audio-fallback-to-null' "$pkg/opt/jukebox/bin/hall-player.sh"; then
 fi
 if grep -q '/api/content/' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must read the file, not a web stream." >&2
+  exit 1
+fi
+if grep -q 'image-display-duration=inf' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "A cover image must not keep the player open after the song." >&2
   exit 1
 fi
 python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
