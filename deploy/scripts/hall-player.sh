@@ -162,7 +162,7 @@ start_play() {
     --no-config --no-terminal --really-quiet --no-border --ontop
     --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --ao=pulse --volume="$VOLUME"
+    --force-window=immediate --ao=pulse --volume=100 --ao-volume="$VOLUME"
     --input-ipc-server="$SOCK"
   )
   if [[ -n "$SINK" ]]; then
@@ -200,7 +200,7 @@ start_play() {
   # Pulse was not ready. Play through ALSA so the speakers still get the sound.
   local -a fallback
   rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume="$VOLUME" --input-ipc-server="$SOCK")
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume="$VOLUME" --input-ipc-server="$SOCK")
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else

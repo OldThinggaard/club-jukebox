@@ -7,9 +7,8 @@ namespace Jukebox.Core.Playback;
 public sealed record VolumeReport(int Percent, bool Socket, bool Pipe, bool Alsa);
 
 /// <summary>
-/// Sends the on-screen percent to the file that is already playing.
-/// Only that player's own level is moved. The sound card's knobs are left
-/// alone, because moving them changes the sound itself.
+/// Sends the on-screen percent to the one output that is already playing.
+/// The other output is left untouched, so the two cannot cancel the bass.
 /// </summary>
 public static class LiveVolume
 {
@@ -80,7 +79,7 @@ public static class LiveVolume
                 return false;
             socket.SendTimeout = 400;
             socket.ReceiveTimeout = 400;
-            return Send(socket, "volume", percent);
+            return Send(socket, "ao-volume", percent);
         }
         catch
         {
