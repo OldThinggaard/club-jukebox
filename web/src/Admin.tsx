@@ -66,6 +66,28 @@ async function admin<T>(url: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function ServiceBanner() {
+  const [offline, setOffline] = useState(false);
+  useEffect(() => {
+    let stop = false;
+    const pull = () => {
+      fetch("/api/health").then((response) => {
+        if (!stop) setOffline(!response.ok);
+      }).catch(() => {
+        if (!stop) setOffline(true);
+      });
+    };
+    pull();
+    const timer = window.setInterval(pull, 2000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+  if (!offline) return null;
+  return <div className="banner">The jukebox cannot reach the local service. It will keep trying.</div>;
+}
+
 export function Admin() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pin, setPin] = useState("");
@@ -90,6 +112,7 @@ export function Admin() {
   if (!authed) {
     return (
       <main className="pin-gate">
+        <ServiceBanner />
         <div className="pin-card">
           <p className="eyebrow">Administration</p>
           <h1 className="font-serif text-5xl">Club PIN</h1>
@@ -120,6 +143,7 @@ export function Admin() {
 
   return (
     <main className="admin">
+      <ServiceBanner />
       <header className="flex items-center justify-between gap-3">
         <div>
           <p className="eyebrow">Administration</p>

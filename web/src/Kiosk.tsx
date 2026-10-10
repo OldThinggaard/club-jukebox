@@ -20,7 +20,6 @@ export function Kiosk() {
   const [queueOpen, setQueueOpen] = useState(false);
   const [shift, setShift] = useState(false);
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
-  const [offline, setOffline] = useState(false);
   const [staffPin, setStaffPin] = useState(false);
   const hold = useRef<number | null>(null);
 
@@ -28,11 +27,8 @@ export function Kiosk() {
     let stop = false;
     const pull = () => {
       api.screen().then((next) => {
-        if (!stop) {
-          setScreen(next);
-          setOffline(false);
-        }
-      }).catch(() => !stop && setOffline(true));
+        if (!stop) setScreen(next);
+      }).catch(() => undefined);
     };
     pull();
     const timer = window.setInterval(pull, 2000);
@@ -146,7 +142,6 @@ export function Kiosk() {
           </button>
         </div>
       </header>
-      {offline && <div className="banner">The jukebox cannot reach the local service. It will keep trying.</div>}
       <div className="chips">
         <button className={category === "" && !showArtists ? "chip active" : "chip"} type="button" onClick={() => { setCategory(""); setShowArtists(false); setArtist(""); }}>All</button>
         <button className={showArtists ? "chip active" : "chip"} type="button" onClick={() => { setShowArtists(true); setCategory(""); setQuery(""); }}>Artists</button>
