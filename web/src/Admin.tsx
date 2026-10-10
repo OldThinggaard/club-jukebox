@@ -289,6 +289,8 @@ function PlaybackPanel() {
   const [displays, setDisplays] = useState<{ name: string; connected: boolean; width: number }[]>([]);
   const [soundNote, setSoundNote] = useState("");
   const volumeTicket = useRef(0);
+  const level = useRef<number | null>(null);
+  const lastPress = useRef(0);
   useEffect(() => {
     void admin<Settings>("/api/admin/settings").then(setSettings);
     void admin<{ displays: { name: string; connected: boolean; width: number }[] }>("/api/admin/displays").then((body) => setDisplays(body.displays));
@@ -297,8 +299,10 @@ function PlaybackPanel() {
   const current = settings;
   const set = (patch: Partial<Settings>) => setSettings({ ...current, ...patch });
   const headphones = current.audioDevice === "headphones" || current.audioDevice.includes("headphone");
+  if (level.current === null) level.current = current.volumePercent;
   function chooseVolume(value: number) {
     const next = Math.max(0, Math.min(100, value));
+    level.current = next;
     const ticket = ++volumeTicket.current;
     const body: Settings = { ...current, volumePercent: next };
     setSettings(body);
@@ -308,6 +312,7 @@ function PlaybackPanel() {
       void admin<Settings>("/api/admin/settings", { method: "PUT", body: JSON.stringify(body) })
         .then((saved) => {
           if (ticket !== volumeTicket.current) return;
+          level.current = saved.volumePercent;
           setSettings(saved);
           setSoundNote("Gemt");
         })
@@ -315,6 +320,12 @@ function PlaybackPanel() {
           if (ticket === volumeTicket.current) setSoundNote("Lyden blev ikke gemt");
         });
     }, 180);
+  }
+  function stepVolume(delta: number) {
+    const now = Date.now();
+    if (now - lastPress.current < 80) return;
+    lastPress.current = now;
+    chooseVolume((level.current ?? current.volumePercent) + delta);
   }
   async function saveSound(patch: Partial<Settings>) {
     const next: Settings = { ...current, ...patch };
@@ -338,7 +349,7 @@ function PlaybackPanel() {
       <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme.</p>
       <Field label="Lydstyrke">
         <div className="volume-row">
-          <button type="button" onClick={() => chooseVolume(settings.volumePercent - 5)}>−</button>
+          <button type="button" onPointerDown={(event) => { event.preventDefault(); stepVolume(-5); }}>−</button>
           <input
             type="range"
             min={0}
@@ -346,7 +357,7 @@ function PlaybackPanel() {
             value={settings.volumePercent}
             onInput={(event) => chooseVolume(Number((event.target as HTMLInputElement).value))}
           />
-          <button type="button" onClick={() => chooseVolume(settings.volumePercent + 5)}>+</button>
+          <button type="button" onPointerDown={(event) => { event.preventDefault(); stepVolume(5); }}>+</button>
           <strong>{settings.volumePercent}%</strong>
         </div>
       </Field>

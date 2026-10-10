@@ -84,8 +84,10 @@ apply_audio() {
     applied_port="$PORT"
     hw_volume=""
   fi
-  apply_hw_volume
+  # The file's own volume first, so the buttons are heard even while the
+  # mixers are still being set.
   push_volume
+  apply_hw_volume
 }
 
 apply_hw_volume() {
@@ -99,22 +101,16 @@ apply_hw_volume() {
   timeout 3 sh -c '
     vol="$1"
     sink="$2"
-    if [ -r /proc/asound/cards ]; then
-      while read -r card _; do
-        case "$card" in
+    if command -v pactl >/dev/null 2>&1; then
+      # The stream is what is actually heard. The sink underneath can be HDMI
+      # or the analog jack; the playing file follows the buttons either way.
+      pactl list short sink-inputs 2>/dev/null | while read -r id _; do
+        case "$id" in
           ""|*[!0-9]*) continue ;;
         esac
-        amixer -c "$card" -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
-        amixer -c "$card" -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
-        amixer -c "$card" -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
-        amixer -c "$card" -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
-      done < /proc/asound/cards
-    fi
-    amixer -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
-    amixer -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
-    amixer -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
-    amixer -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
-    if command -v pactl >/dev/null 2>&1; then
+        pactl set-sink-input-mute "$id" 0 >/dev/null 2>&1 || true
+        pactl set-sink-input-volume "$id" "${vol}%" >/dev/null 2>&1 || true
+      done
       pactl set-sink-mute @DEFAULT_SINK@ 0 >/dev/null 2>&1 || true
       pactl set-sink-volume @DEFAULT_SINK@ "${vol}%" >/dev/null 2>&1 || true
       if [ -n "$sink" ]; then
@@ -130,7 +126,29 @@ apply_hw_volume() {
     if command -v wpctl >/dev/null 2>&1; then
       wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
       wpctl set-volume @DEFAULT_AUDIO_SINK@ "${vol}%" >/dev/null 2>&1 || true
+      wpctl status 2>/dev/null | awk "/mpv/ { for (i = 1; i <= NF; i++) if (\$i ~ /^[0-9]+\\.\$/) { id=\$i; gsub(/\\./, \"\", id); print id } }" | while read -r id; do
+        [ -n "$id" ] || continue
+        wpctl set-mute "$id" 0 >/dev/null 2>&1 || true
+        wpctl set-volume "$id" "${vol}%" >/dev/null 2>&1 || true
+      done
     fi
+    if [ -r /proc/asound/cards ]; then
+      while read -r card _; do
+        case "$card" in
+          ""|*[!0-9]*) continue ;;
+        esac
+        amixer -c "$card" -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
+        amixer -c "$card" -q sset Front "${vol}%" unmute >/dev/null 2>&1 || true
+      done < /proc/asound/cards
+    fi
+    amixer -q sset Master "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset Speaker "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset Headphone "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset PCM "${vol}%" unmute >/dev/null 2>&1 || true
+    amixer -q sset Front "${vol}%" unmute >/dev/null 2>&1 || true
   ' _ "$VOLUME" "$SINK" >/dev/null 2>&1 || true
   hw_volume="$VOLUME"
   hw_epoch="$now"

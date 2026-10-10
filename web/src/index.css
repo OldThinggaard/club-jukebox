@@ -286,10 +286,10 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .sound-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
 .sound-choice button { min-height: 72px; border-radius: 16px; background: rgba(255,255,255,0.06); }
 .sound-choice button.active { background: #e2b15a; color: #1a140c; font-weight: 650; }
-.volume-row { display: flex; gap: 8px; align-items: center; }
-.volume-row button { min-width: 64px; min-height: 64px; border-radius: 16px; background: rgba(255,255,255,0.06); font-size: 28px; }
-.volume-row input[type="range"] { flex: 1; height: 44px; }
-.volume-row strong { min-width: 52px; }
+.volume-row { display: flex; gap: 12px; align-items: center; }
+.volume-row button { min-width: 112px; min-height: 112px; border-radius: 20px; background: rgba(255,255,255,0.06); font-size: 48px; touch-action: manipulation; }
+.volume-row input[type="range"] { flex: 1; height: 64px; touch-action: manipulation; }
+.volume-row strong { min-width: 72px; font-size: 28px; }
 
 @media (max-width: 800px) {
   .topbar { flex-wrap: wrap; }
