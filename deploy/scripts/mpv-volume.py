@@ -62,8 +62,62 @@ def apply_alsa(level):
             pass
 
 
+def apply_pipewire(level):
+    """Set the volume PipeWire is actually playing.
+
+    The headset jack moves between speaker and headphone inside PipeWire.
+    The old mixer knobs do not change that sound.
+    """
+    import re
+    import subprocess
+
+    mute = "1" if level == 0 else "0"
+
+    def run(args):
+        try:
+            subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return
+
+    run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", mute])
+    run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{level}%"])
+    try:
+        status = subprocess.run(["wpctl", "status"], capture_output=True, text=True, timeout=1, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return
+    mode = ""
+    seen = set()
+    for line in status.stdout.splitlines():
+        if "Sinks:" in line:
+            mode = "sink"
+            continue
+        if "Sources:" in line and mode == "sink":
+            mode = ""
+            continue
+        if "Streams:" in line:
+            mode = "stream"
+            continue
+        if mode == "stream" and ("Filters:" in line or "Video" in line):
+            mode = ""
+            continue
+        if mode not in ("sink", "stream"):
+            continue
+        match = re.search(r"(?:^|\s)(\d+)\.", line)
+        if not match:
+            continue
+        node = match.group(1)
+        if node in seen:
+            continue
+        seen.add(node)
+        run(["wpctl", "set-mute", node, mute])
+        run(["wpctl", "set-volume", node, f"{level}%"])
+
+
 if path == "alsa":
     apply_alsa(max(0, min(100, int(volume))))
+    raise SystemExit(0)
+if path == "pipewire":
+    apply_pipewire(max(0, min(100, int(volume))))
     raise SystemExit(0)
 
 

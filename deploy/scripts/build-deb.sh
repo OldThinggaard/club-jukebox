@@ -107,8 +107,8 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
-if ! grep -q 'Playback channels' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must reach the PC's own sound knobs." >&2
+if ! grep -q 'DEFAULT_AUDIO_SINK' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must reach PipeWire." >&2
   exit 1
 fi
 if ! grep -q 'ao-volume' "$pkg/opt/jukebox/lib/mpv-volume.py"; then

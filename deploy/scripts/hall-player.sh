@@ -92,28 +92,13 @@ apply_audio() {
 apply_hw_volume() {
   local now
   now=$(date +%s)
+  # PipeWire owns the jack. Set it on every pass, so a saved level cannot
+  # put the sound straight back to full.
+  timeout 2 python3 /opt/jukebox/lib/mpv-volume.py pipewire "$VOLUME" >/dev/null 2>&1 || true
   if [[ "$VOLUME" == "$hw_volume" && $((now - hw_epoch)) -lt 4 ]]; then
     return 0
   fi
-  # The PC's own knobs first. A hung sound server must not skip them.
   timeout 2 python3 /opt/jukebox/lib/mpv-volume.py alsa "$VOLUME" >/dev/null 2>&1 || true
-  if command -v pactl >/dev/null 2>&1; then
-    timeout 1 pactl set-sink-volume @DEFAULT_SINK@ "${VOLUME}%" >/dev/null 2>&1 || true
-    if [[ -n "$SINK" ]]; then
-      timeout 1 pactl set-sink-volume "$SINK" "${VOLUME}%" >/dev/null 2>&1 || true
-    fi
-    timeout 1 pactl list short sink-inputs 2>/dev/null | while read -r id _; do
-      case "$id" in
-        ''|*[!0-9]*) continue ;;
-      esac
-      if [[ "$VOLUME" == "0" ]]; then
-        timeout 1 pactl set-sink-input-mute "$id" 1 >/dev/null 2>&1 || true
-      else
-        timeout 1 pactl set-sink-input-mute "$id" 0 >/dev/null 2>&1 || true
-        timeout 1 pactl set-sink-input-volume "$id" "${VOLUME}%" >/dev/null 2>&1 || true
-      fi
-    done
-  fi
   hw_volume="$VOLUME"
   hw_epoch="$now"
 }
