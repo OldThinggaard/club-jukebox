@@ -28,6 +28,17 @@ if command -v pipewire >/dev/null 2>&1; then
   fi
 fi
 
+# Debian's volume stays at full on the one output already selected.
+# The other jack is not opened, so the two cannot cancel the bass.
+if command -v wpctl >/dev/null 2>&1; then
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    wpctl status >/dev/null 2>&1 && break
+    sleep 0.3
+  done
+  wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 >/dev/null 2>&1 || true
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 >/dev/null 2>&1 || true
+fi
+
 xset s off || true
 xset -dpms || true
 xset s noblank || true

@@ -7,8 +7,8 @@ namespace Jukebox.Core.Playback;
 public sealed record VolumeReport(int Percent, bool Socket, bool Pipe, bool Alsa);
 
 /// <summary>
-/// Sends the on-screen percent to the one output that is already playing.
-/// The other output is left untouched, so the two cannot cancel the bass.
+/// Sends the on-screen percent to the song that is playing.
+/// Debian's own volume stays at full on the output already in use.
 /// </summary>
 public static class LiveVolume
 {
@@ -79,7 +79,7 @@ public static class LiveVolume
                 return false;
             socket.SendTimeout = 400;
             socket.ReceiveTimeout = 400;
-            return Send(socket, "ao-volume", percent);
+            return Send(socket, "volume", percent);
         }
         catch
         {

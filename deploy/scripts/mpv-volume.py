@@ -77,7 +77,7 @@ sock.connect(path)
 try:
     if volume != "-":
         level = max(0, min(100, int(volume)))
-        reply = request(sock, {"command": ["set_property", "ao-volume", level]})
+        reply = request(sock, {"command": ["set_property", "volume", level]})
         if reply.get("error") not in (None, "success"):
             raise SystemExit(1)
     else:

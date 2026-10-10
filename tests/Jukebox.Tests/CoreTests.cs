@@ -274,8 +274,8 @@ public class LiveVolumeTests
         Assert.True(report.Socket);
         Assert.False(report.Pipe);
         Assert.False(report.Alsa);
-        Assert.Contains("\"ao-volume\"", seen.ToString());
-        Assert.DoesNotContain("\"volume\"", seen.ToString());
+        Assert.Contains("\"volume\"", seen.ToString());
+        Assert.DoesNotContain("ao-volume", seen.ToString());
         Assert.Contains("0", seen.ToString());
         Assert.DoesNotContain("mute", seen.ToString());
         var heard = LiveVolume.Read(root.FullName);

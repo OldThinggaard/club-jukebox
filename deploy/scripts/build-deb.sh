@@ -107,16 +107,24 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
-if ! grep -q 'ao-volume' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must use the output that is already playing." >&2
+if ! grep -q 'set_property", "volume"' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must turn the song." >&2
   exit 1
 fi
-if grep -q 'amixer\|set-volume\|Headphone\|Speaker' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must not turn on the other output." >&2
+if grep -q 'ao-volume\|amixer\|set-volume\|Headphone\|Speaker' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must not move Debian or the other output." >&2
   exit 1
 fi
-if grep -q -- '--volume="$VOLUME"' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "The file itself must stay at full level." >&2
+if ! grep -q -- '--volume="$VOLUME"' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The song must follow the on-screen percent." >&2
+  exit 1
+fi
+if ! grep -q -- '--ao-volume=100' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "Debian's stream volume must stay at full." >&2
+  exit 1
+fi
+if ! grep -q 'set-volume @DEFAULT_AUDIO_SINK@ 1.0' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Debian's volume must stay at full on the selected output." >&2
   exit 1
 fi
 if grep -q 'mpv-volume.py pipewire\|mpv-volume.py alsa' "$pkg/opt/jukebox/bin/hall-player.sh"; then
