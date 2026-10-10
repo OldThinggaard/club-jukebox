@@ -42,6 +42,9 @@ done
 
 if [[ "$ready" -ne 1 ]]; then
   echo "Jukebox did not answer on port 47123" >&2
+else
+  # boot-guard.sh leaves this file. Removing it means this boot reached the screen.
+  rm -f /var/lib/jukebox/booting
 fi
 
 hall_geom() {

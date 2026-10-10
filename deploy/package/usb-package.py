@@ -208,16 +208,20 @@ def install():
     except OSError:
         log = sys.stderr
     print(f"install {path}", file=log, flush=True)
-    # Copy only. dpkg runs on the next boot, so turning the machine off now leaves Debian as it is.
+    # Copy first, then install while the machine is already up.
+    # dpkg is not run from early boot, and it is not killed.
     os.makedirs("/var/lib/jukebox/pending", exist_ok=True)
     local = "/var/lib/jukebox/pending/videojukebox.deb"
-    copied = subprocess.run(["timeout", "90", "cp", "-f", path, local], stdout=log, stderr=log, check=False)
+    copied = subprocess.run(["cp", "-f", path, local], stdout=log, stderr=log, check=False)
     if copied.returncode != 0 or not os.path.isfile(local):
         print("could not copy the package off the USB stick", file=log, flush=True)
         return copied.returncode or 1
     subprocess.run(["sync"], check=False, timeout=20)
-    subprocess.run(["systemctl", "reboot"], check=False, timeout=20)
-    return 0
+    script = "/opt/jukebox/lib/apply-pending.sh"
+    if not os.path.isfile(script):
+        print("apply-pending.sh is missing", file=log, flush=True)
+        return 1
+    os.execv(script, [script])
 
 
 def self_test():

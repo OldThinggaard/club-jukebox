@@ -26,7 +26,7 @@ fi
 if ! grep -q 'da_DK.UTF-8 UTF-8' /etc/locale.gen 2>/dev/null; then
   echo 'da_DK.UTF-8 UTF-8' >> /etc/locale.gen
 fi
-locale-gen
+timeout 120 locale-gen || true
 update-locale LANG=da_DK.UTF-8 || true
 ln -sfn /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime
 echo Europe/Copenhagen > /etc/timezone
@@ -73,7 +73,7 @@ Restart=always
 RestartSec=2
 TimeoutStartSec=300
 WatchdogSec=30
-MemoryMax=1200M
+MemoryMax=1800M
 Nice=-5
 
 [Install]
@@ -134,18 +134,21 @@ if [[ -x /opt/jukebox/lib/onlime-install.sh ]]; then
   timeout 90 /opt/jukebox/lib/onlime-install.sh || true
 fi
 
+# Enable the jukebox before the desktop is turned off. Every systemctl call
+# has a deadline so a busy boot cannot sit here until the power is pulled.
+timeout 20 systemctl daemon-reload >/dev/null 2>&1 || true
+timeout 15 systemctl enable avahi-daemon.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable NetworkManager.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox-update.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox-boot-guard.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox-pending.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox-graphical.service >/dev/null 2>&1 || true
+timeout 15 systemctl enable jukebox-onlime.service >/dev/null 2>&1 || true
 for dm in gdm.service gdm3.service lightdm.service sddm.service; do
-  systemctl disable "$dm" >/dev/null 2>&1 || true
+  timeout 8 systemctl disable "$dm" >/dev/null 2>&1 || true
 done
-systemctl set-default multi-user.target || true
-systemctl daemon-reload || true
-systemctl enable avahi-daemon.service || true
-systemctl enable NetworkManager.service || true
-systemctl enable jukebox-update.service
-systemctl enable jukebox-pending.service
-systemctl enable jukebox.service
-systemctl enable jukebox-graphical.service
-systemctl enable jukebox-onlime.service
+timeout 8 systemctl set-default multi-user.target >/dev/null 2>&1 || true
 
 echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren."
 wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren." || true

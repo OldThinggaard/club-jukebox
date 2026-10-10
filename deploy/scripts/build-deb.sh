@@ -38,9 +38,11 @@ install -m 0644 "$ROOT/deploy/live/apt/jotta.key.chroot" "$pkg/usr/share/jukebox
 install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/jukebox.service"
 install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
 install -m 0755 "$ROOT/deploy/package/apply-pending.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"
+install -m 0755 "$ROOT/deploy/package/boot-guard.sh" "$pkg/opt/jukebox/lib/boot-guard.sh"
 install -m 0755 "$ROOT/deploy/package/onlime-install.sh" "$pkg/opt/jukebox/lib/onlime-install.sh"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-pending.service" "$pkg/etc/systemd/system/jukebox-pending.service"
+install -m 0644 "$ROOT/deploy/systemd/jukebox-boot-guard.service" "$pkg/etc/systemd/system/jukebox-boot-guard.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-usb-mount.service" "$pkg/etc/systemd/system/jukebox-usb-mount.service"
 printf '%s\n' 'allowed_users=anybody' 'needs_root_rights=no' > "$pkg/etc/X11/Xwrapper.config"
 cat > "$pkg/etc/systemd/logind.conf.d/jukebox.conf" <<'EOF'
@@ -69,8 +71,33 @@ if ! grep -q "Hent Onlime Sync" "$pkg/opt/jukebox/current/wwwroot/assets/"index-
   exit 1
 fi
 bash -n "$pkg/opt/jukebox/lib/onlime-install.sh"
-python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
+bash -n "$pkg/opt/jukebox/lib/apply-pending.sh"
+bash -n "$pkg/opt/jukebox/lib/boot-guard.sh"
+bash -n "$pkg/opt/jukebox/bin/hall-player.sh"
+bash -n "$pkg/opt/jukebox/bin/session.sh"
+bash -n "$pkg/DEBIAN/prerm"
 bash -n "$pkg/DEBIAN/postinst"
+if grep -q -- '--now' "$pkg/DEBIAN/prerm"; then
+  echo "prerm must not stop services during an upgrade." >&2
+  exit 1
+fi
+if grep -q 'kill-after' "$pkg/opt/jukebox/lib/apply-pending.sh"; then
+  echo "apply-pending must not kill dpkg." >&2
+  exit 1
+fi
+if grep -q 'Before=jukebox' "$pkg/etc/systemd/system/jukebox-pending.service"; then
+  echo "The package install must not block the screen." >&2
+  exit 1
+fi
+if grep -q 'audio-fallback-to-null' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must not drop the sound." >&2
+  exit 1
+fi
+if grep -q '/api/content/' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must read the file, not a web stream." >&2
+  exit 1
+fi
+python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 
 out="$ROOT/publish/pakke"
 mkdir -p "$out"

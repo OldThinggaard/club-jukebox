@@ -84,7 +84,6 @@ public sealed class MpvPlayer : IMediaPlayer
         start.ArgumentList.Add("--ontop");
         start.ArgumentList.Add("--no-osc");
         start.ArgumentList.Add("--keep-open=no");
-        start.ArgumentList.Add("--audio-fallback-to-null=yes");
         start.ArgumentList.Add($"--fs-screen={job.ScreenIndex}");
         if (!string.IsNullOrWhiteSpace(job.AudioDevice))
             start.ArgumentList.Add($"--audio-device={job.AudioDevice}");

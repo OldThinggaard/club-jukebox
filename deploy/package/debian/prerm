@@ -1,9 +1,8 @@
 #!/bin/bash
-set -euo pipefail
-if [[ "${1:-}" == "remove" || "${1:-}" == "upgrade" ]]; then
-  # Do not stop the services here. Stopping them during boot waits for this
-  # script, and this script then waits for the stop. The screen stays on the
-  # last line, often "Started cups.service".
-  systemctl disable jukebox-graphical.service jukebox.service jukebox-onlime.service jukebox-update.service jukebox-usb-mount.service >/dev/null 2>&1 || true
+set -u
+# An upgrade must not talk to systemd. Stopping a service from here deadlocks
+# boot at "Started cups.service" and has forced a Debian reinstall.
+if [[ "${1:-}" == "remove" || "${1:-}" == "purge" ]]; then
+  timeout 5 systemctl disable jukebox-graphical.service jukebox.service jukebox-onlime.service jukebox-update.service jukebox-usb-mount.service jukebox-pending.service jukebox-boot-guard.service >/dev/null 2>&1 || true
 fi
 exit 0

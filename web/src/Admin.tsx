@@ -585,13 +585,13 @@ function UpdatesPanel() {
 
   async function install() {
     setBad(false);
-    setMessage("Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+    setMessage("Installerer. Maskinen genstarter selv, når den er færdig. Lad den være.");
     try {
       const body = await admin<{ message?: string }>("/api/admin/package", { method: "POST", body: "{}" });
-      setMessage(body.message ?? "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+      setMessage(body.message ?? "Installerer. Maskinen genstarter selv, når den er færdig. Lad den være.");
     } catch {
       setBad(true);
-      setMessage("Installationen svarede ikke. Hvis skærmen bliver ved med at skrive Installerer, så sluk computeren på knappen.");
+      setMessage("Knappen svarede ikke. Lad maskinen være. Den genstarter selv, hvis installationen er i gang.");
     }
   }
 

@@ -28,7 +28,19 @@ public static class UsbPackage
                 canInstall = true,
                 busy = true,
                 sizeBytes = 0L,
-                message = "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være."
+                message = "Installerer. Maskinen genstarter selv, når den er færdig. Lad den være."
+            };
+        }
+
+        if (File.Exists("/var/lib/jukebox/update-error"))
+        {
+            return new
+            {
+                found = true,
+                canInstall = true,
+                busy = false,
+                sizeBytes = 0L,
+                message = "Opdateringen fejlede. Maskinen blev på den version, den havde."
             };
         }
 
@@ -65,13 +77,21 @@ public static class UsbPackage
         if (!File.Exists(ScriptPath))
             return (false, StatusCodes.Status403Forbidden, "Pakken kan kun installeres på klubmaskinen.");
         if (InstallUnitActive())
-            return (true, StatusCodes.Status200OK, "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+            return (true, StatusCodes.Status200OK, "Installerer. Maskinen genstarter selv, når den er færdig. Lad den være.");
 
         Run("systemctl", "reset-failed", TimeSpan.FromSeconds(5), "jukebox-usb-install");
-        var (code, output) = Run("systemd-run", "--collect", TimeSpan.FromSeconds(15), "--unit=jukebox-usb-install", ScriptPath, "install");
+        var (code, output) = Run(
+            "systemd-run",
+            "--collect",
+            TimeSpan.FromSeconds(15),
+            "--unit=jukebox-usb-install",
+            "--property=TimeoutStartSec=infinity",
+            "--property=TimeoutStopSec=infinity",
+            ScriptPath,
+            "install");
         if (code != 0)
             return (false, StatusCodes.Status500InternalServerError, "Installationen kunne ikke starte. " + FirstLine(output));
-        return (true, StatusCodes.Status200OK, "Installerer. Skærmen slukker, og maskinen starter igen. Lad den være.");
+        return (true, StatusCodes.Status200OK, "Installerer. Maskinen genstarter selv, når den er færdig. Lad den være.");
     }
 
     private static long Size(string path)

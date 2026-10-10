@@ -84,17 +84,13 @@ public sealed class PlaybackWorker(
                     continue;
                 }
 
-                // The picture and the sound are started by hall-player.sh in the
-                // graphical session. This timer only keeps the queue moving.
-                coordinator.SetEngine("mpv");
-                var playing = _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
-                while (!playing.IsCompleted)
-                {
-                    ApplySavedAudio();
-                    await Task.WhenAny(playing, Task.Delay(2000, stoppingToken));
-                }
-
-                var result = await playing;
+                // hall-player.sh plays the file from disk in the graphical session.
+                // A timer is only the fallback when that player is not there.
+                var playerReady = await HallPlayerReady(stoppingToken);
+                coordinator.SetEngine(playerReady ? "mpv" : "timer");
+                var result = playerReady
+                    ? await WaitForHallPlayer(job, stoppingToken)
+                    : await _timer.PlayAsync(job, coordinator.SetPosition, stoppingToken);
                 coordinator.Finish(job, result);
                 job = null;
             }
@@ -118,7 +114,64 @@ public sealed class PlaybackWorker(
         var output = DisplayAudioProbe.ResolveOutput(fresh.AudioDevice, DisplayAudioProbe.QueryAudio());
         var route = DisplayAudioProbe.Route(output);
         DisplayAudioProbe.ApplyPort(route.Sink, route.Port, fresh.VolumePercent);
+        try
+        {
+            HallPlayback.AtomicWrite(paths.AudioEnv, HallPlayback.AudioEnv(route.Sink, route.Port, fresh.VolumePercent));
+        }
+        catch (IOException ex)
+        {
+            logger.LogDebug(ex, "Could not write the audio route");
+        }
+
         return route;
+    }
+
+    private async Task<bool> HallPlayerReady(CancellationToken stoppingToken)
+    {
+        if (!File.Exists("/opt/jukebox/bin/hall-player.sh"))
+            return false;
+        var deadline = DateTime.UtcNow.AddSeconds(20);
+        while (DateTime.UtcNow < deadline && !stoppingToken.IsCancellationRequested)
+        {
+            if (HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5)))
+                return true;
+            await Task.Delay(400, stoppingToken);
+        }
+
+        return HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5));
+    }
+
+    private async Task<PlayResult> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
+    {
+        try
+        {
+            if (File.Exists(paths.PlayDone))
+                File.Delete(paths.PlayDone);
+        }
+        catch (IOException)
+        {
+            // The player writes a new line when this title ends.
+        }
+
+        var art = job.Entry.ThumbnailPath;
+        if (string.IsNullOrWhiteSpace(art) || !File.Exists(art))
+            art = "";
+        HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
+        var started = Environment.TickCount64;
+        var cap = HallPlayback.PlaybackCap(job.DurationMs);
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var elapsed = Environment.TickCount64 - started;
+            coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
+            ApplySavedAudio();
+            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id))
+                return PlayResult.Done();
+            if (TimeSpan.FromMilliseconds(elapsed) >= cap)
+                return PlayResult.Done();
+            await Task.Delay(400, stoppingToken);
+        }
+
+        return PlayResult.Done();
     }
 }
 

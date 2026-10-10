@@ -200,7 +200,7 @@ if [[ -f "$SRC/lib/jotta.gpg" ]]; then
 fi
 
 for dm in gdm gdm3 lightdm sddm; do
-  systemctl disable --now "$dm" >/dev/null 2>&1 || true
+  systemctl disable "$dm" >/dev/null 2>&1 || true
 done
 systemctl set-default multi-user.target
 systemctl daemon-reload

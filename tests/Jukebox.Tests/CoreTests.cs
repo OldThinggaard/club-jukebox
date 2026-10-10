@@ -180,6 +180,47 @@ public class DisplayParserTests
     }
 }
 
+public class HallPlaybackTests
+{
+    [Fact]
+    public void Writes_a_route_the_player_can_read()
+    {
+        var text = HallPlayback.AudioEnv("alsa_output.pci-0000_00_1f.3.analog-stereo", "analog-output-headphones", 140);
+        Assert.Contains("SINK=alsa_output.pci-0000_00_1f.3.analog-stereo", text);
+        Assert.Contains("PORT=analog-output-headphones", text);
+        Assert.Contains("VOLUME=100", text);
+        Assert.Equal("SINK=\nPORT=\nVOLUME=80\n", HallPlayback.AudioEnv("sink name", "port;rm", 80));
+    }
+
+    [Fact]
+    public void Does_not_finish_a_long_file_after_two_minutes()
+    {
+        Assert.Equal(TimeSpan.FromHours(3), HallPlayback.PlaybackCap(12 * 60 * 1000));
+        Assert.Equal(TimeSpan.FromHours(3), HallPlayback.PlaybackCap(10_000));
+        Assert.True(HallPlayback.PlaybackCap(4L * 60 * 60 * 1000) > TimeSpan.FromHours(4));
+    }
+
+    [Fact]
+    public void Done_file_matches_only_this_play()
+    {
+        var root = Directory.CreateTempSubdirectory("jukebox-play-");
+        try
+        {
+            var done = Path.Combine(root.FullName, "play.done");
+            HallPlayback.AtomicWrite(done, "other\n");
+            Assert.False(HallPlayback.DoneIs(done, "this"));
+            HallPlayback.AtomicWrite(done, "this\n");
+            Assert.True(HallPlayback.DoneIs(done, "this"));
+            var request = HallPlayback.Request("this", "/media/song.mp4", "video", 180_000, null);
+            Assert.StartsWith("this\n/media/song.mp4\nvideo\n180000\n", request);
+        }
+        finally
+        {
+            root.Delete(true);
+        }
+    }
+}
+
 public class SearchSyntaxTests
 {
     [Fact]

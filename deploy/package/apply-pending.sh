@@ -1,30 +1,29 @@
 #!/bin/bash
-# Runs at boot, before the jukebox starts.
-# Repairs an install that was turned off halfway, then applies one copied package.
+# Install one copied package. Never on the critical boot path, and never killed.
+# A killed dpkg is what forces a Debian reinstall.
 set -u
 export DEBIAN_FRONTEND=noninteractive
-
-say() {
-  printf '%s\n' "$1" > /dev/console || true
-}
-
-if grep -q ' half-configured\| half-installed\| reinstreq ' /var/lib/dpkg/status 2>/dev/null; then
-  say "Videojukebox gjor en afbrudt installation faerdig. Vent."
-  timeout --kill-after=15 90 dpkg --configure -a || true
-fi
-
 deb=/var/lib/jukebox/pending/videojukebox.deb
+updating=/var/lib/jukebox/updating
 if [[ ! -f "$deb" ]]; then
   exit 0
 fi
 
-say "Videojukebox opdaterer. Vent et minut."
-if timeout --kill-after=20 180 dpkg -i "$deb"; then
-  rm -f "$deb"
+install -d /var/lib/jukebox/failed-updates
+printf '%s\n' "Videojukebox opdaterer. Lad maskinen vaere." > /dev/console || true
+printf '%s\n' "1" > "$updating"
+sync
+
+if dpkg -i "$deb"; then
+  rm -f "$deb" "$updating" /var/lib/jukebox/update-error
   sync
-  say "Videojukebox er opdateret."
-else
-  say "Opdateringen blev ikke faerdig. Maskinen starter alligevel."
+  printf '%s\n' "Videojukebox er opdateret. Maskinen genstarter." > /dev/console || true
+  systemctl reboot || reboot || true
+  exit 0
 fi
-timeout --kill-after=15 60 dpkg --configure -a || true
+
+rm -f "$updating"
+mv "$deb" "/var/lib/jukebox/failed-updates/videojukebox-$(date +%s).deb" 2>/dev/null || true
+printf '%s\n' "Opdateringen fejlede. Den koerende version bliver." > /var/lib/jukebox/update-error
+printf '%s\n' "Opdateringen fejlede. Maskinen bliver paa den gamle version." > /dev/console || true
 exit 0
