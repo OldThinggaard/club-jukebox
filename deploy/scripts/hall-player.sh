@@ -20,8 +20,6 @@ VOLUME=80
 applied_sink=""
 applied_port=""
 applied_volume=""
-hw_volume=""
-hw_epoch=0
 SOCK=/tmp/jukebox-mpv.sock
 
 for _ in $(seq 1 30); do
@@ -81,26 +79,9 @@ apply_audio() {
     # The headset jack switches the output by itself. Leave that alone.
     applied_sink="$SINK"
     applied_port="$PORT"
-    hw_volume=""
   fi
-  # The file's own volume first, so the buttons are heard even while the
-  # mixers are still being set.
+  # Only the playing file's own level. The sound card's knobs stay put.
   push_volume
-  apply_hw_volume
-}
-
-apply_hw_volume() {
-  local now
-  now=$(date +%s)
-  # PipeWire owns the jack. Set it on every pass, so a saved level cannot
-  # put the sound straight back to full.
-  timeout 2 python3 /opt/jukebox/lib/mpv-volume.py pipewire "$VOLUME" >/dev/null 2>&1 || true
-  if [[ "$VOLUME" == "$hw_volume" && $((now - hw_epoch)) -lt 4 ]]; then
-    return 0
-  fi
-  timeout 2 python3 /opt/jukebox/lib/mpv-volume.py alsa "$VOLUME" >/dev/null 2>&1 || true
-  hw_volume="$VOLUME"
-  hw_epoch="$now"
 }
 
 probe_ms() {

@@ -107,12 +107,16 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
-if ! grep -q 'DEFAULT_AUDIO_SINK' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must reach PipeWire." >&2
+if grep -q 'ao-volume\|set-volume\|amixer' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "The volume buttons must not move the sound card." >&2
   exit 1
 fi
-if ! grep -q 'ao-volume' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must reach the playing file." >&2
+if grep -q 'mpv-volume.py pipewire\|mpv-volume.py alsa' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must not move the sound card." >&2
+  exit 1
+fi
+if ! grep -q 'alsactl init' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "The sound card must be put back before PipeWire starts." >&2
   exit 1
 fi
 if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then

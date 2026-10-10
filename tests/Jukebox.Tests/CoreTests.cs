@@ -272,8 +272,11 @@ public class LiveVolumeTests
         var report = LiveVolume.Apply(root.FullName, 0, sock);
         serve.Wait(TimeSpan.FromSeconds(2));
         Assert.True(report.Socket);
+        Assert.False(report.Pipe);
+        Assert.False(report.Alsa);
         Assert.Contains("\"volume\"", seen.ToString());
         Assert.Contains("0", seen.ToString());
+        Assert.DoesNotContain("mute", seen.ToString());
         var heard = LiveVolume.Read(root.FullName);
         Assert.NotNull(heard);
         Assert.Equal(0, heard!.Percent);

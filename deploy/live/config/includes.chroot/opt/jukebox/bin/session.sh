@@ -10,6 +10,13 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && command -v dbus-launch >/dev/null
   eval "$(dbus-launch --sh-syntax)"
 fi
 
+# An earlier version moved the sound card's own knobs with the volume
+# buttons. That changes the sound itself. Put the card back once, then
+# leave it alone. PipeWire starts afterwards and keeps this state.
+if command -v alsactl >/dev/null 2>&1; then
+  alsactl init >/dev/null 2>&1 || true
+fi
+
 if command -v pipewire >/dev/null 2>&1; then
   pipewire >/var/log/jukebox-pipewire.log 2>&1 &
   sleep 0.3

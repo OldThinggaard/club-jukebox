@@ -10,117 +10,6 @@ queue_id = sys.argv[3] if len(sys.argv) > 3 else ""
 clock_path = "/var/lib/jukebox/play.clock"
 
 
-def apply_alsa(level):
-    """Set every playback knob on every sound card.
-
-    The headset jack switches speaker and headphone by itself. Those knobs
-    are not always named Master, so a named lookup leaves the sound stuck.
-    """
-    import re
-    import subprocess
-
-    cards_path = os.environ.get("JUKEBOX_CARDS", "/proc/asound/cards")
-    if not os.path.isfile(cards_path):
-        return
-    chosen = []
-    with open(cards_path, encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            parts = line.split()
-            if not parts or not parts[0].isdigit():
-                continue
-            card = parts[0]
-            try:
-                listed = subprocess.run(
-                    ["amixer", "-c", card, "scontents"],
-                    capture_output=True,
-                    text=True,
-                    timeout=1,
-                    check=False,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                continue
-            name = None
-            playback = False
-            for row in listed.stdout.splitlines():
-                match = re.match(r"Simple mixer control '([^']*)'", row)
-                if match:
-                    if playback and name:
-                        chosen.append((card, name))
-                    name = match.group(1)
-                    playback = False
-                    continue
-                if "Playback channels" in row:
-                    playback = True
-            if playback and name:
-                chosen.append((card, name))
-    for card, name in chosen:
-        args = ["amixer", "-c", card, "-q", "sset", name, f"{level}%"]
-        args.append("mute" if level == 0 else "unmute")
-        try:
-            subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False)
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-
-
-def apply_pipewire(level):
-    """Set the volume PipeWire is actually playing.
-
-    The headset jack moves between speaker and headphone inside PipeWire.
-    The old mixer knobs do not change that sound.
-    """
-    import re
-    import subprocess
-
-    mute = "1" if level == 0 else "0"
-
-    def run(args):
-        try:
-            subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1, check=False)
-        except (OSError, subprocess.TimeoutExpired):
-            return
-
-    run(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", mute])
-    run(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{level}%"])
-    try:
-        status = subprocess.run(["wpctl", "status"], capture_output=True, text=True, timeout=1, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return
-    mode = ""
-    seen = set()
-    for line in status.stdout.splitlines():
-        if "Sinks:" in line:
-            mode = "sink"
-            continue
-        if "Sources:" in line and mode == "sink":
-            mode = ""
-            continue
-        if "Streams:" in line:
-            mode = "stream"
-            continue
-        if mode == "stream" and ("Filters:" in line or "Video" in line):
-            mode = ""
-            continue
-        if mode not in ("sink", "stream"):
-            continue
-        match = re.search(r"(?:^|\s)(\d+)\.", line)
-        if not match:
-            continue
-        node = match.group(1)
-        if node in seen:
-            continue
-        seen.add(node)
-        run(["wpctl", "set-mute", node, mute])
-        run(["wpctl", "set-volume", node, f"{level}%"])
-
-
-if path == "alsa":
-    apply_alsa(max(0, min(100, int(volume))))
-    raise SystemExit(0)
-if path == "pipewire":
-    apply_pipewire(max(0, min(100, int(volume))))
-    raise SystemExit(0)
-
-
 def request(sock, payload):
     sock.sendall((json.dumps(payload) + "\n").encode())
     data = b""
@@ -191,11 +80,6 @@ try:
         reply = request(sock, {"command": ["set_property", "volume", level]})
         if reply.get("error") not in (None, "success"):
             raise SystemExit(1)
-        for name, value in (("ao-volume", level), ("mute", level == 0), ("ao-mute", level == 0)):
-            try:
-                request(sock, {"command": ["set_property", name, value]})
-            except OSError:
-                break
     else:
         eof = prop(sock, "eof-reached")
         time_pos = number(prop(sock, "time-pos"))
