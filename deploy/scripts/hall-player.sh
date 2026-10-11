@@ -221,9 +221,26 @@ learn_length() {
   case "$ms" in
     ''|*[!0-9]*) return 0 ;;
   esac
-  if [[ "$ms" -ge 20000 ]]; then
+  # A shorter reading must not replace a longer one.
+  if [[ "$ms" -gt "$play_ms" && "$ms" -ge 20000 ]]; then
     play_ms="$ms"
   fi
+}
+
+still_in_the_middle() {
+  [[ -f /var/lib/jukebox/play.clock ]] || return 1
+  local cid time_ms dur_ms
+  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  [[ "$cid" == "$last" ]] || return 1
+  time_ms="$(sed -n '2p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  dur_ms="$(sed -n '3p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  case "$time_ms" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  case "$dur_ms" in
+    ''|*[!0-9]*) return 1 ;;
+  esac
+  [[ "$dur_ms" -ge 20000 && $((time_ms + 5000)) -lt "$dur_ms" ]]
 }
 
 note_finished() {
@@ -248,6 +265,10 @@ finish_if_stopped() {
   fi
   learn_length
   if [[ "$ended" -eq 1 ]] || past_limit; then
+    # A length that is still ahead of the picture must not stop the song.
+    if still_in_the_middle; then
+      return 0
+    fi
     note_finished "${last}"
     kill_play
     started_epoch=0
@@ -259,6 +280,8 @@ finish_if_stopped() {
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
   started_epoch=0
+  # The player left on its own. Tell the program, so the next title can start.
+  # The same request is left alone and is not started again from the beginning.
   note_finished "${last}"
 }
 

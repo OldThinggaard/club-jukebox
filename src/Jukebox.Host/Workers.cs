@@ -188,7 +188,8 @@ public sealed class PlaybackWorker(
             var known = job.DurationMs;
             if (!string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase))
                 known = Math.Max(known, HallPlayback.ClockDurationMs(paths.PlayClock, job.Entry.Id));
-            if (TimeSpan.FromMilliseconds(elapsed) >= HallPlayback.PlaybackCap(known, job.Entry.MediaType))
+            if (!HallPlayback.ClockInTheMiddle(paths.PlayClock, job.Entry.Id)
+                && TimeSpan.FromMilliseconds(elapsed) >= HallPlayback.PlaybackCap(known, job.Entry.MediaType))
                 return PlayResult.Done();
             ApplySavedAudio();
             await Task.Delay(400, stoppingToken);

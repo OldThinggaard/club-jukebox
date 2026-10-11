@@ -48,12 +48,36 @@ def number(value):
     return float(value)
 
 
-def write_clock(time_pos, duration, ended):
+def read_clock():
+    """Longest length seen for this title, and how many end readings are in a row."""
+    try:
+        with open(clock_path, encoding="utf-8") as handle:
+            lines = [line.strip() for line in handle.readlines()]
+    except OSError:
+        return 0.0, 0
+    if not lines or lines[0] != queue_id:
+        return 0.0, 0
+    longest = 0.0
+    streak = 0
+    if len(lines) >= 3:
+        try:
+            longest = max(0.0, int(lines[2]) / 1000)
+        except ValueError:
+            longest = 0.0
+    if len(lines) >= 5:
+        try:
+            streak = max(0, int(lines[4]))
+        except ValueError:
+            streak = 0
+    return longest, streak
+
+
+def write_clock(time_pos, longest, ended, streak):
     if not queue_id:
         return
     time_ms = int(time_pos * 1000) if time_pos is not None else 0
-    duration_ms = int(duration * 1000) if duration is not None else 0
-    text = f"{queue_id}\n{time_ms}\n{duration_ms}\n{1 if ended else 0}\n"
+    duration_ms = int(longest * 1000) if longest else 0
+    text = f"{queue_id}\n{time_ms}\n{duration_ms}\n{1 if ended else 0}\n{streak}\n"
     os.makedirs(os.path.dirname(clock_path), exist_ok=True)
     temporary = clock_path + ".tmp"
     with open(temporary, "w", encoding="utf-8") as handle:
@@ -128,14 +152,23 @@ if path == "active":
     raise SystemExit(0)
 
 
-def reached_end(eof, idle, percent, time_pos, duration):
-    if eof is True:
-        return True
-    if duration is not None and duration >= 1 and time_pos is not None and time_pos >= duration - 0.5:
-        return True
-    if idle is True and isinstance(percent, (int, float)) and not isinstance(percent, bool) and percent >= 95:
-        return True
-    return False
+def consider_end(eof, time_pos, duration, previous_longest, streak):
+    """Confirm the end only when the file itself is finished.
+
+    One short length, or a length that shrinks, does not count. The position
+    has to sit at the longest length seen so far, and the player has to say
+    the file is over, twice in a row.
+    """
+    reported = duration if duration is not None and duration > 0 else 0.0
+    position = time_pos if time_pos is not None and time_pos > 0 else 0.0
+    longest = max(previous_longest, reported)
+    agrees = reported == 0 or reported >= longest - 1
+    near = longest >= 1 and position >= longest - 0.5 and agrees
+    if eof is True and near:
+        streak += 1
+    else:
+        streak = 0
+    return longest, streak, streak >= 2
 
 
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -151,10 +184,9 @@ try:
         eof = prop(sock, "eof-reached")
         time_pos = number(prop(sock, "time-pos"))
         duration = number(prop(sock, "duration"))
-        idle = prop(sock, "idle-active")
-        percent = prop(sock, "percent-pos")
-        ended = reached_end(eof, idle, percent, time_pos, duration)
-        write_clock(time_pos, duration, ended)
+        previous, streak = read_clock()
+        longest, streak, ended = consider_end(eof, time_pos, duration, previous, streak)
+        write_clock(time_pos, longest, ended, streak)
         if ended:
             raise SystemExit(2)
 finally:

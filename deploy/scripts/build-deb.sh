@@ -167,8 +167,16 @@ if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js
   echo "The package is missing the club-name switch." >&2
   exit 1
 fi
-if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
-  echo "The television page must say when a song has ended." >&2
+if grep -q 'hall-video' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The television page must not play the film." >&2
+  exit 1
+fi
+if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must say when a song has ended." >&2
+  exit 1
+fi
+if ! grep -q 'def consider_end' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
+  echo "A short length must not end the song." >&2
   exit 1
 fi
 if ! grep -q 'contextmenu' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
