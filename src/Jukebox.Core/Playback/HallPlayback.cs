@@ -74,27 +74,6 @@ public static class HallPlayback
         }
     }
 
-    /// <summary>
-    /// The file is still in the middle when the longest length seen so far is
-    /// well ahead of the position. A shorter length must not cut it off.
-    /// </summary>
-    public static bool ClockInTheMiddle(string clockPath, string queueId)
-    {
-        try
-        {
-            var lines = ReadClock(clockPath, queueId);
-            if (lines is null || lines.Length < 3)
-                return false;
-            if (!long.TryParse(lines[1].Trim(), out var time) || !long.TryParse(lines[2].Trim(), out var duration))
-                return false;
-            return duration >= 20_000 && time + 5_000 < duration;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-    }
-
     private static string[]? ReadClock(string clockPath, string queueId)
     {
         if (string.IsNullOrWhiteSpace(queueId) || !File.Exists(clockPath))
