@@ -383,7 +383,6 @@ public static class Endpoints
                 // The player reads the saved value on its next pass.
             }
 
-            LiveVolume.Apply(paths.DataDirectory, body.VolumePercent);
             settings.Audit("settings", body.IdleStrategy);
             return Results.Ok(settings.Get());
         }).AddEndpointFilter(Gate);

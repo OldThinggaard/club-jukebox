@@ -68,7 +68,6 @@ apply_audio() {
     applied_sink="$SINK"
     applied_port="$PORT"
   fi
-  push_volume
 }
 
 probe_ms() {
@@ -79,15 +78,6 @@ probe_ms() {
     ''|*[!0-9]*) printf '%s\n' 0; return 0 ;;
   esac
   printf '%s\n' "$((raw * 1000))"
-}
-
-push_volume() {
-  if [[ "$VOLUME" == "$applied_volume" ]]; then
-    return 0
-  fi
-  if python3 /opt/jukebox/lib/mpv-volume.py active "$VOLUME"; then
-    applied_volume="$VOLUME"
-  fi
 }
 
 monitor_index() {
@@ -176,7 +166,6 @@ start_play() {
   applied_volume=""
   sleep 0.8
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
-  push_volume
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     play_ms="$duration"
     play_kind="$kind"
@@ -203,7 +192,6 @@ start_play() {
   applied_volume=""
   sleep 0.4
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
-  push_volume
   play_ms="$duration"
   play_kind="$kind"
   started_epoch=$(date +%s)

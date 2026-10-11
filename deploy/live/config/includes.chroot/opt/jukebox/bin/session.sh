@@ -21,6 +21,17 @@ if command -v pipewire >/dev/null 2>&1; then
   fi
 fi
 
+# Once, after the jack has chosen an output: that output to full, the other off.
+# Nothing later moves these knobs.
+if [[ -f /opt/jukebox/lib/mpv-volume.py ]]; then
+  for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    if command -v wpctl >/dev/null 2>&1 && wpctl status >/dev/null 2>&1; then
+      python3 /opt/jukebox/lib/mpv-volume.py active 100 && break
+    fi
+    sleep 0.3
+  done
+fi
+
 xset s off || true
 xset -dpms || true
 xset s noblank || true

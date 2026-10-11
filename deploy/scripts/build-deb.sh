@@ -108,11 +108,15 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   exit 1
 fi
 if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
-  echo "The volume buttons must use the output that is already playing." >&2
+  echo "Startup must know which output is playing." >&2
   exit 1
 fi
-if ! grep -q 'mpv-volume.py active' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "The player must keep the idle output off." >&2
+if ! grep -q 'mpv-volume.py active 100' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Debian must be set to full once at startup." >&2
+  exit 1
+fi
+if grep -q 'mpv-volume.py active' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "A song must not move the volume." >&2
   exit 1
 fi
 if grep -q 'set-sink-port' "$pkg/opt/jukebox/bin/hall-player.sh"; then
@@ -147,8 +151,8 @@ if ! grep -q 'map-to-output' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "Touch must be mapped to the panel." >&2
   exit 1
 fi
-if ! grep -q 'Sendt til lyden' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
-  echo "The volume screen must say when the number was sent." >&2
+if grep -q 'Lydstyrke' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The volume buttons must stay off the sound page." >&2
   exit 1
 fi
 if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then

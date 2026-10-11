@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
 import { DanishKeyboard } from "./components/Keyboard";
@@ -312,46 +312,14 @@ function PlaybackPanel() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [displays, setDisplays] = useState<{ name: string; connected: boolean; width: number }[]>([]);
   const [soundNote, setSoundNote] = useState("");
-  const [heard, setHeard] = useState("");
-  const volumeTicket = useRef(0);
-  function loadHeard() {
-    void admin<{ percent: number | null; socket: boolean; pipe: boolean; alsa: boolean }>("/api/admin/volume-status")
-      .then((body) => {
-        if (body.percent === null) setHeard("");
-        else if (!body.socket && !body.pipe && !body.alsa) setHeard("Tallet blev gemt, men det nåede ikke frem til lyden.");
-        else setHeard(`Sendt til lyden: ${body.percent} %.`);
-      })
-      .catch(() => setHeard(""));
-  }
   useEffect(() => {
     void admin<Settings>("/api/admin/settings").then(setSettings);
     void admin<{ displays: { name: string; connected: boolean; width: number }[] }>("/api/admin/displays").then((body) => setDisplays(body.displays));
-    loadHeard();
   }, []);
   if (!settings) return <p>Henter lyd…</p>;
   const current = settings;
   const set = (patch: Partial<Settings>) => setSettings({ ...current, ...patch });
   const headphones = current.audioDevice === "headphones" || current.audioDevice.includes("headphone");
-  function chooseVolume(value: number) {
-    const next = Math.max(0, Math.min(100, value));
-    const ticket = ++volumeTicket.current;
-    const body: Settings = { ...current, volumePercent: next };
-    setSettings(body);
-    setSoundNote("Gemmer…");
-    window.setTimeout(() => {
-      if (ticket !== volumeTicket.current) return;
-      void admin<Settings>("/api/admin/settings", { method: "PUT", body: JSON.stringify(body) })
-        .then((saved) => {
-          if (ticket !== volumeTicket.current) return;
-          setSettings(saved);
-          setSoundNote("Gemt");
-          loadHeard();
-        })
-        .catch(() => {
-          if (ticket === volumeTicket.current) setSoundNote("Lyden blev ikke gemt");
-        });
-    }, 180);
-  }
   async function saveSound(patch: Partial<Settings>) {
     const next: Settings = { ...current, ...patch };
     setSettings(next);
@@ -371,23 +339,8 @@ function PlaybackPanel() {
         <button className={headphones ? "" : "active"} type="button" onClick={() => void saveSound({ audioDevice: "speakers" })}>Indbyggede højttalere</button>
         <button className={headphones ? "active" : ""} type="button" onClick={() => void saveSound({ audioDevice: "headphones" })}>Hovedtelefonudgang</button>
       </div>
-      <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme.</p>
-      <Field label="Lydstyrke">
-        <div className="volume-row">
-          <button type="button" onClick={() => chooseVolume(settings.volumePercent - 5)}>−</button>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={settings.volumePercent}
-            onInput={(event) => chooseVolume(Number((event.target as HTMLInputElement).value))}
-          />
-          <button type="button" onClick={() => chooseVolume(settings.volumePercent + 5)}>+</button>
-          <strong>{settings.volumePercent}%</strong>
-        </div>
-      </Field>
+      <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme. Styrken sættes til fuld ved start og kan ikke ændres her.</p>
       {soundNote && <p>{soundNote}</p>}
-      {heard && <p>{heard}</p>}
       <div className="form-grid">
         <Field label="Klubnavn"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
         <label className="field flex items-center gap-3 text-sm text-[#b7ab9c]">
