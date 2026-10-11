@@ -10,6 +10,7 @@ npm run build
 rm -rf "$ROOT/src/Jukebox.Host/wwwroot"
 mkdir -p "$ROOT/src/Jukebox.Host/wwwroot"
 cp -a "$ROOT/web/dist/." "$ROOT/src/Jukebox.Host/wwwroot/"
+rm -rf "$ROOT/publish/app/wwwroot"
 dotnet publish "$ROOT/src/Jukebox.Host/Jukebox.Host.csproj" -c Release -r linux-x64 --self-contained true -o "$ROOT/publish/app"
 dotnet publish "$ROOT/src/Jukebox.UpdateAgent/Jukebox.UpdateAgent.csproj" -c Release -r linux-x64 --self-contained true -o "$ROOT/publish/updater"
 echo "$ROOT/publish"
