@@ -21,12 +21,18 @@ if command -v pipewire >/dev/null 2>&1; then
   fi
 fi
 
-# Once, after the jack has chosen an output: that output to full, the other off.
+# Once, after PipeWire is up: Debian's own volume to full, and the idle jack off.
 # Nothing later moves these knobs.
-if [[ -f /opt/jukebox/lib/mpv-volume.py ]]; then
+if command -v wpctl >/dev/null 2>&1; then
   for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-    if command -v wpctl >/dev/null 2>&1 && wpctl status >/dev/null 2>&1; then
-      python3 /opt/jukebox/lib/mpv-volume.py active 100 && break
+    if wpctl get-volume @DEFAULT_AUDIO_SINK@ >/dev/null 2>&1; then
+      sleep 1
+      wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 || true
+      wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0 || true
+      if [[ -f /opt/jukebox/lib/mpv-volume.py ]]; then
+        python3 /opt/jukebox/lib/mpv-volume.py active 100 || true
+      fi
+      break
     fi
     sleep 0.3
   done

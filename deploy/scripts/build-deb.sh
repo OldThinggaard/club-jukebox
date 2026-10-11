@@ -111,12 +111,20 @@ if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
   echo "Startup must know which output is playing." >&2
   exit 1
 fi
+if ! grep -q 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Debian's own volume must be set to full once at startup." >&2
+  exit 1
+fi
 if ! grep -q 'mpv-volume.py active 100' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "Debian must be set to full once at startup." >&2
+  echo "The idle jack must be turned off once at startup." >&2
   exit 1
 fi
 if grep -q 'mpv-volume.py active' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "A song must not move the volume." >&2
+  exit 1
+fi
+if grep -q 'wpctl set-volume' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "A song must not move Debian's volume." >&2
   exit 1
 fi
 if grep -q 'set-sink-port' "$pkg/opt/jukebox/bin/hall-player.sh"; then
