@@ -159,6 +159,10 @@ if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/current/wwwroot/assets/"inde
   echo "The television page must say when a song has ended." >&2
   exit 1
 fi
+if ! grep -q 'contextmenu' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "A long press must not open the white menu." >&2
+  exit 1
+fi
 test -x "$pkg/opt/jukebox/lib/xinput"
 python3 "$pkg/opt/jukebox/lib/usb-package.py" self-test
 

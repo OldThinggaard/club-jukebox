@@ -15,6 +15,16 @@
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; margin: 0; }
 body { background: #110e0b; }
+html, body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 .font-serif { font-family: Fraunces, serif; }
