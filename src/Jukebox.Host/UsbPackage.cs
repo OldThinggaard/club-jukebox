@@ -6,6 +6,13 @@ public static class UsbPackage
 {
     public const string ScriptPath = "/opt/jukebox/lib/usb-package.py";
 
+    public static void Mount()
+    {
+        if (!File.Exists(ScriptPath))
+            return;
+        Run(ScriptPath, "mount", TimeSpan.FromSeconds(20));
+    }
+
     public static object Status()
     {
         if (!File.Exists(ScriptPath))

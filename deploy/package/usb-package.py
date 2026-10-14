@@ -125,6 +125,23 @@ def mount_types(fstype):
     return [fstype]
 
 
+def jukebox_ids():
+    try:
+        import pwd
+
+        user = pwd.getpwnam("jukebox")
+    except (ImportError, KeyError):
+        return "", ""
+    return str(user.pw_uid), str(user.pw_gid)
+
+
+def owner_option(fstype, uid, gid):
+    base = "ro,nodev,nosuid,noexec"
+    if fstype in {"vfat", "ntfs", "exfat"} and uid and gid:
+        return f"{base},uid={uid},gid={gid}"
+    return base
+
+
 def mount_one(name, fstype):
     if not name or "/" in name or name.startswith("."):
         return False
@@ -133,15 +150,21 @@ def mount_one(name, fstype):
     device = os.path.join("/dev", name)
     if not os.path.exists(device):
         return False
+    uid, gid = jukebox_ids()
+    options = [owner_option(fstype, uid, gid)]
+    plain = "ro,nodev,nosuid,noexec"
+    if options[0] != plain:
+        options.append(plain)
     for kind in mount_types(fstype):
-        result = subprocess.run(
-            ["timeout", "15", "mount", "-t", kind, "-o", "ro,nodev,nosuid,noexec", device, target],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if result.returncode == 0:
-            return True
+        for opt in options:
+            result = subprocess.run(
+                ["timeout", "15", "mount", "-t", kind, "-o", opt, device, target],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            if result.returncode == 0:
+                return True
     return False
 
 
@@ -260,6 +283,10 @@ def self_test():
             raise SystemExit("none line")
         if normalize_fs("NTFS3") != "ntfs" or normalize_fs("ExFAT") != "exfat" or normalize_fs("FAT32") != "vfat":
             raise SystemExit("windows filesystem names")
+        if owner_option("vfat", "1000", "1000") != "ro,nodev,nosuid,noexec,uid=1000,gid=1000":
+            raise SystemExit("windows stick must be readable by the jukebox user")
+        if owner_option("ext4", "1000", "1000") != "ro,nodev,nosuid,noexec":
+            raise SystemExit("ext4 keeps its own owners")
         outside = os.path.join(tempfile.gettempdir(), "jukebox-usb-outside-payload")
         with open(outside, "wb") as handle:
             handle.truncate(MIN_BYTES)

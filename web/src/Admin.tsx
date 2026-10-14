@@ -588,13 +588,20 @@ function OnlimePanel() {
 
 function UpdatesPanel() {
   const [usb, setUsb] = useState<{ found: boolean; canInstall: boolean; busy: boolean; message: string } | null>(null);
+  const [songs, setSongs] = useState<{ found: boolean; canCopy: boolean; busy: boolean; message: string } | null>(null);
   const [data, setData] = useState<{ version: string; note: string; packages: { path: string; version: string; valid: boolean; newer: boolean; error: string | null }[] } | null>(null);
   const [message, setMessage] = useState("");
   const [bad, setBad] = useState(false);
+  const [songNote, setSongNote] = useState("");
+  const [songBad, setSongBad] = useState(false);
 
   useEffect(() => {
     const pull = () => {
       admin<NonNullable<typeof usb>>("/api/admin/package").then(setUsb).catch(() => undefined);
+      admin<NonNullable<typeof songs>>("/api/admin/usb-songs").then((body) => {
+        setSongs(body);
+        setSongBad(false);
+      }).catch(() => undefined);
     };
     pull();
     const timer = window.setInterval(pull, 3000);
@@ -614,6 +621,19 @@ function UpdatesPanel() {
     }
   }
 
+  async function copySongs() {
+    setSongBad(false);
+    setSongNote("Kopieringen er startet. Lad nøglen sidde i.");
+    setSongs((current) => current ? { ...current, busy: true, canCopy: false, message: "Kopieringen er startet. Lad nøglen sidde i." } : current);
+    try {
+      const body = await admin<{ message?: string }>("/api/admin/usb-songs", { method: "POST", body: "{}" });
+      setSongNote(body.message ?? "Kopieringen er startet. Lad nøglen sidde i.");
+    } catch {
+      setSongBad(true);
+      setSongNote("Sangene kunne ikke kopieres. Lad nøglen sidde i, og prøv igen.");
+    }
+  }
+
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Opdatering</h2>
@@ -622,6 +642,12 @@ function UpdatesPanel() {
         Installer og genstart
       </Button>
       <p className={bad ? "warn" : "ok"}>{message || usb?.message || "Leder efter USB-nøglen…"}</p>
+      <h3 className="font-serif text-2xl mt-6">Sange</h3>
+      <p>Sæt USB-nøglen i med sangene. Nye sange lægges ind på maskinen. En fil med samme navn erstatter den gamle. Sangene fra Onlime bliver liggende. Nøglen bliver ikke slettet.</p>
+      <Button size="lg" disabled={!songs?.canCopy || songs.busy || usb?.busy} onClick={() => void copySongs()}>
+        Kopier sangene
+      </Button>
+      <p className={songBad ? "warn" : "ok"}>{songBad ? songNote : songs?.message || "Leder efter sange på USB-nøglen…"}</p>
       {data && <p className="muted">Version {data.version}. {data.note}</p>}
       {data?.packages.map((item) => (
         <article key={item.path} className="stat mt-3">

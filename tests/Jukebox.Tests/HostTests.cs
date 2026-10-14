@@ -71,6 +71,12 @@ public class HostTests : IClassFixture<JukeboxFactory>
 
         var post = await client.PostAsync("/api/admin/package", null);
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
+
+        var songsAnon = await _factory.CreateClient().GetAsync("/api/admin/usb-songs");
+        Assert.Equal(HttpStatusCode.Unauthorized, songsAnon.StatusCode);
+        var songs = await client.GetFromJsonAsync<UsbSongsDto>("/api/admin/usb-songs");
+        Assert.NotNull(songs);
+        Assert.False(string.IsNullOrWhiteSpace(songs!.Message));
     }
 
     [Fact]
@@ -153,6 +159,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
     private sealed record QueueDto(bool Ok, string? Reason);
     private sealed record ScreenDto(string ClubName);
     private sealed record PackageDto(bool Found, bool CanInstall, string Message);
+    private sealed record UsbSongsDto(bool Found, bool CanCopy, bool Busy, string Message);
     private sealed record OnlimeStatusDto(bool Installed, bool CanInstall, string Message);
 }
 

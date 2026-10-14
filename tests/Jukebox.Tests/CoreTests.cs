@@ -2,6 +2,7 @@ using Jukebox.Core;
 using Jukebox.Core.Backup;
 using Jukebox.Core.Data;
 using Jukebox.Core.Domain;
+using Jukebox.Core.Indexing;
 using Jukebox.Core.Metadata;
 using Jukebox.Core.Playback;
 using Jukebox.Core.Queue;
@@ -147,6 +148,113 @@ public class MetadataAndCategoryTests
         Assert.Contains(ninetiesChip, fixture.Media.CategoryIds(nineties));
         Assert.Contains(thousandsChip.Id, fixture.Media.CategoryIds(thousands));
         Assert.Contains(names, name => name == "Dance");
+    }
+}
+
+public class UsbSongImportTests
+{
+    [Fact]
+    public void Copies_songs_from_the_stick_and_leaves_other_files_alone()
+    {
+        var root = Directory.CreateTempSubdirectory("jukebox-usb-").FullName;
+        try
+        {
+            var stick = Path.Combine(root, "sdb1");
+            var library = Path.Combine(root, "library");
+            var onlime = Path.Combine(root, "onlime", "Queen - Stay.mp4");
+            Directory.CreateDirectory(Path.Combine(stick, "Queen"));
+            Directory.CreateDirectory(Path.Combine(stick, ".hidden"));
+            Directory.CreateDirectory(Path.Combine(stick, "$RECYCLE.BIN"));
+            Directory.CreateDirectory(Path.GetDirectoryName(onlime)!);
+            File.WriteAllBytes(Path.Combine(stick, "Queen", "Radio Ga Ga.mp4"), [1, 2, 3, 4]);
+            File.WriteAllBytes(Path.Combine(stick, "Enjoy the Silence.mp3"), [5, 6, 7, 8]);
+            File.WriteAllBytes(Path.Combine(stick, "cover.jpg"), [9, 9, 9]);
+            File.WriteAllBytes(Path.Combine(stick, "videojukebox.deb"), [8, 8, 8, 8]);
+            File.WriteAllBytes(Path.Combine(stick, ".hidden", "Secret.mp4"), [7, 7, 7, 7]);
+            File.WriteAllBytes(Path.Combine(stick, "$RECYCLE.BIN", "Gone.mp4"), [6, 6, 6, 6]);
+            File.WriteAllBytes(onlime, [4, 4, 4, 4]);
+            Directory.CreateDirectory(library);
+            File.WriteAllBytes(Path.Combine(library, "Queen - Old.mp4"), [3, 3, 3, 3]);
+
+            var hub = Path.Combine(root, "hub");
+            Directory.CreateDirectory(hub);
+            var volumes = UsbSongImport.Volumes([hub, stick], new HashSet<string>([stick], StringComparer.Ordinal));
+            Assert.Equal(stick, Assert.Single(volumes));
+
+            var files = UsbSongImport.List(stick);
+            Assert.Equal(2, files.Count);
+            Assert.Contains(files, file => file.RelativePath == Path.Combine("Queen", "Radio Ga Ga.mp4"));
+            Assert.Contains(files, file => file.RelativePath == "Enjoy the Silence.mp3");
+
+            var first = UsbSongImport.Copy(files, library, () => 50_000, 0);
+            Assert.Equal(2, first.Added);
+            Assert.Equal(0, first.Replaced);
+            Assert.Equal([1, 2, 3, 4], File.ReadAllBytes(Path.Combine(library, "Queen", "Radio Ga Ga.mp4")));
+            Assert.Equal([4, 4, 4, 4], File.ReadAllBytes(onlime));
+            Assert.Equal([3, 3, 3, 3], File.ReadAllBytes(Path.Combine(library, "Queen - Old.mp4")));
+
+            File.WriteAllBytes(Path.Combine(stick, "Queen", "Radio Ga Ga.mp4"), [9, 8, 7, 6, 5]);
+            var second = UsbSongImport.Copy(UsbSongImport.List(stick), library, () => 50_000, 0);
+            Assert.Equal(0, second.Added);
+            Assert.Equal(1, second.Replaced);
+            Assert.Equal(1, second.Unchanged);
+            Assert.Equal([9, 8, 7, 6, 5], File.ReadAllBytes(Path.Combine(library, "Queen", "Radio Ga Ga.mp4")));
+
+            var third = UsbSongImport.Copy(UsbSongImport.List(stick), library, () => 50_000, 0);
+            Assert.Equal(0, third.Added);
+            Assert.Equal(0, third.Replaced);
+            Assert.Equal(2, third.Unchanged);
+            Assert.Equal("Sangene ligger der allerede. Du kan tage nøglen ud.", UsbSongImport.DoneMessage(third));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void Stops_when_the_disk_is_full_or_the_stick_goes_away()
+    {
+        var root = Directory.CreateTempSubdirectory("jukebox-usb-full-").FullName;
+        try
+        {
+            var stick = Path.Combine(root, "stick");
+            var library = Path.Combine(root, "library");
+            Directory.CreateDirectory(stick);
+            File.WriteAllBytes(Path.Combine(stick, "One.mp4"), [1, 2, 3, 4]);
+            File.WriteAllBytes(Path.Combine(stick, "Two.mp4"), new byte[200]);
+            var files = UsbSongImport.List(stick);
+            var full = UsbSongImport.Copy(files, library, () => 100, 0);
+            Assert.True(full.DiskFull);
+            Assert.Equal(1, full.Added);
+            Assert.False(File.Exists(Path.Combine(library, "Two.mp4")));
+            Assert.Contains("Disken er fuld", UsbSongImport.DoneMessage(full));
+
+            var missing = new UsbSongImport.SongFile(Path.Combine(stick, "Gone.mp4"), "Gone.mp4");
+            var pulled = UsbSongImport.Copy([missing], library, () => 50_000, 0);
+            Assert.True(pulled.StickRemoved);
+            Assert.Contains("Nøglen blev taget ud", UsbSongImport.DoneMessage(pulled));
+
+            var outside = Path.Combine(root, "outside.mp4");
+            File.WriteAllBytes(outside, [1, 1, 1, 1]);
+            var escaped = UsbSongImport.Copy([new UsbSongImport.SongFile(outside, "../outside.mp4")], library, () => 50_000, 0);
+            Assert.Equal(0, escaped.Added);
+            Assert.Equal([1, 1, 1, 1], File.ReadAllBytes(outside));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void Idle_text_tells_whether_the_stick_has_songs()
+    {
+        Assert.Contains("Ingen USB-nøgle", UsbSongImport.IdleMessage(0, 0, false));
+        Assert.Contains("ingen sange", UsbSongImport.IdleMessage(1, 0, false));
+        Assert.Contains("1 sang", UsbSongImport.IdleMessage(1, 1, false));
+        Assert.Contains("kunne ikke læses", UsbSongImport.IdleMessage(1, 0, true));
+        Assert.Contains("1 af 4", UsbSongImport.BusyMessage(1, 4));
     }
 }
 

@@ -44,6 +44,7 @@ builder.Services.AddSingleton<BackupStore>();
 builder.Services.AddSingleton<FfprobeRunner>();
 builder.Services.AddSingleton<ThumbnailGenerator>();
 builder.Services.AddSingleton<MediaIndexer>();
+builder.Services.AddSingleton<UsbSongCopy>();
 builder.Services.AddSingleton<PlaybackCoordinator>();
 builder.Services.AddSingleton<BackupManager>();
 builder.Services.AddSingleton<SystemSampler>();

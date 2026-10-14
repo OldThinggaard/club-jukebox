@@ -449,6 +449,16 @@ public static class Endpoints
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
 
+        admin.MapGet("/usb-songs", (UsbSongCopy songs) => Results.Ok(songs.Status())).AddEndpointFilter(Gate);
+        admin.MapPost("/usb-songs", (UsbSongCopy songs, SettingsStore settings) =>
+        {
+            var result = songs.Start();
+            if (result.Started)
+                settings.Audit("usb-songs", null);
+            return result.Ok
+                ? Results.Ok(result.Body)
+                : Results.Json(result.Body, statusCode: result.Status);
+        }).AddEndpointFilter(Gate);
         admin.MapGet("/package", () => Results.Ok(UsbPackage.Status())).AddEndpointFilter(Gate);
         admin.MapPost("/package", (SettingsStore settings) =>
         {

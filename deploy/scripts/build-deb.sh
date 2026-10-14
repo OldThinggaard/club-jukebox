@@ -68,6 +68,10 @@ if ! grep -q "Installer og genstart" "$pkg/opt/jukebox/current/wwwroot/assets/"i
   echo "The package is missing the USB install button." >&2
   exit 1
 fi
+if ! grep -q "Kopier sangene" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The package is missing the USB song button." >&2
+  exit 1
+fi
 if ! grep -q "Hent Onlime Sync" "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The package is missing the Onlime Sync button." >&2
   exit 1
