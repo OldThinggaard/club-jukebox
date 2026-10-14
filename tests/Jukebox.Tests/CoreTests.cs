@@ -79,6 +79,75 @@ public class MetadataAndCategoryTests
         Assert.Contains(categories, item => item.Name == "Live Concerts");
         Assert.Contains(categories, item => item.Name == "Danish");
     }
+
+    [Fact]
+    public void Decade_spellings_share_one_chip()
+    {
+        Assert.Equal("80s", ClubCulture.CanonicalDecade("80s"));
+        Assert.Equal("80s", ClubCulture.CanonicalDecade("80's"));
+        Assert.Equal("80s", ClubCulture.CanonicalDecade("80’s"));
+        Assert.Equal("80s", ClubCulture.CanonicalDecade("80´s"));
+        Assert.Equal("80s", ClubCulture.CanonicalDecade("1980's"));
+        Assert.Equal("90s", ClubCulture.CanonicalDecade("90´s"));
+        Assert.Equal("2000s", ClubCulture.CanonicalDecade("2000's"));
+        Assert.Equal("2010s", ClubCulture.CanonicalDecade("2010s"));
+        Assert.Null(ClubCulture.CanonicalDecade("Rock"));
+        Assert.Null(ClubCulture.CanonicalDecade("80s Rock"));
+
+        var categories = Categorizer.Build("video", "80's, Rock", 1986, "Radio Ga Ga", "Queen", "");
+        Assert.Equal(1, categories.Count(item => item.Name == "80s" && item.Kind == "decade"));
+        Assert.DoesNotContain(categories, item => item.Name.Contains('\''));
+        Assert.Contains(categories, item => item.Name == "Rock" && item.Kind == "genre");
+
+        var nineties = Categorizer.Build("video", "90´s", 1991, "Enjoy the Silence", "Depeche Mode", "");
+        Assert.Equal(1, nineties.Count(item => item.Name == "90s"));
+    }
+
+    [Fact]
+    public void Existing_decade_spellings_fold_into_one_chip()
+    {
+        using var fixture = new TempLibrary();
+        var eighties = fixture.Add("Queen", "Radio Ga Ga", "Rock", 1984);
+        var nineties = fixture.Add("Depeche Mode", "Enjoy the Silence", "Pop", 1990);
+        var thousands = fixture.Add("Daft Punk", "One More Time", "Dance", 0);
+        var now = ClubCulture.Iso(DateTime.UtcNow);
+        fixture.Database.InWrite((connection, tx) =>
+        {
+            JukeboxDatabase.Execute(connection, """
+                INSERT INTO categories(id, name, slug, kind, is_auto, is_hidden, created_at)
+                VALUES ('alias-80', '80''s', 'genre-80-s', 'genre', 1, 0, $now),
+                       ('alias-90a', '90´s', 'genre-90-acute', 'genre', 1, 0, $now),
+                       ('alias-90b', '90’s', 'genre-90-curly', 'genre', 1, 0, $now),
+                       ('alias-2000', '2000''s', 'genre-2000-s', 'genre', 1, 0, $now);
+                """, tx, ("$now", now));
+            JukeboxDatabase.Execute(connection, """
+                INSERT INTO media_categories(media_id, category_id, origin) VALUES
+                    ($a, 'alias-80', 'auto'),
+                    ($b, 'alias-90a', 'auto'),
+                    ($b, 'alias-90b', 'auto'),
+                    ($c, 'alias-2000', 'auto');
+                """, tx, ("$a", eighties), ("$b", nineties), ("$c", thousands));
+        });
+
+        fixture.Media.FoldDecadeTags();
+        fixture.Media.FoldDecadeTags();
+
+        var names = fixture.Media.Categories(true).Select(item => item.Name).ToList();
+        Assert.Equal(1, names.Count(name => name == "80s"));
+        Assert.Equal(1, names.Count(name => name == "90s"));
+        Assert.DoesNotContain(names, name => name is "80's" or "90´s" or "90’s");
+        Assert.Contains(names, name => name == "Rock");
+        Assert.Contains(names, name => name == "Pop");
+
+        var eightiesChip = fixture.Media.Categories(true).Single(item => item.Name == "80s").Id;
+        var ninetiesChip = fixture.Media.Categories(true).Single(item => item.Name == "90s").Id;
+        var thousandsChip = fixture.Media.Categories(true).Single(item => item.Name == "2000s");
+        Assert.Equal("decade", thousandsChip.Kind);
+        Assert.Contains(eightiesChip, fixture.Media.CategoryIds(eighties));
+        Assert.Contains(ninetiesChip, fixture.Media.CategoryIds(nineties));
+        Assert.Contains(thousandsChip.Id, fixture.Media.CategoryIds(thousands));
+        Assert.Contains(names, name => name == "Dance");
+    }
 }
 
 public class QueuePolicyTests

@@ -453,6 +453,85 @@ public sealed class MediaStore
     public void DeleteCategory(string id) =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, "DELETE FROM categories WHERE id=$id;", tx, ("$id", id)));
 
+    public void FoldDecadeTags() =>
+        _database.InWrite((connection, tx) =>
+        {
+            var rows = new List<(string Id, string Name, string Slug, string Kind)>();
+            using (var reader = JukeboxDatabase.Query(connection, "SELECT id, name, slug, kind FROM categories;", tx))
+            {
+                while (reader.Read())
+                    rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3)));
+            }
+
+            var groups = new Dictionary<string, List<(string Id, string Name, string Slug, string Kind)>>(StringComparer.Ordinal);
+            foreach (var row in rows)
+            {
+                var canonical = ClubCulture.CanonicalDecade(row.Name);
+                if (canonical is null)
+                    continue;
+                if (!groups.TryGetValue(canonical, out var list))
+                {
+                    list = [];
+                    groups[canonical] = list;
+                }
+                list.Add(row);
+            }
+
+            var touched = new HashSet<string>();
+            foreach (var (canonical, list) in groups)
+            {
+                var slug = Categorizer.Slug("decade", canonical);
+                var keeperIndex = list.FindIndex(item => item.Slug == slug);
+                var already = list.Count == 1 && keeperIndex == 0 && list[0].Kind == "decade" && list[0].Name == canonical;
+                if (already)
+                    continue;
+
+                string keeperId;
+                if (keeperIndex < 0)
+                {
+                    keeperId = list[0].Id;
+                    JukeboxDatabase.Execute(connection, """
+                        UPDATE categories SET name=$name, slug=$slug, kind='decade' WHERE id=$id;
+                        """, tx, ("$name", canonical), ("$slug", slug), ("$id", keeperId));
+                }
+                else
+                {
+                    keeperId = list[keeperIndex].Id;
+                    if (list[keeperIndex].Name != canonical || list[keeperIndex].Kind != "decade")
+                    {
+                        JukeboxDatabase.Execute(connection, """
+                            UPDATE categories SET name=$name, kind='decade' WHERE id=$id;
+                            """, tx, ("$name", canonical), ("$id", keeperId));
+                    }
+                }
+
+                foreach (var alias in list)
+                {
+                    if (alias.Id == keeperId)
+                        continue;
+                    using (var reader = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_categories WHERE category_id=$id;", tx, ("$id", alias.Id)))
+                    {
+                        while (reader.Read())
+                            touched.Add(reader.GetString(0));
+                    }
+                    JukeboxDatabase.Execute(connection, """
+                        INSERT OR IGNORE INTO media_categories(media_id, category_id, origin)
+                        SELECT media_id, $keeper, origin FROM media_categories WHERE category_id=$alias;
+                        """, tx, ("$keeper", keeperId), ("$alias", alias.Id));
+                    JukeboxDatabase.Execute(connection, "DELETE FROM categories WHERE id=$id;", tx, ("$id", alias.Id));
+                }
+
+                using (var reader = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_categories WHERE category_id=$id;", tx, ("$id", keeperId)))
+                {
+                    while (reader.Read())
+                        touched.Add(reader.GetString(0));
+                }
+            }
+
+            foreach (var mediaId in touched)
+                WriteFts(connection, tx, mediaId);
+        });
+
     public IReadOnlyList<string> CategoryIds(string mediaId)
     {
         using var connection = _database.Open();

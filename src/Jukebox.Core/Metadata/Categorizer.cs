@@ -27,6 +27,12 @@ public static partial class Categorizer
                 var name = part.Trim();
                 if (name.Length == 0)
                     continue;
+                var decadeName = ClubCulture.CanonicalDecade(name);
+                if (decadeName is not null)
+                {
+                    list.Add(new CategoryDraft(decadeName, "decade"));
+                    continue;
+                }
                 list.Add(new CategoryDraft(TitleCase(name), "genre"));
             }
         }
