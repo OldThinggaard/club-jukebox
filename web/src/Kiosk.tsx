@@ -75,16 +75,24 @@ export function Kiosk() {
   }, [screen?.libraryCount]);
 
   useEffect(() => {
+    let current = true;
     const handle = window.setTimeout(() => {
       const params: Record<string, string> = { limit: "80" };
       if (query.trim()) params.q = query.trim();
       if (category) params.category = category;
       if (artist) params.artist = artist;
       if (letter) params.letter = letter;
-      api.media(params).then(setMedia).catch(() => setMedia([]));
+      api.media(params).then((items) => {
+        if (current) setMedia(items);
+      }).catch(() => {
+        if (current) setMedia([]);
+      });
     }, 180);
-    return () => window.clearTimeout(handle);
-  }, [query, category, artist, letter, screen?.libraryCount]);
+    return () => {
+      current = false;
+      window.clearTimeout(handle);
+    };
+  }, [query, category, artist, letter, screen?.libraryCount, screen?.nowPlaying?.queueId]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

@@ -92,6 +92,8 @@ if (config.SeedSampleMedia)
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    if (context.Request.Path.StartsWithSegments("/api"))
+        context.Response.Headers.CacheControl = "no-store";
     await next();
 });
 app.UseDefaultFiles();

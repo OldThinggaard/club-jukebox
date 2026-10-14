@@ -78,7 +78,7 @@ export const api = {
   screen: () => fetch("/api/screen").then((response) => read<Screen>(response)),
   media: (params: Record<string, string>) => {
     const query = new URLSearchParams(params);
-    return fetch(`/api/media?${query}`).then((response) => read<Media[]>(response));
+    return fetch(`/api/media?${query}`, { cache: "no-store" }).then((response) => read<Media[]>(response));
   },
   categories: () => fetch("/api/categories").then((response) => read<Category[]>(response)),
   artists: () => fetch("/api/artists").then((response) => read<{ alphabet: string; groups: ArtistGroup[] }>(response)),
