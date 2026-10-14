@@ -37,7 +37,7 @@ chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.Update
   /opt/jukebox/bin/kiosk.sh /opt/jukebox/bin/session.sh \
   /opt/jukebox/lib/onlime-open.sh /opt/jukebox/lib/onlime-login.sh \
   /opt/jukebox/lib/onlime-boot.sh /opt/jukebox/lib/wifi-connect.sh \
-  /opt/jukebox/lib/onlime_prompts.py
+  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/panel-on.sh
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
 
 mkdir -p /etc/systemd/system
@@ -85,8 +85,9 @@ EOF
 cat > /etc/systemd/system/jukebox-graphical.service <<EOF
 [Unit]
 Description=Jukebox touchscreen session
-After=jukebox.service systemd-user-sessions.service
-Wants=jukebox.service
+After=jukebox.service systemd-user-sessions.service jukebox-panel.service
+Wants=jukebox.service jukebox-panel.service
+ConditionPathExists=/run/jukebox/panel-ready
 Conflicts=getty@tty1.service
 
 [Service]
@@ -104,8 +105,9 @@ Environment=HOME=/home/jukebox
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/jukebox/.Xauthority
 Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+ExecStartPre=+/opt/jukebox/lib/panel-on.sh prepare
 ExecStartPre=+/usr/bin/install -d -o jukebox -g jukebox -m 700 /run/user/${uid}
-ExecStart=/usr/bin/xinit /opt/jukebox/bin/session.sh -- /usr/bin/Xorg :0 vt1 -keeptty -nolisten tcp -logfile /home/jukebox/xorg.log
+ExecStart=/usr/bin/xinit /opt/jukebox/bin/session.sh -- /usr/bin/Xorg :0 vt1 -keeptty -nolisten tcp -s 0 -dpms -logfile /home/jukebox/xorg.log
 Restart=always
 RestartSec=3
 
@@ -171,10 +173,11 @@ enable_wants NetworkManager.service
 enable_wants jukebox-update.service
 enable_wants jukebox-pending.service
 enable_wants jukebox.service
+enable_wants jukebox-panel.service
 enable_wants jukebox-graphical.service
 enable_wants jukebox-onlime.service
-rm -f /etc/systemd/system/multi-user.target.wants/jukebox-boot-guard.service
-enable_wants jukebox-boot-guard.service sysinit.target
+rm -f /etc/systemd/system/sysinit.target.wants/jukebox-boot-guard.service
+enable_wants jukebox-boot-guard.service
 
 echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren."
 wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren." || true

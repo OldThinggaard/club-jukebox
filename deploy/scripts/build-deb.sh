@@ -40,11 +40,22 @@ install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$pkg/etc/avahi/services/ju
 install -m 0755 "$ROOT/deploy/package/usb-package.py" "$pkg/opt/jukebox/lib/usb-package.py"
 install -m 0755 "$ROOT/deploy/package/apply-pending.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"
 install -m 0755 "$ROOT/deploy/package/boot-guard.sh" "$pkg/opt/jukebox/lib/boot-guard.sh"
+install -m 0755 "$ROOT/deploy/package/panel-on.sh" "$pkg/opt/jukebox/lib/panel-on.sh"
 install -m 0755 "$ROOT/deploy/package/xinput" "$pkg/opt/jukebox/lib/xinput"
 install -m 0755 "$ROOT/deploy/package/onlime-install.sh" "$pkg/opt/jukebox/lib/onlime-install.sh"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$pkg/etc/systemd/system/jukebox-update.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-pending.service" "$pkg/etc/systemd/system/jukebox-pending.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-boot-guard.service" "$pkg/etc/systemd/system/jukebox-boot-guard.service"
+install -m 0644 "$ROOT/deploy/systemd/jukebox-panel.service" "$pkg/etc/systemd/system/jukebox-panel.service"
+install -d "$pkg/etc/X11/xorg.conf.d"
+cat > "$pkg/etc/X11/xorg.conf.d/10-jukebox.conf" <<'EOF'
+Section "ServerFlags"
+  Option "BlankTime" "0"
+  Option "StandbyTime" "0"
+  Option "SuspendTime" "0"
+  Option "OffTime" "0"
+EndSection
+EOF
 install -m 0644 "$ROOT/deploy/systemd/jukebox-usb-mount.service" "$pkg/etc/systemd/system/jukebox-usb-mount.service"
 printf '%s\n' 'allowed_users=anybody' 'needs_root_rights=no' > "$pkg/etc/X11/Xwrapper.config"
 cat > "$pkg/etc/systemd/logind.conf.d/jukebox.conf" <<'EOF'
@@ -79,6 +90,8 @@ fi
 bash -n "$pkg/opt/jukebox/lib/onlime-install.sh"
 bash -n "$pkg/opt/jukebox/lib/apply-pending.sh"
 bash -n "$pkg/opt/jukebox/lib/boot-guard.sh"
+bash -n "$pkg/opt/jukebox/lib/panel-on.sh"
+"$pkg/opt/jukebox/lib/panel-on.sh" self-test
 bash -n "$pkg/opt/jukebox/bin/hall-player.sh"
 bash -n "$pkg/opt/jukebox/bin/session.sh"
 bash -n "$pkg/DEBIAN/prerm"
@@ -151,8 +164,28 @@ if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebo
   echo "An update must not talk to systemd." >&2
   exit 1
 fi
-if ! grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then
-  echo "A failed boot must force a restart onto the Debian desktop." >&2
+if grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then
+  echo "A dark screen must not restart the computer." >&2
+  exit 1
+fi
+if grep -q 'default.target' "$pkg/opt/jukebox/lib/boot-guard.sh"; then
+  echo "A dark screen must not change Debian startup." >&2
+  exit 1
+fi
+if grep -q 'jukebox-boot-guard.service sysinit.target' "$pkg/DEBIAN/postinst"; then
+  echo "Boot must not run a script before the system is up." >&2
+  exit 1
+fi
+if grep -q 'Before=sysinit.target' "$pkg/etc/systemd/system/jukebox-boot-guard.service"; then
+  echo "Boot must not run a script before the system is up." >&2
+  exit 1
+fi
+if ! grep -q 'panel-ready' "$pkg/DEBIAN/postinst"; then
+  echo "The screen must be ready before it is taken." >&2
+  exit 1
+fi
+if ! grep -q 'max_brightness' "$pkg/opt/jukebox/lib/panel-on.sh"; then
+  echo "The panel light must be turned on at boot." >&2
   exit 1
 fi
 if grep -q -- '--kiosk' "$pkg/opt/jukebox/bin/kiosk.sh"; then

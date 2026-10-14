@@ -78,6 +78,9 @@ cp -a "$SRC/updater/." /opt/jukebox/updater/
 install -m 0755 "$SRC/bin/kiosk.sh" /opt/jukebox/bin/kiosk.sh
 install -m 0755 "$SRC/bin/session.sh" /opt/jukebox/bin/session.sh
 install -m 0755 "$SRC/lib/onlime-open.sh" "$SRC/lib/onlime-login.sh" "$SRC/lib/onlime-boot.sh" "$SRC/lib/wifi-connect.sh" /opt/jukebox/lib/
+if [[ -f "$SRC/lib/panel-on.sh" ]]; then
+  install -m 0755 "$SRC/lib/panel-on.sh" /opt/jukebox/lib/panel-on.sh
+fi
 install -m 0755 "$SRC/lib/onlime_prompts.py" /opt/jukebox/lib/onlime_prompts.py
 chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.UpdateAgent
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
@@ -135,11 +138,30 @@ EOF
 
 install -m 0644 "$SRC/systemd/jukebox-update.service" /etc/systemd/system/jukebox-update.service
 
+cat > /etc/systemd/system/jukebox-panel.service <<'EOF'
+[Unit]
+Description=Turn on the touchscreen before the jukebox takes it
+DefaultDependencies=no
+After=systemd-udevd.service local-fs.target
+Before=jukebox-graphical.service
+Wants=systemd-udevd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/jukebox/lib/panel-on.sh wait
+TimeoutStartSec=40
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 cat > /etc/systemd/system/jukebox-graphical.service <<EOF
 [Unit]
 Description=Jukebox touchscreen session
-After=jukebox.service systemd-user-sessions.service
-Wants=jukebox.service
+After=jukebox.service systemd-user-sessions.service jukebox-panel.service
+Wants=jukebox.service jukebox-panel.service
+ConditionPathExists=/run/jukebox/panel-ready
 Conflicts=getty@tty1.service
 
 [Service]
@@ -157,8 +179,9 @@ Environment=HOME=/home/jukebox
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/jukebox/.Xauthority
 Environment=XDG_RUNTIME_DIR=/run/user/${uid}
+ExecStartPre=+/opt/jukebox/lib/panel-on.sh prepare
 ExecStartPre=+/usr/bin/install -d -o jukebox -g jukebox -m 700 /run/user/${uid}
-ExecStart=/usr/bin/xinit /opt/jukebox/bin/session.sh -- /usr/bin/Xorg :0 vt1 -keeptty -nolisten tcp -logfile /home/jukebox/xorg.log
+ExecStart=/usr/bin/xinit /opt/jukebox/bin/session.sh -- /usr/bin/Xorg :0 vt1 -keeptty -nolisten tcp -s 0 -dpms -logfile /home/jukebox/xorg.log
 Restart=always
 RestartSec=3
 
@@ -208,6 +231,7 @@ systemctl enable avahi-daemon.service
 systemctl enable NetworkManager.service
 systemctl enable jukebox-update.service
 systemctl enable jukebox.service
+systemctl enable jukebox-panel.service
 systemctl enable jukebox-graphical.service
 systemctl enable jukebox-onlime.service
 

@@ -22,6 +22,7 @@ install -m 0755 \
   "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/wifi-connect.sh" \
   "$dest/lib/"
 install -m 0755 "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/onlime_prompts.py" "$dest/lib/onlime_prompts.py"
+install -m 0755 "$ROOT/deploy/package/panel-on.sh" "$dest/lib/panel-on.sh"
 install -m 0644 "$ROOT/deploy/live/apt/jotta.key.chroot" "$dest/lib/jotta.gpg"
 install -m 0644 "$ROOT/deploy/avahi/jukebox.service" "$dest/avahi/jukebox.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-update.service" "$dest/systemd/jukebox-update.service"

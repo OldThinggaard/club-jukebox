@@ -3,7 +3,7 @@ set -u
 # An upgrade must not talk to systemd. Stopping a service from here deadlocks
 # boot at "Started cups.service" and has forced a Debian reinstall.
 if [[ "${1:-}" == "remove" || "${1:-}" == "purge" ]]; then
-  for name in jukebox-graphical.service jukebox.service jukebox-onlime.service jukebox-update.service jukebox-usb-mount.service jukebox-pending.service jukebox-boot-guard.service; do
+  for name in jukebox-graphical.service jukebox-panel.service jukebox.service jukebox-onlime.service jukebox-update.service jukebox-usb-mount.service jukebox-pending.service jukebox-boot-guard.service; do
     rm -f \
       "/etc/systemd/system/multi-user.target.wants/${name}" \
       "/etc/systemd/system/graphical.target.wants/${name}" \

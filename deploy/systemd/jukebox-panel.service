@@ -1,0 +1,15 @@
+[Unit]
+Description=Turn on the touchscreen before the jukebox takes it
+DefaultDependencies=no
+After=systemd-udevd.service local-fs.target
+Before=jukebox-graphical.service
+Wants=systemd-udevd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/jukebox/lib/panel-on.sh wait
+TimeoutStartSec=40
+
+[Install]
+WantedBy=multi-user.target

@@ -41,6 +41,10 @@ fi
 xset s off || true
 xset -dpms || true
 xset s noblank || true
+xset dpms force on || true
+if [[ -x /opt/jukebox/lib/panel-on.sh ]]; then
+  sudo -n /opt/jukebox/lib/panel-on.sh >/dev/null 2>&1 || /opt/jukebox/lib/panel-on.sh >/dev/null 2>&1 || true
+fi
 if command -v unclutter >/dev/null 2>&1; then
   unclutter -idle 3 -root >/dev/null 2>&1 &
 fi
@@ -138,6 +142,7 @@ prepare_openbox() {
 (
   while true; do
     panel="$(internal_output || true)"
+    xset dpms force on >/dev/null 2>&1 || true
     if [[ -n "$panel" ]] && ! xrandr --query 2>/dev/null | awk -v name="$panel" '$1==name && $2=="connected" { for (i=1;i<=NF;i++) if ($i ~ /^[0-9]+x[0-9]+\+0\+0$/) ok=1 } END { exit !ok }'; then
       layout_screens
     fi
