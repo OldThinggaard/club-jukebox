@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
-import { api, type Screen } from "./lib/api";
+import { useEffect, useRef, useState } from "react";
+import { api, type NowPlaying, type Screen } from "./lib/api";
+import { songTextVisible } from "./lib/songText";
 
 export function Hall() {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [eventIndex, setEventIndex] = useState(0);
   const [hideVideo, setHideVideo] = useState(false);
+  const [tick, setTick] = useState(() => Date.now());
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const anchor = useRef({ queueId: "", at: 0, position: 0, server: -1 });
 
   useEffect(() => {
     let stop = false;
@@ -29,6 +34,11 @@ export function Hall() {
 
   useEffect(() => setHideVideo(false), [screen?.nowPlaying?.mediaId]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setTick(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const playing = screen?.nowPlaying;
 
   function songEnded(queueId: string | undefined) {
@@ -39,24 +49,27 @@ export function Hall() {
   const event = events.length ? events[eventIndex % events.length] : null;
   const backdrop = playing?.thumbnailUrl || event?.imageUrl || screen?.logoUrl;
   const showBrowserMedia = screen?.engine !== "mpv" && playing && !hideVideo;
+  const clock = playbackClock(playing, showBrowserMedia ? videoRef.current ?? audioRef.current : null, tick, anchor.current);
+  const showSongText = Boolean(playing && screen?.engine !== "mpv" && songTextVisible(clock.positionMs, clock.durationMs));
+  const showClubName = Boolean(screen?.showClubName && screen.clubName);
 
   return (
     <main className="hall">
       {backdrop && <img className="hall-bg" src={backdrop} alt="" />}
-      <div className="hall-shade" />
+      {(!playing || showSongText || showClubName) && <div className="hall-shade" />}
       {showBrowserMedia && playing.mediaType === "video" && (
-        <video key={playing.queueId} className="hall-video" src={playing.contentUrl} autoPlay playsInline onEnded={() => songEnded(playing.queueId)} onError={() => setHideVideo(true)} />
+        <video ref={videoRef} key={playing.queueId} className="hall-video" src={playing.contentUrl} autoPlay playsInline onEnded={() => songEnded(playing.queueId)} onError={() => setHideVideo(true)} />
       )}
       {showBrowserMedia && playing.mediaType === "audio" && (
-        <audio key={playing.queueId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => { setHideVideo(true); songEnded(playing.queueId); }} />
+        <audio ref={audioRef} key={playing.queueId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => { setHideVideo(true); songEnded(playing.queueId); }} />
       )}
       {showBrowserMedia && playing.mediaType === "image" && (
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />
       )}
       <section className="hall-copy">
-        {screen?.showClubName && screen.clubName ? <p className="eyebrow">{screen.clubName}</p> : null}
-        {playing && screen?.engine !== "mpv" ? (
-          <div className="play-meta">
+        {showClubName ? <p className="eyebrow">{screen?.clubName}</p> : null}
+        {showSongText && playing ? (
+          <div className="play-meta song-text">
             <p className="date">{playing.clientLabel === "reklame" ? "Reklame" : playing.origin === "auto" ? "House selection" : "From the queue"}</p>
             <h2>{playing.title}</h2>
             <p>{playing.artist}</p>
@@ -81,4 +94,25 @@ export function Hall() {
       </section>
     </main>
   );
+}
+
+function playbackClock(
+  playing: NowPlaying | null | undefined,
+  media: HTMLMediaElement | null,
+  now: number,
+  anchor: { queueId: string; at: number; position: number; server: number },
+) {
+  if (!playing)
+    return { positionMs: 0, durationMs: 0 };
+  if (media && playing.mediaType !== "image" && Number.isFinite(media.currentTime)) {
+    const duration = Number.isFinite(media.duration) ? media.duration * 1000 : playing.durationMs;
+    return { positionMs: media.currentTime * 1000, durationMs: duration || playing.durationMs };
+  }
+  if (anchor.queueId !== playing.queueId || anchor.server !== playing.positionMs) {
+    anchor.queueId = playing.queueId;
+    anchor.at = now;
+    anchor.position = playing.positionMs;
+    anchor.server = playing.positionMs;
+  }
+  return { positionMs: anchor.position + Math.max(0, now - anchor.at), durationMs: playing.durationMs };
 }
