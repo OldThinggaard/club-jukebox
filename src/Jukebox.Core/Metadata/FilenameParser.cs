@@ -60,16 +60,3 @@ public static partial class FilenameParser
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();
 }
-
-public static partial class TitleCleaner
-{
-    public static string Strip(string? title)
-    {
-        if (string.IsNullOrWhiteSpace(title))
-            return "";
-        return CleanMarker().Replace(title, "").Trim();
-    }
-
-    [GeneratedRegex(@"\s*\(\s*clean\s*\).*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline)]
-    private static partial Regex CleanMarker();
-}

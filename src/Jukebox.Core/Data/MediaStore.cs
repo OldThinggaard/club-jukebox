@@ -532,29 +532,6 @@ public sealed class MediaStore
                 WriteFts(connection, tx, mediaId);
         });
 
-    public void StripCleanTitles() =>
-        _database.InWrite((connection, tx) =>
-        {
-            var rows = new List<(string Id, string Title)>();
-            using (var reader = JukeboxDatabase.Query(connection, "SELECT id, title FROM media_items;", tx))
-            {
-                while (reader.Read())
-                    rows.Add((reader.GetString(0), reader.GetString(1)));
-            }
-
-            var now = ClubCulture.Iso(DateTime.UtcNow);
-            foreach (var (id, title) in rows)
-            {
-                var stripped = TitleCleaner.Strip(title);
-                if (stripped.Length == 0 || stripped == title)
-                    continue;
-                JukeboxDatabase.Execute(connection, """
-                    UPDATE media_items SET title=$title, updated_at=$now WHERE id=$id;
-                    """, tx, ("$title", stripped), ("$now", now), ("$id", id));
-                WriteFts(connection, tx, id);
-            }
-        });
-
     public IReadOnlyList<string> CategoryIds(string mediaId)
     {
         using var connection = _database.Open();

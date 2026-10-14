@@ -71,51 +71,6 @@ public class MetadataAndCategoryTests
     }
 
     [Fact]
-    public void Clean_marker_is_cut_from_the_title()
-    {
-        var embedded = MetadataMerger.Resolve(
-            new ProbeTags { Title = "Blinding Lights (Clean) Official Video", Artist = "The Weeknd" },
-            FilenameParser.Parse("other.mp4"),
-            null,
-            "other.mp4");
-        Assert.Equal("Blinding Lights", embedded.Title);
-        Assert.Equal("The Weeknd", embedded.Artist);
-
-        var fromFile = MetadataMerger.Resolve(
-            new ProbeTags(),
-            FilenameParser.Parse("The Weeknd - Blinding Lights (clean).mp4"),
-            null,
-            "The Weeknd - Blinding Lights (clean).mp4");
-        Assert.Equal("Blinding Lights", fromFile.Title);
-
-        var plain = MetadataMerger.Resolve(
-            new ProbeTags { Title = "Stay" },
-            FilenameParser.Parse("Stay.mp4"),
-            null,
-            "Stay.mp4");
-        Assert.Equal("Stay", plain.Title);
-    }
-
-    [Fact]
-    public void Stored_titles_lose_the_clean_marker()
-    {
-        using var fixture = new TempLibrary();
-        var id = fixture.Add("The Weeknd", "Blinding Lights", "Pop", 2020);
-        fixture.Database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, """
-            UPDATE media_items SET title=$title WHERE id=$id;
-            """, tx, ("$title", "Blinding Lights (Clean) Official Video"), ("$id", id)));
-
-        fixture.Media.StripCleanTitles();
-        fixture.Media.StripCleanTitles();
-
-        Assert.Equal("Blinding Lights", fixture.Media.Get(id)!.Title);
-        var found = fixture.Media.Query(new CatalogFilter { Text = "Blinding" });
-        Assert.Contains(found, item => item.Id == id);
-        var hidden = fixture.Media.Query(new CatalogFilter { Text = "Official" });
-        Assert.DoesNotContain(hidden, item => item.Id == id);
-    }
-
-    [Fact]
     public void Builds_genre_decade_and_live_categories()
     {
         var categories = Categorizer.Build("video", "Rock, Dansk", 1986, "Wembley Live", "Queen", "Live");
