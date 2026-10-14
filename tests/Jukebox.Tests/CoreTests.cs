@@ -258,6 +258,7 @@ public class LiveVolumeTests
             var report = LiveVolume.Apply(root.FullName, 40);
             var seen = File.ReadAllText(log);
             Assert.True(report.Alsa);
+            Assert.True(report.Pipe);
             Assert.False(report.Socket);
             Assert.Contains("sset Headphone 40% unmute", seen);
             Assert.Contains("sset Speaker 0% mute", seen);

@@ -22,6 +22,12 @@ public static class Endpoints
     {
         InstallEndpoints.Map(app, app.Services.GetRequiredService<JukeboxConfig>());
         app.MapGet("/api/health", () => Results.Ok(new { status = "ok", version = JukeboxVersion.Current }));
+        app.MapGet("/api/volume", () => Results.Ok(new { percent = LiveVolume.Current }));
+        app.MapPost("/api/volume", (VolumeBody body, JukeboxPaths paths) =>
+        {
+            var report = LiveVolume.Apply(paths.DataDirectory, body.Percent);
+            return Results.Ok(new { percent = report.Percent });
+        });
 
         app.MapGet("/api/screen", (MediaStore media, SettingsStore settings, QueueStore queue, PlaybackCoordinator playback, MediaIndexer indexer) =>
         {
@@ -629,6 +635,7 @@ public static class Endpoints
         return File.Exists(full) ? full : null;
     }
 
+    private sealed record VolumeBody(int Percent);
     private sealed record EnqueueBody(string MediaId, string? Origin, string? ClientLabel);
     private sealed record FinishedBody(string? QueueId);
     private sealed record LoginBody(string? Pin);

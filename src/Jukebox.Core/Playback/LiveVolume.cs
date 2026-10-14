@@ -11,11 +11,17 @@ public sealed record VolumeReport(int Percent, bool Socket, bool Pipe, bool Alsa
 public static class LiveVolume
 {
     public const string SocketPath = "/tmp/jukebox-mpv.sock";
+    public const int StartupPercent = 80;
+
+    private static int _current = StartupPercent;
+
+    public static int Current => _current;
 
     public static VolumeReport Apply(string dataDirectory, int percent, string? socketPath = null)
     {
         percent = Math.Clamp(percent, 0, 100);
-        var report = new VolumeReport(percent, false, false, TryActive(percent));
+        _current = percent;
+        var report = new VolumeReport(percent, false, TryPipe(percent), TryActive(percent));
         try
         {
             HallPlayback.AtomicWrite(Path.Combine(dataDirectory, "volume.heard"), HeardText(report));
@@ -67,6 +73,13 @@ public static class LiveVolume
     public static string HeardText(VolumeReport report) =>
         $"PERCENT={report.Percent}\nSOCKET={(report.Socket ? "1" : "0")}\nPIPE={(report.Pipe ? "1" : "0")}\nALSA={(report.Alsa ? "1" : "0")}\n";
 
+    private static bool TryPipe(int percent)
+    {
+        if (!Run("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"))
+            return false;
+        return Run("wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", percent + "%");
+    }
+
     private static bool TryActive(int percent)
     {
         var script = Environment.GetEnvironmentVariable("JUKEBOX_VOLUME_SCRIPT");
@@ -74,17 +87,28 @@ public static class LiveVolume
             script = "/opt/jukebox/lib/mpv-volume.py";
         if (!File.Exists(script))
             return false;
+        return Run("python3", script, "active", percent.ToString());
+    }
+
+    private static bool Run(string file, params string[] args)
+    {
         try
         {
-            var start = new ProcessStartInfo("python3")
+            var start = new ProcessStartInfo(file)
             {
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false
             };
-            start.ArgumentList.Add(script);
-            start.ArgumentList.Add("active");
-            start.ArgumentList.Add(percent.ToString());
+            foreach (var arg in args)
+                start.ArgumentList.Add(arg);
+            if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR")))
+            {
+                var uid = CurrentUid();
+                if (!string.IsNullOrWhiteSpace(uid))
+                    start.Environment["XDG_RUNTIME_DIR"] = "/run/user/" + uid;
+            }
+
             using var process = Process.Start(start);
             if (process is null)
                 return false;
@@ -100,5 +124,25 @@ public static class LiveVolume
         {
             return false;
         }
+    }
+
+    private static string? CurrentUid()
+    {
+        try
+        {
+            foreach (var line in File.ReadAllLines("/proc/self/status"))
+            {
+                if (!line.StartsWith("Uid:", StringComparison.Ordinal))
+                    continue;
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                return parts.Length > 1 ? parts[1] : null;
+            }
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+
+        return null;
     }
 }

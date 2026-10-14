@@ -90,6 +90,13 @@ export const api = {
     }).then((response) => read<{ ok: boolean; reason?: string }>(response)),
   activity: () => fetch("/api/activity", { method: "POST" }),
   heartbeat: () => fetch("/api/hall/heartbeat", { method: "POST" }),
+  volume: () => fetch("/api/volume").then((response) => read<{ percent: number }>(response)),
+  setVolume: (percent: number) =>
+    fetch("/api/volume", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ percent }),
+    }).then((response) => read<{ percent: number }>(response)),
   finished: (queueId: string) =>
     fetch("/api/hall/finished", {
       method: "POST",

@@ -111,11 +111,11 @@ if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
   echo "Startup must know which output is playing." >&2
   exit 1
 fi
-if ! grep -q 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 1.0' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "Debian's own volume must be set to full once at startup." >&2
+if ! grep -q 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.8' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "Debian's own volume must start at 80 percent." >&2
   exit 1
 fi
-if ! grep -q 'mpv-volume.py active 100' "$pkg/opt/jukebox/bin/session.sh"; then
+if ! grep -q 'mpv-volume.py active 80' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The idle jack must be turned off once at startup." >&2
   exit 1
 fi
@@ -165,6 +165,10 @@ if grep -q 'Lydstyrke' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; the
 fi
 if ! grep -q 'Tegn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The keyboard must offer signs such as !." >&2
+  exit 1
+fi
+if ! grep -q 'volume-rail' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The touch screen must have the volume slider." >&2
   exit 1
 fi
 python3 "$pkg/opt/jukebox/lib/wifi-connect.sh" self-test

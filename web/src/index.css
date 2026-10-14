@@ -55,10 +55,42 @@ button { cursor: pointer; }
 
 .kiosk {
   display: grid;
+  grid-template-columns: 72px 1fr;
   grid-template-rows: auto auto 1fr auto;
+  height: 100dvh;
   background:
     radial-gradient(900px 420px at 10% -10%, rgba(226, 177, 90, 0.16), transparent 60%),
     #110e0b;
+}
+.kiosk > .topbar,
+.kiosk > .chips,
+.kiosk > .stage,
+.kiosk > .nowbar { grid-column: 2; }
+.volume-rail {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  background: #1a1612;
+  border-right: 1px solid rgba(226, 177, 90, 0.28);
+}
+.volume-rail strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  color: #e2b15a;
+}
+.volume-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 48px;
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  accent-color: #e2b15a;
+  touch-action: none;
 }
 
 .topbar, .nowbar, .chips, .search-panel, .queue-sheet {
@@ -109,7 +141,7 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 }
 .chip.active, .letter.active { background: #e2b15a; color: #1a140c; }
 
-.stage { overflow: auto; padding: 8px 16px 16px; }
+.stage { overflow: auto; padding: 8px 16px 16px; min-height: 0; }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -186,7 +218,7 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .search-panel, .queue-sheet {
   position: fixed;
   z-index: 20;
-  left: 0; right: 0; bottom: 0;
+  left: 72px; right: 0; bottom: 0;
   background: #1a1612;
   border-top: 1px solid rgba(226,177,90,0.3);
   padding-top: 12px;

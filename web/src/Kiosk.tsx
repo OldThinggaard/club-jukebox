@@ -21,7 +21,35 @@ export function Kiosk() {
   const [shift, setShift] = useState(false);
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [staffPin, setStaffPin] = useState(false);
+  const [level, setLevel] = useState(80);
   const hold = useRef<number | null>(null);
+  const levelSend = useRef<{ pending: number | null; busy: boolean }>({ pending: null, busy: false });
+
+  useEffect(() => {
+    void api.volume().then((body) => setLevel(body.percent)).catch(() => undefined);
+  }, []);
+
+  function chooseLevel(next: number) {
+    const value = Math.max(0, Math.min(100, Math.round(next)));
+    setLevel(value);
+    const state = levelSend.current;
+    state.pending = value;
+    if (state.busy) return;
+    state.busy = true;
+    void (async () => {
+      while (state.pending !== null) {
+        const percent = state.pending;
+        state.pending = null;
+        try {
+          await api.setVolume(percent);
+        } catch {
+          // The slider stays where the finger left it. The next move tries again.
+        }
+      }
+      state.busy = false;
+      if (state.pending !== null) chooseLevel(state.pending);
+    })();
+  }
 
   useEffect(() => {
     let stop = false;
@@ -117,6 +145,19 @@ export function Kiosk() {
         if (document.visibilityState === "visible") void api.activity();
       }}
     >
+      <aside className="volume-rail">
+        <strong>{level}</strong>
+        <input
+          className="volume-slider"
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={level}
+          aria-label="Lyd"
+          onInput={(event) => chooseLevel(Number(event.currentTarget.value))}
+        />
+      </aside>
       {toast && <div className={toast.bad ? "toast bad" : "toast"}>{toast.text}</div>}
       <header className="topbar">
         <div
