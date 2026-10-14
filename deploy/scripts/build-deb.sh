@@ -163,6 +163,11 @@ if grep -q 'Lydstyrke' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; the
   echo "The volume buttons must stay off the sound page." >&2
   exit 1
 fi
+if ! grep -q 'Tegn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The keyboard must offer signs such as !." >&2
+  exit 1
+fi
+python3 "$pkg/opt/jukebox/lib/wifi-connect.sh" self-test
 if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The package is missing the club-name switch." >&2
   exit 1

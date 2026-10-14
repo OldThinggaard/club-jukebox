@@ -4,6 +4,32 @@ import pathlib
 import subprocess
 import sys
 
+def keyfile_escape(value: str) -> str:
+    """Keep every sign in a NetworkManager keyfile, including # and spaces."""
+    parts = []
+    for ch in value:
+        if ch == "\\":
+            parts.append("\\\\")
+        elif ch == " ":
+            parts.append("\\s")
+        elif ch == "\t":
+            parts.append("\\t")
+        elif ch == "\n":
+            parts.append("\\n")
+        elif ch == "\r":
+            parts.append("\\r")
+        else:
+            parts.append(ch)
+    return "".join(parts)
+
+
+if len(sys.argv) == 2 and sys.argv[1] == "self-test":
+    sample = "a!b#c d\\e"
+    escaped = keyfile_escape(sample)
+    if "!" not in escaped or "#" not in escaped or "\\s" not in escaped or "\\\\" not in escaped:
+        sys.exit("The Wi-Fi password lost a sign.")
+    sys.exit(0)
+
 folder = pathlib.Path(sys.argv[1])
 ssid = (folder / "ssid").read_text(encoding="utf-8").removesuffix("\n")
 psk_path = folder / "psk"
@@ -13,7 +39,7 @@ if not ssid or "\n" in ssid or "\r" in ssid or "\n" in psk or "\r" in psk:
 
 security = ""
 if psk:
-    security = f"[wifi-security]\nkey-mgmt=wpa-psk\npsk={psk}\n"
+    security = f"[wifi-security]\nkey-mgmt=wpa-psk\npsk={keyfile_escape(psk)}\n"
 
 text = f"""[connection]
 id=jukebox-wifi

@@ -213,6 +213,7 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
   background: #2a241d;
 }
 .key.wide { flex: 1.3; background: #3a3126; }
+.key.wide.active { background: #e2b15a; color: #1a140c; }
 .key.space { flex: 3; }
 .queue-sheet ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .queue-sheet li { display: flex; gap: 10px; align-items: center; background: #241e17; border-radius: 14px; padding: 8px; }
