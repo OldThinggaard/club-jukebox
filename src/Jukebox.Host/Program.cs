@@ -69,6 +69,7 @@ settings.EnsureDefaults(new ClubSettings
 
 var media = app.Services.GetRequiredService<MediaStore>();
 media.FoldDecadeTags();
+media.FoldDanishTags();
 var sources = new List<MediaSource>
 {
     new() { Id = "onlime-media", Name = "Onlime sync", Kind = "onlime", Path = paths.OnlimeMedia, Priority = 1, Enabled = true, Role = LibraryRoles.Catalog },

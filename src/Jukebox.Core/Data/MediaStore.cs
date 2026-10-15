@@ -532,6 +532,65 @@ public sealed class MediaStore
                 WriteFts(connection, tx, mediaId);
         });
 
+    public void FoldDanishTags() =>
+        _database.InWrite((connection, tx) =>
+        {
+            var matches = new List<(string Id, string Name, string Slug, string Kind)>();
+            using (var reader = JukeboxDatabase.Query(connection, "SELECT id, name, slug, kind FROM categories;", tx))
+            {
+                while (reader.Read())
+                {
+                    var name = reader.GetString(1);
+                    if (!name.Equals("Danish", StringComparison.OrdinalIgnoreCase))
+                        continue;
+                    matches.Add((reader.GetString(0), name, reader.GetString(2), reader.GetString(3)));
+                }
+            }
+
+            if (matches.Count < 2)
+                return;
+
+            var preferred = Categorizer.Slug("genre", "Danish");
+            var keeper = matches.Find(item => item.Slug == preferred);
+            if (keeper.Id is null)
+                keeper = matches.Find(item => item.Kind == "genre");
+            if (keeper.Id is null)
+                keeper = matches[0];
+
+            if (keeper.Name != "Danish")
+            {
+                JukeboxDatabase.Execute(connection, """
+                    UPDATE categories SET name='Danish' WHERE id=$id;
+                    """, tx, ("$id", keeper.Id));
+            }
+
+            var touched = new HashSet<string>();
+            foreach (var alias in matches)
+            {
+                if (alias.Id == keeper.Id)
+                    continue;
+                using (var reader = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_categories WHERE category_id=$id;", tx, ("$id", alias.Id)))
+                {
+                    while (reader.Read())
+                        touched.Add(reader.GetString(0));
+                }
+                JukeboxDatabase.Execute(connection, """
+                    INSERT OR IGNORE INTO media_categories(media_id, category_id, origin)
+                    SELECT media_id, $keeper, origin FROM media_categories WHERE category_id=$alias;
+                    """, tx, ("$keeper", keeper.Id), ("$alias", alias.Id));
+                JukeboxDatabase.Execute(connection, "DELETE FROM categories WHERE id=$id;", tx, ("$id", alias.Id));
+            }
+
+            using (var reader = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_categories WHERE category_id=$id;", tx, ("$id", keeper.Id)))
+            {
+                while (reader.Read())
+                    touched.Add(reader.GetString(0));
+            }
+
+            foreach (var mediaId in touched)
+                WriteFts(connection, tx, mediaId);
+        });
+
     public IReadOnlyList<string> CategoryIds(string mediaId)
     {
         using var connection = _database.Open();

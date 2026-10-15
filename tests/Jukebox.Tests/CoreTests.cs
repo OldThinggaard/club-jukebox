@@ -93,6 +93,36 @@ public class MetadataAndCategoryTests
         Assert.Contains(categories, item => item.Name == "Rock");
         Assert.Contains(categories, item => item.Name == "Live Concerts");
         Assert.Contains(categories, item => item.Name == "Danish");
+        Assert.Equal(1, categories.Count(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)));
+
+        var tagged = Categorizer.Build("video", "Danish", 1986, "Dansevise", "Grethe", "");
+        Assert.Equal(1, tagged.Count(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains(tagged, item => item.Name == "Danish" && item.Kind == "genre");
+    }
+
+    [Fact]
+    public void Existing_danish_chips_fold_into_one()
+    {
+        using var fixture = new TempLibrary();
+        var song = fixture.Add("Grethe", "Dansevise", "Danish", 1986);
+        var now = ClubCulture.Iso(DateTime.UtcNow);
+        fixture.Database.InWrite((connection, tx) =>
+        {
+            JukeboxDatabase.Execute(connection, """
+                INSERT INTO categories(id, name, slug, kind, is_auto, is_hidden, created_at)
+                VALUES ('rule-danish', 'Danish', 'rule-danish', 'rule', 1, 0, $now);
+                """, tx, ("$now", now));
+            JukeboxDatabase.Execute(connection, """
+                INSERT INTO media_categories(media_id, category_id, origin) VALUES ($song, 'rule-danish', 'auto');
+                """, tx, ("$song", song));
+        });
+
+        fixture.Media.FoldDanishTags();
+        fixture.Media.FoldDanishTags();
+
+        var chips = fixture.Media.Categories(true).Where(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Single(chips);
+        Assert.Contains(chips[0].Id, fixture.Media.CategoryIds(song));
     }
 
     [Fact]

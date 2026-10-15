@@ -40,7 +40,9 @@ public static partial class Categorizer
         var blob = $"{title} {album} {artist} {genre}";
         if (LivePattern().IsMatch(blob))
             list.Add(new CategoryDraft("Live Concerts", "rule"));
-        if (DanishPattern().IsMatch(blob))
+        // The file's own genre already made a Danish chip. A second one shows
+        // the same song twice.
+        if (DanishPattern().IsMatch(blob) && !list.Exists(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)))
             list.Add(new CategoryDraft("Danish", "rule"));
 
         return list

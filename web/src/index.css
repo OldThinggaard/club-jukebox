@@ -132,7 +132,15 @@ button { cursor: pointer; }
 }
 a.icon-button { display: inline-flex; align-items: center; text-decoration: none; }
 
-.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+.chips::-webkit-scrollbar { display: none; height: 0; }
 .chip, .letter {
   height: 44px;
   padding: 0 14px;
