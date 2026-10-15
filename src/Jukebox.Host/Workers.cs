@@ -180,16 +180,10 @@ public sealed class PlaybackWorker(
             art = "";
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
         var started = Environment.TickCount64;
-        long maxPosition = -1;
         while (!stoppingToken.IsCancellationRequested)
         {
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
-            var position = HallPlayback.ClockPositionMs(paths.PlayClock, job.Entry.Id);
-            if (position >= 0)
-                maxPosition = maxPosition < 0 ? position : Math.Max(maxPosition, position);
-            if (HallPlayback.StuckBeforeItPlays(elapsed, maxPosition))
-                return PlayResult.Done();
             if (HallPlayback.EndIsBelievable(elapsed)
                 && (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
                     || coordinator.IsFinished(job.Entry.Id)

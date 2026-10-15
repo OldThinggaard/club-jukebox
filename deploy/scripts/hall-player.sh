@@ -120,48 +120,31 @@ stop_play() {
   kill_play
 }
 
-force_ao=""
-chosen_ao=""
-fell_back=0
-prefer_alsa=0
-progress_max=0
-saw_clock=0
-jumps=0
-
-active_path=""
-active_kind=""
-active_duration=0
-active_art=""
-
-launch_mpv() {
+start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
-  local screen seconds ao
-  active_path="$path"
-  active_kind="$kind"
-  active_duration="$duration"
-  active_art="$art"
-  apply_audio
-  # One open. A sound device that blinks makes mpv open the file again,
-  # and the queue never reaches the next song.
-  if [[ -n "$force_ao" ]]; then
-    ao="$force_ao"
-  elif [[ "$prefer_alsa" -eq 1 || -z "$SINK" ]]; then
-    ao="alsa"
-  else
-    ao="pulse"
+  local screen seconds probed
+  if [[ "$kind" != "image" ]]; then
+    probed="$(probe_ms "$path")"
+    if [[ "$probed" -ge 3000 ]]; then
+      duration="$probed"
+    elif [[ "$duration" -lt 20000 ]]; then
+      duration=0
+    fi
   fi
-  chosen_ao="$ao"
+  apply_audio
   screen="$(monitor_index || true)"
   local -a args
   rm -f "$SOCK"
   args=(
     --no-config --no-terminal --really-quiet --no-border --ontop
-    --keep-open=no --loop-file=no --loop-playlist=no --idle=no --audio-display=no
+    --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate
-    --ao="$ao" --volume=100 --ao-volume=100
+    --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
+  if [[ -n "$SINK" ]]; then
+    args+=(--audio-device="pulse/${SINK}")
+  fi
   if [[ -n "$screen" ]]; then
     args+=(--fs --fs-screen="$screen")
   else
@@ -181,35 +164,37 @@ launch_mpv() {
   mpv "${args[@]}" >"$LOG" 2>&1 &
   play_pid=$!
   applied_volume=""
+  sleep 0.8
+  [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
+  if kill -0 "${play_pid}" >/dev/null 2>&1; then
+    play_ms="$duration"
+    play_kind="$kind"
+    started_epoch=$(date +%s)
+    return 0
+  fi
+  wait "${play_pid}" >/dev/null 2>&1 || true
+  # Pulse was not ready. Play through ALSA so the speakers still get the sound.
+  local -a fallback
+  rm -f "$SOCK"
+  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume=100 --input-ipc-server="$SOCK")
+  if [[ -n "$screen" ]]; then
+    fallback+=(--fs --fs-screen="$screen")
+  else
+    fallback+=(--fs)
+  fi
+  if [[ "$kind" == "image" ]]; then
+    fallback+=(--image-display-duration="$seconds" "$path")
+  else
+    fallback+=("$path")
+  fi
+  mpv "${fallback[@]}" >>"$LOG" 2>&1 &
+  play_pid=$!
+  applied_volume=""
   sleep 0.4
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
   play_ms="$duration"
   play_kind="$kind"
   started_epoch=$(date +%s)
-  progress_max=0
-  saw_clock=0
-  jumps=0
-}
-
-start_play() {
-  local path="$1" kind="$2" duration="$3" art="$4"
-  local probed
-  if [[ "$kind" != "image" ]]; then
-    probed="$(probe_ms "$path")"
-    if [[ "$probed" -ge 3000 ]]; then
-      duration="$probed"
-    elif [[ "$duration" -lt 20000 ]]; then
-      duration=0
-    fi
-  fi
-  fell_back=0
-  if [[ "$prefer_alsa" -eq 1 ]]; then
-    force_ao="alsa"
-  else
-    force_ao=""
-  fi
-  launch_mpv "$path" "$kind" "$duration" "$art"
-  force_ao=""
 }
 
 past_limit() {

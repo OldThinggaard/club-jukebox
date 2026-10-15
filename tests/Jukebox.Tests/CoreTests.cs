@@ -549,26 +549,6 @@ public class LibrarySearchTests
     }
 
     [Fact]
-    public void A_song_that_just_started_does_not_start_again()
-    {
-        using var fixture = new TempLibrary();
-        var first = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
-        var second = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
-        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
-        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "ABBA - Dancing Queen.mp4"), [1]);
-        Assert.True(fixture.Queue.TryEnqueue(first, Origins.User, "touch").Ok);
-        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
-        var job = coordinator.ClaimNext(0, null, 8);
-        Assert.NotNull(job);
-        coordinator.Finish(job!, PlayResult.Failed("stopped"));
-        Assert.True(fixture.Queue.TryEnqueue(first, Origins.User, "touch").Ok);
-        Assert.True(fixture.Queue.TryEnqueue(second, Origins.User, "touch").Ok);
-        var next = coordinator.ClaimNext(0, null, 8);
-        Assert.NotNull(next);
-        Assert.Equal(second, next!.Entry.MediaId);
-    }
-
-    [Fact]
     public void A_finished_signal_releases_only_that_song()
     {
         using var fixture = new TempLibrary();

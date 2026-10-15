@@ -5,7 +5,10 @@ import { songTextVisible } from "./lib/songText";
 export function Hall() {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [eventIndex, setEventIndex] = useState(0);
+  const [hideVideo, setHideVideo] = useState(false);
   const [tick, setTick] = useState(() => Date.now());
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const anchor = useRef({ queueId: "", at: 0, position: 0, server: -1 });
 
   useEffect(() => {
@@ -29,6 +32,8 @@ export function Hall() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => setHideVideo(false), [screen?.nowPlaying?.mediaId]);
+
   useEffect(() => {
     const timer = window.setInterval(() => setTick(Date.now()), 250);
     return () => window.clearInterval(timer);
@@ -36,10 +41,16 @@ export function Hall() {
 
   const playing = screen?.nowPlaying;
 
+  function songEnded(queueId: string | undefined) {
+    if (!queueId) return;
+    void api.finished(queueId);
+  }
+
   const events = screen?.events ?? [];
   const event = events.length ? events[eventIndex % events.length] : null;
   const backdrop = playing?.thumbnailUrl || event?.imageUrl || screen?.logoUrl;
-  const clock = playbackClock(playing, null, tick, anchor.current);
+  const showBrowserMedia = screen?.engine !== "mpv" && playing && !hideVideo;
+  const clock = playbackClock(playing, showBrowserMedia ? videoRef.current ?? audioRef.current : null, tick, anchor.current);
   const showSongText = Boolean(playing && screen?.engine !== "mpv" && songTextVisible(clock.positionMs, clock.durationMs));
   const showClubName = Boolean(screen?.showClubName && screen.clubName);
 
@@ -47,6 +58,15 @@ export function Hall() {
     <main className="hall">
       {backdrop && <img className="hall-bg" src={backdrop} alt="" />}
       {(!playing || showSongText || showClubName) && <div className="hall-shade" />}
+      {showBrowserMedia && playing.mediaType === "video" && (
+        <video ref={videoRef} key={playing.queueId} className="hall-video" src={playing.contentUrl} autoPlay playsInline onEnded={() => songEnded(playing.queueId)} onError={() => setHideVideo(true)} />
+      )}
+      {showBrowserMedia && playing.mediaType === "audio" && (
+        <audio ref={audioRef} key={playing.queueId} src={playing.contentUrl} autoPlay preload="auto" onError={() => setHideVideo(true)} onEnded={() => { setHideVideo(true); songEnded(playing.queueId); }} />
+      )}
+      {showBrowserMedia && playing.mediaType === "image" && (
+        <img className="hall-audio-art" src={playing.contentUrl} alt="" />
+      )}
       <section className="hall-copy">
         {showClubName ? <p className="eyebrow">{screen?.clubName}</p> : null}
         {showSongText && playing ? (
