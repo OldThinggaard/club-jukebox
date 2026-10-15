@@ -74,7 +74,6 @@ ExecStart=/opt/jukebox/current/Jukebox.Host
 Restart=always
 RestartSec=2
 TimeoutStartSec=300
-WatchdogSec=30
 MemoryMax=1800M
 Nice=-5
 

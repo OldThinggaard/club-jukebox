@@ -172,6 +172,10 @@ if grep -q 'mpv-volume.py pipewire\|mpv-volume.py alsa' "$pkg/opt/jukebox/bin/ha
   echo "The player must not move every output." >&2
   exit 1
 fi
+if grep -q 'WatchdogSec' "$pkg/DEBIAN/postinst"; then
+  echo "The program must not be killed while a song is still playing." >&2
+  exit 1
+fi
 if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then
   echo "An update must not talk to systemd." >&2
   exit 1

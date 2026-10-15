@@ -8,7 +8,7 @@ This shape fits a 4 GB machine: one runtime, a 1.2 GB memory cap on the service,
 
 | Process | Role | If it dies |
 | --- | --- | --- |
-| `Jukebox.Host` | API, shelf, indexer, queue, backup timer | systemd `Restart=always` and `WatchdogSec=30` |
+| `Jukebox.Host` | API, shelf, indexer, queue, backup timer | systemd `Restart=always`. No watchdog: the host never answered it, so the song was killed and started again |
 | mpv | Full-screen picture and sound on the television | The host starts it per film and starts the next film if it exits |
 | Chromium shelf | Touchscreen UI only | `jukebox-kiosk.service` restarts it |
 | Chromium hall | Clock, QR, posters under the film | `jukebox-hall.service` restarts it |
