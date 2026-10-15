@@ -117,7 +117,7 @@ export function Admin() {
           <p className="eyebrow">Administration</p>
           <h1 className="font-serif text-5xl">Club PIN</h1>
           <p className="muted">Tast koden. Gæster ser ikke denne side fra hylden.</p>
-          <p><a href="/">Tilbage til hylden</a></p>
+          <p><a href="/" onClick={(event) => { event.preventDefault(); window.location.replace("/"); }}>Tilbage til hylden</a></p>
           <p className="text-3xl tracking-[0.4em]">{pin.padEnd(4, "·")}</p>
           {pinError && <p>{pinError}</p>}
           <div className="pad">
@@ -150,8 +150,8 @@ export function Admin() {
           <h1 className="font-serif text-4xl">House controls</h1>
         </div>
         <div className="flex gap-2">
-          <a className="icon-button" href="/">Hylden</a>
-          <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); window.location.assign("/"); }}>Log ud</Button>
+          <a className="icon-button" href="/" onClick={(event) => { event.preventDefault(); window.location.replace("/"); }}>Hylden</a>
+          <Button variant="ghost" onClick={() => { void fetch("/api/admin/logout", { method: "POST" }); window.location.replace("/"); }}>Log ud</Button>
         </div>
       </header>
       <nav className="admin-nav">

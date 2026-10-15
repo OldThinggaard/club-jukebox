@@ -208,6 +208,14 @@ if ! grep -q 'Indstillinger' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.j
   echo "The settings page must be named Indstillinger." >&2
   exit 1
 fi
+if ! grep -q 'back_forward' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "A sideways swipe must not open administration." >&2
+  exit 1
+fi
+if ! grep -q 'OverscrollHistoryNavigation' "$pkg/opt/jukebox/bin/kiosk.sh"; then
+  echo "A sideways swipe must not turn the page." >&2
+  exit 1
+fi
 if ! grep -q 'Tegn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The keyboard must offer signs such as !." >&2
   exit 1

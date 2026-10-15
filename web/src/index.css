@@ -20,6 +20,7 @@ html, body {
   -webkit-user-select: none;
   user-select: none;
   touch-action: manipulation;
+  overscroll-behavior: none;
 }
 input, textarea {
   -webkit-user-select: text;

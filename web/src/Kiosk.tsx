@@ -329,7 +329,7 @@ function StaffPin({ onClose }: { onClose: () => void }) {
       setPin("");
       return;
     }
-    window.location.assign("/admin");
+    window.location.replace("/admin");
   }
 
   return (
