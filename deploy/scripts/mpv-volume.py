@@ -131,24 +131,21 @@ if path == "active":
 
 
 def reached_end(eof, idle, percent, time_pos, duration):
-    # mpv says the file is over before the first second has played.
-    # The jukebox then starts the same song again.
-    if time_pos is None or time_pos < 1:
+    # The opening, and a hiccup in the middle, both look like the end.
+    # Closing the file there shows the welcome screen and starts the song again.
+    del eof, idle, percent
+    if time_pos is None or duration is None or duration < 8 or time_pos < 1:
         return False
-    if eof is True:
-        return True
-    if duration is not None and duration >= 1 and time_pos >= duration - 0.5:
-        return True
-    if idle is True and isinstance(percent, (int, float)) and not isinstance(percent, bool) and percent >= 95:
-        return True
-    return False
+    return time_pos >= duration - 1.5
 
 
 if path == "self-test":
     assert reached_end(True, True, 100, None, None) is False
     assert reached_end(True, True, 100, 0, 180) is False
+    assert reached_end(True, False, None, 2, 180) is False
+    assert reached_end(True, True, 100, 30, 180) is False
     assert reached_end(False, False, None, 10, 180) is False
-    assert reached_end(True, False, None, 2, 180) is True
+    assert reached_end(True, False, None, 179, 180) is True
     assert reached_end(False, False, None, 179.6, 180) is True
     raise SystemExit(0)
 

@@ -395,6 +395,10 @@ public class HallPlaybackTests
         Assert.False(HallPlayback.EndIsBelievable(0));
         Assert.False(HallPlayback.EndIsBelievable(4_999));
         Assert.True(HallPlayback.EndIsBelievable(5_000));
+        Assert.True(HallPlayback.StillInTheMiddle(40_000, 180_000));
+        Assert.False(HallPlayback.StillInTheMiddle(175_000, 180_000));
+        Assert.False(HallPlayback.StillInTheMiddle(-1, 180_000));
+        Assert.False(HallPlayback.StillInTheMiddle(10_000, 15_000));
         Assert.False(HallPlayback.StuckBeforeItPlays(10_000, 0));
         Assert.False(HallPlayback.StuckBeforeItPlays(45_000, -1));
         Assert.False(HallPlayback.StuckBeforeItPlays(45_000, 5_000));

@@ -184,10 +184,16 @@ public sealed class PlaybackWorker(
         {
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
+            var position = HallPlayback.ClockPositionMs(paths.PlayClock, job.Entry.Id);
+            var library = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase)
+                ? 0
+                : job.DurationMs;
+            // A blip in the middle used to count as the end. The welcome screen
+            // came up, and the same song started from the beginning.
+            var done = HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id);
+            var softEnd = coordinator.IsFinished(job.Entry.Id) || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id);
             if (HallPlayback.EndIsBelievable(elapsed)
-                && (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
-                    || coordinator.IsFinished(job.Entry.Id)
-                    || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id)))
+                && (done || (!HallPlayback.StillInTheMiddle(position, library) && softEnd)))
                 return PlayResult.Done();
             var known = job.DurationMs;
             if (!string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase))

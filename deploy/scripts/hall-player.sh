@@ -95,7 +95,9 @@ monitor_index() {
 play_pid=""
 play_ms=0
 play_kind=""
+play_path=""
 started_epoch=0
+resumes=0
 kill_play() {
   [[ -n "${play_pid}" ]] || return 0
   local pid="${play_pid}" n
@@ -120,17 +122,26 @@ stop_play() {
   kill_play
 }
 
-start_play() {
-  local path="$1" kind="$2" duration="$3" art="$4"
-  local screen seconds probed
-  if [[ "$kind" != "image" ]]; then
-    probed="$(probe_ms "$path")"
-    if [[ "$probed" -ge 3000 ]]; then
-      duration="$probed"
-    elif [[ "$duration" -lt 20000 ]]; then
-      duration=0
-    fi
-  fi
+clock_pos_ms() {
+  [[ -f /var/lib/jukebox/play.clock ]] || { printf '%s\n' -1; return 0; }
+  local cid ms
+  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  ms="$(sed -n '2p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  [[ "$cid" == "$last" ]] || { printf '%s\n' -1; return 0; }
+  case "$ms" in
+    ''|*[!0-9]*) printf '%s\n' -1 ;;
+    *) printf '%s\n' "$ms" ;;
+  esac
+}
+
+still_in_the_middle() {
+  local pos="$1"
+  [[ "$play_ms" -ge 20000 && "$pos" -ge 0 && $((pos + 8000)) -lt "$play_ms" ]]
+}
+
+launch_mpv() {
+  local path="$1" kind="$2" offset="$3"
+  local screen seconds
   apply_audio
   screen="$(monitor_index || true)"
   local -a args
@@ -142,6 +153,9 @@ start_play() {
     --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
+  if [[ "$offset" -gt 0 ]]; then
+    args+=(--start="$offset")
+  fi
   if [[ -n "$SINK" ]]; then
     args+=(--audio-device="pulse/${SINK}")
   fi
@@ -151,7 +165,7 @@ start_play() {
     args+=(--fs)
   fi
   if [[ "$kind" == "image" ]]; then
-    seconds=$((duration / 1000))
+    seconds=$((play_ms / 1000))
     if [[ "$seconds" -lt 1 ]]; then
       seconds=8
     fi
@@ -167,9 +181,6 @@ start_play() {
   sleep 0.8
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
-    play_ms="$duration"
-    play_kind="$kind"
-    started_epoch=$(date +%s)
     return 0
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
@@ -177,6 +188,9 @@ start_play() {
   local -a fallback
   rm -f "$SOCK"
   fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume=100 --input-ipc-server="$SOCK")
+  if [[ "$offset" -gt 0 ]]; then
+    fallback+=(--start="$offset")
+  fi
   if [[ -n "$screen" ]]; then
     fallback+=(--fs --fs-screen="$screen")
   else
@@ -192,9 +206,32 @@ start_play() {
   applied_volume=""
   sleep 0.4
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
-  play_ms="$duration"
+}
+
+start_play() {
+  local path="$1" kind="$2" duration="$3" art="$4"
+  local probed
+  if [[ "$kind" != "image" ]]; then
+    probed="$(probe_ms "$path")"
+    if [[ "$probed" -ge 3000 ]]; then
+      duration="$probed"
+    elif [[ "$duration" -lt 20000 ]]; then
+      duration=0
+    fi
+  fi
+  play_path="$path"
   play_kind="$kind"
+  play_ms="$duration"
+  resumes=0
+  launch_mpv "$path" "$kind" 0
   started_epoch=$(date +%s)
+}
+
+resume_play() {
+  local offset="$1"
+  [[ -n "$play_path" && "$offset" -gt 0 ]] || return 1
+  resumes=$((resumes + 1))
+  launch_mpv "$play_path" "$play_kind" "$offset"
 }
 
 past_limit() {
@@ -221,7 +258,8 @@ learn_length() {
   case "$ms" in
     ''|*[!0-9]*) return 0 ;;
   esac
-  if [[ "$ms" -ge 20000 ]]; then
+  # Keep the longest length. A short reading used to cut the song off.
+  if [[ "$ms" -gt "$play_ms" && "$ms" -ge 20000 ]]; then
     play_ms="$ms"
   fi
 }
@@ -256,6 +294,9 @@ finish_if_stopped() {
       ended=0
     fi
   fi
+  if [[ "$ended" -eq 1 ]] && still_in_the_middle "$(clock_pos_ms)"; then
+    ended=0
+  fi
   if [[ "$ended" -eq 1 ]] || past_limit; then
     note_finished "${last}"
     kill_play
@@ -267,6 +308,23 @@ finish_if_stopped() {
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
+  local pos age now offset
+  now=$(date +%s)
+  age=0
+  if [[ "$started_epoch" -gt 0 ]]; then
+    age=$((now - started_epoch))
+  fi
+  pos="$(clock_pos_ms)"
+  offset=$((pos / 1000))
+  if [[ "$offset" -lt 1 ]]; then
+    offset=$age
+  fi
+  # The player dropped out. Carry on from here. Starting over shows the
+  # welcome screen and plays the same song from the beginning.
+  if [[ "$play_kind" != "image" && "$resumes" -lt 1 && "$offset" -gt 0 ]] && still_in_the_middle $((offset * 1000)); then
+    resume_play "$offset"
+    return 0
+  fi
   started_epoch=0
   note_finished "${last}"
 }

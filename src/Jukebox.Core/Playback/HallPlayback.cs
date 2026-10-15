@@ -43,6 +43,13 @@ public static class HallPlayback
     public static bool EndIsBelievable(long elapsedMs) => elapsedMs >= 5_000;
 
     /// <summary>
+    /// The welcome screen must stay away while the file still has time left.
+    /// A short reading from mpv is not the length of the song.
+    /// </summary>
+    public static bool StillInTheMiddle(long positionMs, long durationMs) =>
+        durationMs >= 20_000 && positionMs >= 0 && positionMs + 8_000 < durationMs;
+
+    /// <summary>
     /// A song that has just started must not be started again. That loop
     /// never reaches the next song in the queue.
     /// </summary>
