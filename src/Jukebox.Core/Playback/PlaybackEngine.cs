@@ -149,6 +149,7 @@ public sealed class PlaybackCoordinator
     private DateTime _hallHeartbeatUtc = DateTime.MinValue;
     private long _positionMs;
     private PlayJob? _current;
+    private bool _published;
     private string _engine = "timer";
     private string? _lastError;
     private string? _finishedQueueId;
@@ -181,6 +182,16 @@ public sealed class PlaybackCoordinator
             _engine = name;
     }
 
+    /// <summary>
+    /// The hall can see the song. Until this, the screen stays on the welcome
+    /// picture, so the browser does not start the file before mpv does.
+    /// </summary>
+    public void Publish()
+    {
+        lock (_gate)
+            _published = _current is not null;
+    }
+
     public void MarkFinished(string? queueId)
     {
         lock (_gate)
@@ -203,7 +214,8 @@ public sealed class PlaybackCoordinator
     {
         lock (_gate)
         {
-            return new PlaybackSnapshot(_current, _positionMs, _engine, _lastActivityUtc, _lastError);
+            var shown = _published ? _current : null;
+            return new PlaybackSnapshot(shown, _positionMs, _engine, _lastActivityUtc, _lastError);
         }
     }
 
@@ -254,6 +266,7 @@ public sealed class PlaybackCoordinator
             }
 
             _current = job;
+            _published = false;
             _positionMs = 0;
             _lastError = null;
             return job;
@@ -271,6 +284,7 @@ public sealed class PlaybackCoordinator
                 _lastError = result.Error;
             if (_current?.Entry.Id == job.Entry.Id)
                 _current = null;
+            _published = false;
             _positionMs = 0;
         }
     }

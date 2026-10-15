@@ -517,6 +517,26 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void Hides_the_song_until_the_player_is_chosen()
+    {
+        using var fixture = new TempLibrary();
+        var id = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var file = Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4");
+        File.WriteAllBytes(file, [1, 2, 3]);
+        Assert.True(fixture.Queue.TryEnqueue(id, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var job = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(job);
+        Assert.Null(coordinator.Snapshot().Current);
+        coordinator.SetEngine("mpv");
+        coordinator.Publish();
+        Assert.Equal("mpv", coordinator.Snapshot().Engine);
+        Assert.Equal(job!.Entry.Id, coordinator.Snapshot().Current!.Entry.Id);
+        coordinator.Finish(job, PlayResult.Done());
+        Assert.Null(coordinator.Snapshot().Current);
+    }
+
+    [Fact]
     public void A_finished_signal_releases_only_that_song()
     {
         using var fixture = new TempLibrary();

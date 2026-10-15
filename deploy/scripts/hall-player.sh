@@ -120,9 +120,20 @@ stop_play() {
   kill_play
 }
 
+wait_for_sink() {
+  local n
+  [[ -n "$SINK" ]] && return 0
+  for n in 1 2 3 4 5 6 7 8; do
+    sleep 0.4
+    applied_sink=""
+    apply_audio
+    [[ -n "$SINK" ]] && return 0
+  done
+}
+
 start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
-  local screen seconds probed
+  local screen seconds probed ao
   if [[ "$kind" != "image" ]]; then
     probed="$(probe_ms "$path")"
     if [[ "$probed" -ge 3000 ]]; then
@@ -132,6 +143,15 @@ start_play() {
     fi
   fi
   apply_audio
+  if [[ -z "$SINK" ]]; then
+    wait_for_sink
+  fi
+  # One start. A second start makes the first song begin again.
+  if [[ -n "$SINK" ]]; then
+    ao="pulse"
+  else
+    ao="alsa"
+  fi
   screen="$(monitor_index || true)"
   local -a args
   rm -f "$SOCK"
@@ -139,10 +159,10 @@ start_play() {
     --no-config --no-terminal --really-quiet --no-border --ontop
     --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
+    --force-window=immediate --ao="$ao" --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
-  if [[ -n "$SINK" ]]; then
+  if [[ "$ao" == "pulse" && -n "$SINK" ]]; then
     args+=(--audio-device="pulse/${SINK}")
   fi
   if [[ -n "$screen" ]]; then
@@ -162,32 +182,6 @@ start_play() {
     args+=("$path")
   fi
   mpv "${args[@]}" >"$LOG" 2>&1 &
-  play_pid=$!
-  applied_volume=""
-  sleep 0.8
-  [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
-  if kill -0 "${play_pid}" >/dev/null 2>&1; then
-    play_ms="$duration"
-    play_kind="$kind"
-    started_epoch=$(date +%s)
-    return 0
-  fi
-  wait "${play_pid}" >/dev/null 2>&1 || true
-  # Pulse was not ready. Play through ALSA so the speakers still get the sound.
-  local -a fallback
-  rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume=100 --input-ipc-server="$SOCK")
-  if [[ -n "$screen" ]]; then
-    fallback+=(--fs --fs-screen="$screen")
-  else
-    fallback+=(--fs)
-  fi
-  if [[ "$kind" == "image" ]]; then
-    fallback+=(--image-display-duration="$seconds" "$path")
-  else
-    fallback+=("$path")
-  fi
-  mpv "${fallback[@]}" >>"$LOG" 2>&1 &
   play_pid=$!
   applied_volume=""
   sleep 0.4

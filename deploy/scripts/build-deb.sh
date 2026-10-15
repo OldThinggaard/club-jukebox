@@ -124,6 +124,14 @@ if ! grep -q 'audio-display=no' "$pkg/opt/jukebox/bin/hall-player.sh"; then
   echo "The player must leave when the song ends." >&2
   exit 1
 fi
+if grep -q 'Pulse was not ready' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "A song must start once." >&2
+  exit 1
+fi
+if [[ "$(grep -c '^[[:space:]]*mpv ' "$pkg/opt/jukebox/bin/hall-player.sh")" -ne 1 ]]; then
+  echo "The player must open a song once." >&2
+  exit 1
+fi
 if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
   echo "Startup must know which output is playing." >&2
   exit 1

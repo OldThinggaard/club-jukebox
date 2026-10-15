@@ -87,8 +87,11 @@ public sealed class PlaybackWorker(
 
                 // hall-player.sh plays the file from disk in the graphical session.
                 // A timer is only the fallback when that player is not there.
+                // The song stays hidden until the engine is chosen. Otherwise the
+                // hall browser starts it, and mpv starts the same file again.
                 var playerReady = await HallPlayerReady(stoppingToken);
                 coordinator.SetEngine(playerReady ? "mpv" : "timer");
+                coordinator.Publish();
                 var result = playerReady
                     ? await WaitForHallPlayer(job, stoppingToken)
                     : await WaitForShownMedia(job, stoppingToken);
