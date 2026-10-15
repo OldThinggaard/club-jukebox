@@ -90,7 +90,8 @@ export function Kiosk() {
       if (letter) params.letter = letter;
       void everySong(params, () => current).then((items) => {
         if (!current || items === null) return;
-        setMedia(items);
+        const random = !params.q;
+        setMedia((shown) => placeSongs(shown, items, random));
         setShelfReady(true);
       }).catch(() => {
         if (!current) return;
@@ -326,6 +327,30 @@ export function Kiosk() {
       )}
     </div>
   );
+}
+
+function placeSongs(shown: Media[], next: Media[], random: boolean): Media[] {
+  if (!random) return next;
+  if (shown.length === next.length) {
+    const incoming = new Map(next.map((item) => [item.id, item]));
+    if (shown.every((item) => incoming.has(item.id)))
+      return shown.flatMap((item) => {
+        const found = incoming.get(item.id);
+        return found ? [found] : [];
+      });
+  }
+  return shuffle(next);
+}
+
+function shuffle(items: Media[]): Media[] {
+  const copy = items.slice();
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    const held = copy[index];
+    copy[index] = copy[swap];
+    copy[swap] = held;
+  }
+  return copy;
 }
 
 async function everySong(params: Record<string, string>, alive: () => boolean): Promise<Media[] | null> {
