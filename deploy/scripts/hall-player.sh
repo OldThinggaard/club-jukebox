@@ -139,6 +139,11 @@ still_in_the_middle() {
   [[ "$play_ms" -ge 20000 && "$pos" -ge 0 && $((pos + 8000)) -lt "$play_ms" ]]
 }
 
+middle_by_wall() {
+  local age="$1"
+  [[ "$age" -gt 0 ]] && still_in_the_middle $((age * 1000))
+}
+
 launch_mpv() {
   local path="$1" kind="$2" offset="$3"
   local screen seconds
@@ -213,9 +218,11 @@ start_play() {
   local probed
   if [[ "$kind" != "image" ]]; then
     probed="$(probe_ms "$path")"
-    if [[ "$probed" -ge 3000 ]]; then
+    # A short reading must not replace the real length. That cut the song
+    # off, showed the welcome screen, and started the same song again.
+    if [[ "$probed" -gt "$duration" ]]; then
       duration="$probed"
-    elif [[ "$duration" -lt 20000 ]]; then
+    elif [[ "$duration" -lt 20000 && "$probed" -lt 3000 ]]; then
       duration=0
     fi
   fi
@@ -239,7 +246,7 @@ past_limit() {
   local extra=8
   if [[ "$play_kind" == "image" ]]; then
     extra=2
-  elif [[ "$play_ms" -lt 3000 ]]; then
+  elif [[ "$play_ms" -lt 20000 ]]; then
     return 1
   fi
   local now limit
@@ -259,8 +266,16 @@ learn_length() {
     ''|*[!0-9]*) return 0 ;;
   esac
   # Keep the longest length. A short reading used to cut the song off.
-  if [[ "$ms" -gt "$play_ms" && "$ms" -ge 20000 ]]; then
+  if [[ "$ms" -gt "$play_ms" && "$ms" -lt 21600000 ]]; then
     play_ms="$ms"
+  fi
+  ms="$(clock_pos_ms)"
+  if [[ "$ms" -gt "$play_ms" && "$started_epoch" -gt 0 ]]; then
+    local age_ms
+    age_ms=$(( ($(date +%s) - started_epoch) * 1000 + 10000 ))
+    if [[ "$ms" -le "$age_ms" ]]; then
+      play_ms="$ms"
+    fi
   fi
 }
 
@@ -274,30 +289,22 @@ note_finished() {
 }
 
 finish_if_stopped() {
-  local ended=0
   if [[ -z "${play_pid}" ]]; then
     return 0
   fi
   if [[ -S "$SOCK" ]]; then
-    python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - "$last" >/dev/null 2>&1
-    if [[ "$?" -eq 2 ]]; then
-      ended=1
-    fi
+    # The clock is written here. An end flag from mpv is not the end of the
+    # song: acting on it showed the welcome screen and started the song again.
+    python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - "$last" >/dev/null 2>&1 || true
   fi
   learn_length
-  if [[ "$ended" -eq 1 && "$started_epoch" -gt 0 ]]; then
-    local now age
-    now=$(date +%s)
+  local now age
+  now=$(date +%s)
+  age=0
+  if [[ "$started_epoch" -gt 0 ]]; then
     age=$((now - started_epoch))
-    # The opening moments look like the end. Leave the song alone.
-    if [[ "$age" -lt 5 ]]; then
-      ended=0
-    fi
   fi
-  if [[ "$ended" -eq 1 ]] && still_in_the_middle "$(clock_pos_ms)"; then
-    ended=0
-  fi
-  if [[ "$ended" -eq 1 ]] || past_limit; then
+  if past_limit; then
     note_finished "${last}"
     kill_play
     started_epoch=0
@@ -308,21 +315,21 @@ finish_if_stopped() {
   fi
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
-  local pos age now offset
-  now=$(date +%s)
-  age=0
-  if [[ "$started_epoch" -gt 0 ]]; then
-    age=$((now - started_epoch))
-  fi
+  local pos offset
   pos="$(clock_pos_ms)"
-  offset=$((pos / 1000))
-  if [[ "$offset" -lt 1 ]]; then
-    offset=$age
+  offset=$age
+  if [[ "$pos" -gt 0 ]]; then
+    local pos_s
+    pos_s=$((pos / 1000))
+    if [[ "$pos_s" -gt 0 && "$pos_s" -le $((age + 2)) && "$pos_s" -ge $((age - 20)) ]]; then
+      offset=$pos_s
+    fi
   fi
-  # The player dropped out. Carry on from here. Starting over shows the
-  # welcome screen and plays the same song from the beginning.
-  if [[ "$play_kind" != "image" && "$resumes" -lt 1 && "$offset" -gt 0 ]] && still_in_the_middle $((offset * 1000)); then
+  if [[ "$play_kind" != "image" && "$resumes" -lt 3 && "$offset" -gt 0 ]] && middle_by_wall "$age"; then
     resume_play "$offset"
+    return 0
+  fi
+  if middle_by_wall "$age"; then
     return 0
   fi
   started_epoch=0

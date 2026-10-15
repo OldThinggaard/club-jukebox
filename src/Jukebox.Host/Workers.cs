@@ -180,25 +180,24 @@ public sealed class PlaybackWorker(
             art = "";
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
         var started = Environment.TickCount64;
+        var furthest = job.DurationMs;
+        var image = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase);
         while (!stoppingToken.IsCancellationRequested)
         {
             var elapsed = Environment.TickCount64 - started;
-            coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
+            coordinator.SetPosition(Math.Min(Math.Max(job.DurationMs, furthest), elapsed));
             var position = HallPlayback.ClockPositionMs(paths.PlayClock, job.Entry.Id);
-            var library = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase)
-                ? 0
-                : job.DurationMs;
-            // A blip in the middle used to count as the end. The welcome screen
-            // came up, and the same song started from the beginning.
+            if (!image && position > furthest && position <= elapsed + 10_000)
+                furthest = position;
+            // Wall-clock time, not mpv's claim that the file is over. That claim
+            // showed the welcome screen and started the same song again.
             var done = HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id);
             var softEnd = coordinator.IsFinished(job.Entry.Id) || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id);
             if (HallPlayback.EndIsBelievable(elapsed)
-                && (done || (!HallPlayback.StillInTheMiddle(position, library) && softEnd)))
+                && !HallPlayback.StillInTheMiddle(elapsed, image ? 0 : furthest)
+                && (done || softEnd))
                 return PlayResult.Done();
-            var known = job.DurationMs;
-            if (!string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase))
-                known = Math.Max(known, HallPlayback.ClockDurationMs(paths.PlayClock, job.Entry.Id));
-            if (TimeSpan.FromMilliseconds(elapsed) >= HallPlayback.PlaybackCap(known, job.Entry.MediaType))
+            if (TimeSpan.FromMilliseconds(elapsed) >= HallPlayback.PlaybackCap(image ? job.DurationMs : furthest, job.Entry.MediaType))
                 return PlayResult.Done();
             ApplySavedAudio();
             await Task.Delay(400, stoppingToken);
