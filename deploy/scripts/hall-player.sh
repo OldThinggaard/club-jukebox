@@ -95,9 +95,6 @@ monitor_index() {
 play_pid=""
 play_ms=0
 play_kind=""
-play_path=""
-started_epoch=0
-resumes=0
 kill_play() {
   [[ -n "${play_pid}" ]] || return 0
   local pid="${play_pid}" n
@@ -122,30 +119,8 @@ stop_play() {
   kill_play
 }
 
-clock_pos_ms() {
-  [[ -f /var/lib/jukebox/play.clock ]] || { printf '%s\n' -1; return 0; }
-  local cid ms
-  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  ms="$(sed -n '2p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  [[ "$cid" == "$last" ]] || { printf '%s\n' -1; return 0; }
-  case "$ms" in
-    ''|*[!0-9]*) printf '%s\n' -1 ;;
-    *) printf '%s\n' "$ms" ;;
-  esac
-}
-
-still_in_the_middle() {
-  local pos="$1"
-  [[ "$play_ms" -ge 20000 && "$pos" -ge 0 && $((pos + 8000)) -lt "$play_ms" ]]
-}
-
-middle_by_wall() {
-  local age="$1"
-  [[ "$age" -gt 0 ]] && still_in_the_middle $((age * 1000))
-}
-
 launch_mpv() {
-  local path="$1" kind="$2" offset="$3"
+  local path="$1" kind="$2"
   local screen seconds
   apply_audio
   screen="$(monitor_index || true)"
@@ -158,9 +133,6 @@ launch_mpv() {
     --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
-  if [[ "$offset" -gt 0 ]]; then
-    args+=(--start="$offset")
-  fi
   if [[ -n "$SINK" ]]; then
     args+=(--audio-device="pulse/${SINK}")
   fi
@@ -180,33 +152,8 @@ launch_mpv() {
     # the player open after the song, so the next one in the queue never starts.
     args+=("$path")
   fi
+  # One open. A second open starts the same song from the beginning.
   mpv "${args[@]}" >"$LOG" 2>&1 &
-  play_pid=$!
-  applied_volume=""
-  sleep 0.8
-  [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
-  if kill -0 "${play_pid}" >/dev/null 2>&1; then
-    return 0
-  fi
-  wait "${play_pid}" >/dev/null 2>&1 || true
-  # Pulse was not ready. Play through ALSA so the speakers still get the sound.
-  local -a fallback
-  rm -f "$SOCK"
-  fallback=(--no-config --no-terminal --really-quiet --no-border --ontop --keep-open=no --loop-file=no --idle=no --audio-display=no --no-osc --osd-level=0 --cursor-autohide=always --force-window=immediate --ao=alsa --volume=100 --ao-volume=100 --input-ipc-server="$SOCK")
-  if [[ "$offset" -gt 0 ]]; then
-    fallback+=(--start="$offset")
-  fi
-  if [[ -n "$screen" ]]; then
-    fallback+=(--fs --fs-screen="$screen")
-  else
-    fallback+=(--fs)
-  fi
-  if [[ "$kind" == "image" ]]; then
-    fallback+=(--image-display-duration="$seconds" "$path")
-  else
-    fallback+=("$path")
-  fi
-  mpv "${fallback[@]}" >>"$LOG" 2>&1 &
   play_pid=$!
   applied_volume=""
   sleep 0.4
@@ -215,68 +162,9 @@ launch_mpv() {
 
 start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
-  local probed
-  if [[ "$kind" != "image" ]]; then
-    probed="$(probe_ms "$path")"
-    # A short reading must not replace the real length. That cut the song
-    # off, showed the welcome screen, and started the same song again.
-    if [[ "$probed" -gt "$duration" ]]; then
-      duration="$probed"
-    elif [[ "$duration" -lt 20000 && "$probed" -lt 3000 ]]; then
-      duration=0
-    fi
-  fi
-  play_path="$path"
   play_kind="$kind"
   play_ms="$duration"
-  resumes=0
-  launch_mpv "$path" "$kind" 0
-  started_epoch=$(date +%s)
-}
-
-resume_play() {
-  local offset="$1"
-  [[ -n "$play_path" && "$offset" -gt 0 ]] || return 1
-  resumes=$((resumes + 1))
-  launch_mpv "$play_path" "$play_kind" "$offset"
-}
-
-past_limit() {
-  [[ "$play_ms" -gt 0 && "$started_epoch" -gt 0 ]] || return 1
-  local extra=8
-  if [[ "$play_kind" == "image" ]]; then
-    extra=2
-  elif [[ "$play_ms" -lt 20000 ]]; then
-    return 1
-  fi
-  local now limit
-  now=$(date +%s)
-  limit=$((play_ms / 1000 + extra))
-  [[ $((now - started_epoch)) -ge $limit ]]
-}
-
-learn_length() {
-  [[ -f /var/lib/jukebox/play.clock ]] || return 0
-  [[ "$play_kind" == "image" ]] && return 0
-  local cid ms
-  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  ms="$(sed -n '3p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  [[ "$cid" == "$last" ]] || return 0
-  case "$ms" in
-    ''|*[!0-9]*) return 0 ;;
-  esac
-  # Keep the longest length. A short reading used to cut the song off.
-  if [[ "$ms" -gt "$play_ms" && "$ms" -lt 21600000 ]]; then
-    play_ms="$ms"
-  fi
-  ms="$(clock_pos_ms)"
-  if [[ "$ms" -gt "$play_ms" && "$started_epoch" -gt 0 ]]; then
-    local age_ms
-    age_ms=$(( ($(date +%s) - started_epoch) * 1000 + 10000 ))
-    if [[ "$ms" -le "$age_ms" ]]; then
-      play_ms="$ms"
-    fi
-  fi
+  launch_mpv "$path" "$kind"
 }
 
 note_finished() {
@@ -293,46 +181,14 @@ finish_if_stopped() {
     return 0
   fi
   if [[ -S "$SOCK" ]]; then
-    # The clock is written here. An end flag from mpv is not the end of the
-    # song: acting on it showed the welcome screen and started the song again.
     python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - "$last" >/dev/null 2>&1 || true
-  fi
-  learn_length
-  local now age
-  now=$(date +%s)
-  age=0
-  if [[ "$started_epoch" -gt 0 ]]; then
-    age=$((now - started_epoch))
-  fi
-  if past_limit; then
-    note_finished "${last}"
-    kill_play
-    started_epoch=0
-    return 0
   fi
   if kill -0 "${play_pid}" >/dev/null 2>&1; then
     return 0
   fi
+  # The player itself stopped. Do not open the file again.
   wait "${play_pid}" >/dev/null 2>&1 || true
   play_pid=""
-  local pos offset
-  pos="$(clock_pos_ms)"
-  offset=$age
-  if [[ "$pos" -gt 0 ]]; then
-    local pos_s
-    pos_s=$((pos / 1000))
-    if [[ "$pos_s" -gt 0 && "$pos_s" -le $((age + 2)) && "$pos_s" -ge $((age - 20)) ]]; then
-      offset=$pos_s
-    fi
-  fi
-  if [[ "$play_kind" != "image" && "$resumes" -lt 3 && "$offset" -gt 0 ]] && middle_by_wall "$age"; then
-    resume_play "$offset"
-    return 0
-  fi
-  if middle_by_wall "$age"; then
-    return 0
-  fi
-  started_epoch=0
   note_finished "${last}"
 }
 
