@@ -136,12 +136,12 @@ if grep -q 'wait_for_sink\|audio-wait-open' "$pkg/opt/jukebox/bin/hall-player.sh
   echo "Looking up the sound card again restarts the song." >&2
   exit 1
 fi
-if ! grep -q 'audio-stream-silence=yes' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "The sound device must stay open, or the song starts again." >&2
+if grep -q 'audio-stream-silence\|audio-device=' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "Pinning the sound device makes the song start again." >&2
   exit 1
 fi
-if ! grep -q 'StuckBeforeItPlays' "$pkg/opt/jukebox/current/Jukebox.Host.dll" && ! grep -q 'prefer_alsa' "$pkg/opt/jukebox/bin/hall-player.sh"; then
-  echo "A song that keeps restarting must give way to the next one." >&2
+if [[ "$(grep -c 'launch_mpv "' "$pkg/opt/jukebox/bin/hall-player.sh")" -ne 1 ]]; then
+  echo "The player must open a song once." >&2
   exit 1
 fi
 if ! python3 "$pkg/opt/jukebox/lib/mpv-volume.py" self-test; then
@@ -269,8 +269,12 @@ if ! grep -q 'song-text' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; t
   echo "The television title must leave the picture between the opening and the ending." >&2
   exit 1
 fi
-if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
-  echo "The television page must say when a song has ended." >&2
+if grep -q '/api/hall/finished' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The television page must not end the song. That starts it again." >&2
+  exit 1
+fi
+if ! grep -q '/api/hall/finished' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "The player must say when a song has ended." >&2
   exit 1
 fi
 if ! grep -q 'contextmenu' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then

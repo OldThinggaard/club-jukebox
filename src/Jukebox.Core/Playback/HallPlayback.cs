@@ -43,6 +43,16 @@ public static class HallPlayback
     public static bool EndIsBelievable(long elapsedMs) => elapsedMs >= 5_000;
 
     /// <summary>
+    /// A song that has just started must not be started again. That loop
+    /// never reaches the next song in the queue.
+    /// </summary>
+    public static bool SameSongTooSoon(string? previousMediaId, string mediaId, long sinceMs) =>
+        !string.IsNullOrEmpty(previousMediaId)
+        && string.Equals(previousMediaId, mediaId, StringComparison.Ordinal)
+        && sinceMs >= 0
+        && sinceMs < 180_000;
+
+    /// <summary>
     /// The file is being opened again and again, so the queue must move on.
     /// A missing clock is -1 and must not count: the song may still be playing.
     /// </summary>

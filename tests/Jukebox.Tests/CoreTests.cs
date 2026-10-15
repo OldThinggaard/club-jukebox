@@ -399,6 +399,9 @@ public class HallPlaybackTests
         Assert.False(HallPlayback.StuckBeforeItPlays(45_000, -1));
         Assert.False(HallPlayback.StuckBeforeItPlays(45_000, 5_000));
         Assert.True(HallPlayback.StuckBeforeItPlays(45_000, 500));
+        Assert.True(HallPlayback.SameSongTooSoon("song", "song", 1_000));
+        Assert.False(HallPlayback.SameSongTooSoon("song", "other", 1_000));
+        Assert.False(HallPlayback.SameSongTooSoon("song", "song", 180_000));
     }
 
     [Fact]
@@ -543,6 +546,26 @@ public class LibrarySearchTests
         Assert.Equal(job!.Entry.Id, coordinator.Snapshot().Current!.Entry.Id);
         coordinator.Finish(job, PlayResult.Done());
         Assert.Null(coordinator.Snapshot().Current);
+    }
+
+    [Fact]
+    public void A_song_that_just_started_does_not_start_again()
+    {
+        using var fixture = new TempLibrary();
+        var first = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var second = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "ABBA - Dancing Queen.mp4"), [1]);
+        Assert.True(fixture.Queue.TryEnqueue(first, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var job = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(job);
+        coordinator.Finish(job!, PlayResult.Failed("stopped"));
+        Assert.True(fixture.Queue.TryEnqueue(first, Origins.User, "touch").Ok);
+        Assert.True(fixture.Queue.TryEnqueue(second, Origins.User, "touch").Ok);
+        var next = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(next);
+        Assert.Equal(second, next!.Entry.MediaId);
     }
 
     [Fact]

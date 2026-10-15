@@ -97,10 +97,4 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ percent }),
     }).then((response) => read<{ percent: number }>(response)),
-  finished: (queueId: string) =>
-    fetch("/api/hall/finished", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queueId }),
-    }),
 };

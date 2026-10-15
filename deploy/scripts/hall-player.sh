@@ -158,13 +158,10 @@ launch_mpv() {
     --no-config --no-terminal --really-quiet --no-border --ontop
     --keep-open=no --loop-file=no --loop-playlist=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --audio-stream-silence=yes
+    --force-window=immediate
     --ao="$ao" --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
-  if [[ "$ao" == "pulse" && -n "$SINK" ]]; then
-    args+=(--audio-device="pulse/${SINK}")
-  fi
   if [[ -n "$screen" ]]; then
     args+=(--fs --fs-screen="$screen")
   else
@@ -213,51 +210,6 @@ start_play() {
   fi
   launch_mpv "$path" "$kind" "$duration" "$art"
   force_ao=""
-}
-
-note_progress() {
-  [[ -f /var/lib/jukebox/play.clock ]] || return 0
-  local cid ms
-  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  ms="$(sed -n '2p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
-  [[ "$cid" == "$last" ]] || return 0
-  case "$ms" in
-    ''|*[!0-9]*) return 0 ;;
-  esac
-  saw_clock=1
-  if [[ "$ms" -gt "$progress_max" ]]; then
-    progress_max="$ms"
-  elif [[ "$progress_max" -gt 2000 && "$ms" -lt 1000 ]]; then
-    jumps=$((jumps + 1))
-  fi
-}
-
-recover_if_stuck() {
-  [[ -n "${play_pid}" && "$started_epoch" -gt 0 ]] || return 0
-  note_progress
-  if [[ "$jumps" -ge 2 ]]; then
-    note_finished "$last"
-    kill_play
-    return 0
-  fi
-  [[ "$saw_clock" -eq 1 && "$progress_max" -lt 1500 ]] || return 0
-  local now age
-  now=$(date +%s)
-  age=$((now - started_epoch))
-  [[ "$age" -ge 8 ]] || return 0
-  if [[ "$fell_back" -eq 0 && "$chosen_ao" == "pulse" ]]; then
-    fell_back=1
-    prefer_alsa=1
-    force_ao="alsa"
-    stop_play
-    launch_mpv "$active_path" "$active_kind" "$active_duration" "$active_art"
-    force_ao=""
-    return 0
-  fi
-  if [[ "$age" -ge 20 ]]; then
-    note_finished "$last"
-    kill_play
-  fi
 }
 
 past_limit() {
@@ -352,7 +304,6 @@ while true; do
     ''|*[!0-9]*) duration=0 ;;
   esac
   if [[ "$id" == "$last" ]]; then
-    recover_if_stuck
     finish_if_stopped
     sleep 0.4
     continue

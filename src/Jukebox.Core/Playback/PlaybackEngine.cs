@@ -150,6 +150,8 @@ public sealed class PlaybackCoordinator
     private long _positionMs;
     private PlayJob? _current;
     private bool _published;
+    private string? _recentMediaId;
+    private long _recentStartedAt = long.MinValue;
     private string _engine = "timer";
     private string? _lastError;
     private string? _finishedQueueId;
@@ -228,8 +230,11 @@ public sealed class PlaybackCoordinator
 
             var next = _queue.ClaimOldest();
             if (next is null)
-            {
                 next = MaybeAutoplay();
+            if (next is not null && HallPlayback.SameSongTooSoon(_recentMediaId, next.MediaId, Environment.TickCount64 - _recentStartedAt))
+            {
+                _queue.Complete(next.Id, "abandoned");
+                next = _queue.ClaimOldest();
             }
 
             if (next is null)
@@ -269,6 +274,8 @@ public sealed class PlaybackCoordinator
             _published = false;
             _positionMs = 0;
             _lastError = null;
+            _recentMediaId = next.MediaId;
+            _recentStartedAt = Environment.TickCount64;
             return job;
         }
     }
