@@ -581,6 +581,21 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void The_next_page_holds_the_songs_after_the_first()
+    {
+        using var fixture = new TempLibrary();
+        fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        fixture.Add("House", "Filler", "Pop", 2000);
+        fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var first = fixture.Media.Query(new CatalogFilter { Limit = 2 });
+        var rest = fixture.Media.Query(new CatalogFilter { Limit = 2, Offset = 2 });
+        Assert.Equal(2, first.Count);
+        Assert.Equal(["ABBA", "House"], first.Select(item => item.Artist).ToArray());
+        Assert.Single(rest);
+        Assert.Equal("Queen", rest[0].Artist);
+    }
+
+    [Fact]
     public void Refuses_a_second_copy_in_the_queue()
     {
         using var fixture = new TempLibrary();

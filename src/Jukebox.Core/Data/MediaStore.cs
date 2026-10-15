@@ -303,7 +303,7 @@ public sealed class MediaStore
                 return [];
             try
             {
-                using var fts = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_fts WHERE media_fts MATCH $q ORDER BY bm25(media_fts) LIMIT 200;", null, ("$q", match));
+                using var fts = JukeboxDatabase.Query(connection, "SELECT media_id FROM media_fts WHERE media_fts MATCH $q ORDER BY bm25(media_fts);", null, ("$q", match));
                 ranked = [];
                 while (fts.Read())
                     ranked.Add(fts.GetString(0));

@@ -8,6 +8,7 @@ const mobile = () => window.matchMedia("(max-width: 800px)").matches;
 export function Kiosk() {
   const [screen, setScreen] = useState<Screen | null>(null);
   const [media, setMedia] = useState<Media[]>([]);
+  const [shelfReady, setShelfReady] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [category, setCategory] = useState("");
   const [query, setQuery] = useState("");
@@ -82,15 +83,19 @@ export function Kiosk() {
   useEffect(() => {
     let current = true;
     const handle = window.setTimeout(() => {
-      const params: Record<string, string> = { limit: "80" };
+      const params: Record<string, string> = {};
       if (query.trim()) params.q = query.trim();
       if (category) params.category = category;
       if (artist) params.artist = artist;
       if (letter) params.letter = letter;
-      api.media(params).then((items) => {
-        if (current) setMedia(items);
+      void everySong(params, () => current).then((items) => {
+        if (!current || items === null) return;
+        setMedia(items);
+        setShelfReady(true);
       }).catch(() => {
-        if (current) setMedia([]);
+        if (!current) return;
+        setMedia([]);
+        setShelfReady(true);
       });
     }, 180);
     return () => {
@@ -229,6 +234,10 @@ export function Kiosk() {
               ))}
             </div>
           </div>
+        ) : !shelfReady ? (
+          <div className="empty">
+            <h2>Loading the shelf</h2>
+          </div>
         ) : media.length === 0 ? (
           <div className="empty">
             <h2>{screen?.indexing ? "Preparing the library" : query ? "Nothing matched" : "The shelf is empty"}</h2>
@@ -245,7 +254,7 @@ export function Kiosk() {
             {media.map((item) => (
               <button key={item.id} className={item.canQueue ? "card" : "card blocked"} type="button" onClick={() => void choose(item)}>
                 <figure>
-                  {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" /> : <span className="fallback">{item.title.slice(0, 1)}</span>}
+                  {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : <span className="fallback">{item.title.slice(0, 1)}</span>}
                   {formatDuration(item.durationMs) && <span className="badge">{formatDuration(item.durationMs)}</span>}
                 </figure>
                 <h2>{item.title}</h2>
@@ -317,6 +326,29 @@ export function Kiosk() {
       )}
     </div>
   );
+}
+
+async function everySong(params: Record<string, string>, alive: () => boolean): Promise<Media[] | null> {
+  const pageSize = 200;
+  const seen = new Set<string>();
+  const all: Media[] = [];
+  let offset = 0;
+  while (offset < 20000) {
+    if (!alive()) return null;
+    const items = await api.media({ ...params, limit: String(pageSize), offset: String(offset) });
+    if (!alive()) return null;
+    if (items.length === 0) return all;
+    let fresh = 0;
+    for (const item of items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      all.push(item);
+      fresh += 1;
+    }
+    if (fresh === 0 || items.length < pageSize) return all;
+    offset += items.length;
+  }
+  return all;
 }
 
 function StaffPin({ onClose }: { onClose: () => void }) {
