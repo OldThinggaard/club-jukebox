@@ -146,6 +146,7 @@ public sealed class PlaybackCoordinator
     private readonly SettingsStore _settings;
     private readonly object _gate = new();
     private DateTime _lastActivityUtc = DateTime.UtcNow;
+    private DateTime? _pauseShownUtc;
     private DateTime _hallHeartbeatUtc = DateTime.MinValue;
     private long _positionMs;
     private PlayJob? _current;
@@ -234,6 +235,7 @@ public sealed class PlaybackCoordinator
             _current = job;
             _published = false;
             _positionMs = 0;
+            _pauseShownUtc = null;
             _lastError = null;
             return job;
         }
@@ -264,6 +266,7 @@ public sealed class PlaybackCoordinator
             _current = job;
             _published = true;
             _positionMs = 0;
+            _pauseShownUtc = null;
             _finishedQueueId = null;
             _lastError = null;
             return job;
@@ -328,6 +331,9 @@ public sealed class PlaybackCoordinator
 
     private QueueEntry? MaybeAutoplay()
     {
+        if (!PauseHasLasted())
+            return null;
+
         var advertisement = _media.Events(DateTime.UtcNow)
             .Where(item => item.MediaType is MediaTypes.Video or MediaTypes.Audio or MediaTypes.Image)
             .OrderBy(item => string.IsNullOrEmpty(item.LastAutoPlayedAt) ? "" : item.LastAutoPlayedAt)
@@ -342,11 +348,6 @@ public sealed class PlaybackCoordinator
         }
 
         var settings = _settings.Get();
-        if (settings.IdleTimeoutSeconds <= 0)
-            return null;
-        if (DateTime.UtcNow - _lastActivityUtc < TimeSpan.FromSeconds(settings.IdleTimeoutSeconds))
-            return null;
-
         var candidates = _media.AutoplayCandidates();
         if (candidates.Count == 0)
             return null;
@@ -367,6 +368,29 @@ public sealed class PlaybackCoordinator
         if (!enqueued.Ok)
             return null;
         return _queue.ClaimOldest();
+    }
+
+    /// <summary>
+    /// The pause picture has its own clock. It starts when the picture appears
+    /// and is not the time since someone last touched the shelf.
+    /// </summary>
+    private bool PauseHasLasted()
+    {
+        var seconds = Math.Max(0, _settings.Get().PauseSeconds);
+        if (seconds <= 0)
+        {
+            _pauseShownUtc = null;
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        if (_pauseShownUtc is null)
+        {
+            _pauseShownUtc = now;
+            return false;
+        }
+
+        return now - _pauseShownUtc.Value >= TimeSpan.FromSeconds(seconds);
     }
 
     private static bool OlderThan(string? iso, DateTime cutoff) =>

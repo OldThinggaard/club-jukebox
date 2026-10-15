@@ -51,6 +51,7 @@ type Settings = {
   publicBaseUrl: string;
   cooldownMinutes: number;
   idleTimeoutSeconds: number;
+  pauseSeconds: number;
   idleStrategy: string;
   audioDevice: string;
   volumePercent: number;
@@ -386,7 +387,8 @@ function PlaybackPanel() {
         <Field label="Sange i køen"><input type="number" min={1} max={100} value={settings.maxQueueLength} onChange={(event) => set({ maxQueueLength: Number(event.target.value) })} /></Field>
         <Field label="Public address"><input value={settings.publicBaseUrl} onChange={(event) => set({ publicBaseUrl: event.target.value })} /></Field>
         <Field label="Cooldown minutes"><input type="number" value={settings.cooldownMinutes} onChange={(event) => set({ cooldownMinutes: Number(event.target.value) })} /></Field>
-        <Field label="Idle seconds"><input type="number" value={settings.idleTimeoutSeconds} onChange={(event) => set({ idleTimeoutSeconds: Number(event.target.value) })} /></Field>
+        <Field label="Tilbage til hylden"><input type="number" min={0} value={settings.idleTimeoutSeconds} onChange={(event) => set({ idleTimeoutSeconds: Number(event.target.value) })} /></Field>
+        <Field label="Pausebillede"><input type="number" min={0} value={settings.pauseSeconds} onChange={(event) => set({ pauseSeconds: Number(event.target.value) })} /></Field>
         <Field label="Idle strategy">
           <select value={settings.idleStrategy} onChange={(event) => set({ idleStrategy: event.target.value })}>
             <option value="hybrid">Hybrid, 80% least played</option>

@@ -53,6 +53,7 @@ public static class SettingKeys
     public const string PinHash = "admin.pin_hash";
     public const string CooldownMinutes = "playback.cooldown_minutes";
     public const string IdleTimeoutSeconds = "idle.timeout_seconds";
+    public const string PauseSeconds = "playback.pause_seconds";
     public const string IdleStrategy = "idle.strategy";
     public const string ClubName = "club.name";
     public const string ShowClubNameOnHall = "club.show_name_on_hall";

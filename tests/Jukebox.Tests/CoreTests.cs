@@ -625,6 +625,38 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_chosen_song_starts_without_waiting_for_the_pause_picture()
+    {
+        using var fixture = new TempLibrary();
+        fixture.Settings.Set(SettingKeys.PauseSeconds, "60");
+        var id = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        Assert.True(fixture.Queue.TryEnqueue(id, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var job = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(job);
+        Assert.Equal(Origins.User, job!.Entry.Origin);
+    }
+
+    [Fact]
+    public void The_pause_picture_stays_until_its_own_time_has_passed()
+    {
+        using var fixture = new TempLibrary();
+        fixture.Settings.Set(SettingKeys.PauseSeconds, "1");
+        fixture.Settings.Set(SettingKeys.IdleStrategy, "least");
+        var id = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        Assert.Null(coordinator.ClaimNext(0, null, 8));
+        Assert.Null(coordinator.ClaimNext(0, null, 8));
+        Thread.Sleep(1200);
+        var job = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(job);
+        Assert.Equal(Origins.Auto, job!.Entry.Origin);
+        Assert.Equal(id, job.Entry.MediaId);
+    }
+
+    [Fact]
     public void Hides_the_song_until_the_player_is_chosen()
     {
         using var fixture = new TempLibrary();

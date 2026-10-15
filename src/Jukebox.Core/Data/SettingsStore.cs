@@ -15,6 +15,7 @@ public sealed class ClubSettings
     public string PublicBaseUrl { get; init; } = "http://jukebox.local:47123";
     public int CooldownMinutes { get; init; } = 30;
     public int IdleTimeoutSeconds { get; init; } = 90;
+    public int PauseSeconds { get; init; } = 90;
     public string IdleStrategy { get; init; } = "hybrid";
     public string AudioDevice { get; init; } = "";
     public int VolumePercent { get; init; } = 80;
@@ -40,6 +41,7 @@ public sealed class SettingsStore
             PutIfMissing(connection, tx, SettingKeys.PinHash, PinHasher.Hash(defaultPin));
             PutIfMissing(connection, tx, SettingKeys.CooldownMinutes, defaults.CooldownMinutes.ToString());
             PutIfMissing(connection, tx, SettingKeys.IdleTimeoutSeconds, defaults.IdleTimeoutSeconds.ToString());
+            PutIfMissing(connection, tx, SettingKeys.PauseSeconds, defaults.PauseSeconds.ToString());
             PutIfMissing(connection, tx, SettingKeys.IdleStrategy, defaults.IdleStrategy);
             PutIfMissing(connection, tx, SettingKeys.ClubName, defaults.ClubName);
             PutIfMissing(connection, tx, SettingKeys.ShowClubNameOnHall, defaults.ShowClubNameOnHall ? "1" : "0");
@@ -72,6 +74,7 @@ public sealed class SettingsStore
             PublicBaseUrl = Get(map, SettingKeys.PublicBaseUrl, "http://jukebox.local:47123"),
             CooldownMinutes = Int(map, SettingKeys.CooldownMinutes, 30),
             IdleTimeoutSeconds = Int(map, SettingKeys.IdleTimeoutSeconds, 90),
+            PauseSeconds = Int(map, SettingKeys.PauseSeconds, 90),
             IdleStrategy = Get(map, SettingKeys.IdleStrategy, "hybrid"),
             AudioDevice = Get(map, SettingKeys.AudioDevice, ""),
             VolumePercent = Int(map, SettingKeys.VolumePercent, 80),
@@ -100,6 +103,7 @@ public sealed class SettingsStore
             [SettingKeys.PublicBaseUrl] = settings.PublicBaseUrl.Trim(),
             [SettingKeys.CooldownMinutes] = Math.Clamp(settings.CooldownMinutes, 0, 24 * 60).ToString(),
             [SettingKeys.IdleTimeoutSeconds] = Math.Clamp(settings.IdleTimeoutSeconds, 0, 24 * 3600).ToString(),
+            [SettingKeys.PauseSeconds] = Math.Clamp(settings.PauseSeconds, 0, 24 * 3600).ToString(),
             [SettingKeys.IdleStrategy] = settings.IdleStrategy is "random" or "least" or "hybrid" ? settings.IdleStrategy : "hybrid",
             [SettingKeys.AudioDevice] = settings.AudioDevice.Trim(),
             [SettingKeys.VolumePercent] = Math.Clamp(settings.VolumePercent, 0, 100).ToString(),
