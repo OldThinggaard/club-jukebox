@@ -62,6 +62,7 @@ public sealed class MediaIndexer
             }
 
             _media.RemoveUnseen(scanned, seen);
+            _media.FoldDanishTags();
             _settings.Set(SettingKeys.LastScanAt, ClubCulture.Iso(DateTime.UtcNow));
         }
         finally

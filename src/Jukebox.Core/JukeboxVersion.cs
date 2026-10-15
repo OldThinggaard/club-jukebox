@@ -2,5 +2,5 @@ namespace Jukebox.Core;
 
 public static class JukeboxVersion
 {
-    public const string Current = "1.3.61";
+    public const string Current = "1.3.62";
 }

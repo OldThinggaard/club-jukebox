@@ -57,6 +57,11 @@ export function Kiosk() {
       api.screen().then((next) => {
         if (!stop) setScreen(next);
       }).catch(() => undefined);
+      api.categories().then((next) => {
+        if (stop) return;
+        setCategories(next);
+        setCategory((current) => current && !next.some((item) => item.id === current) ? "" : current);
+      }).catch(() => undefined);
     };
     pull();
     const timer = window.setInterval(pull, 2000);

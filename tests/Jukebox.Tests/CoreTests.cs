@@ -96,8 +96,11 @@ public class MetadataAndCategoryTests
         Assert.Equal(1, categories.Count(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)));
 
         var tagged = Categorizer.Build("video", "Danish", 1986, "Dansevise", "Grethe", "");
+        var fromTitle = Categorizer.Build("video", "Pop", 1986, "Danish song", "Grethe", "");
         Assert.Equal(1, tagged.Count(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)));
-        Assert.Contains(tagged, item => item.Name == "Danish" && item.Kind == "genre");
+        Assert.Equal(1, fromTitle.Count(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal("genre", tagged.Single(item => item.Name == "Danish").Kind);
+        Assert.Equal(tagged.Single(item => item.Name == "Danish").Kind, fromTitle.Single(item => item.Name == "Danish").Kind);
     }
 
     [Fact]
@@ -122,7 +125,28 @@ public class MetadataAndCategoryTests
 
         var chips = fixture.Media.Categories(true).Where(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)).ToList();
         Assert.Single(chips);
+        Assert.Equal("genre-danish", chips[0].Slug);
         Assert.Contains(chips[0].Id, fixture.Media.CategoryIds(song));
+
+        using var again = new TempLibrary();
+        var first = again.Add("Kim Larsen", "Papirsklip", "Pop", 1983);
+        again.Database.InWrite((connection, tx) =>
+        {
+            JukeboxDatabase.Execute(connection, """
+                INSERT INTO categories(id, name, slug, kind, is_auto, is_hidden, created_at)
+                VALUES ('only-rule', 'Danish', 'rule-danish', 'rule', 1, 0, $now);
+                """, tx, ("$now", now));
+            JukeboxDatabase.Execute(connection, """
+                INSERT OR IGNORE INTO media_categories(media_id, category_id, origin) VALUES ($song, 'only-rule', 'auto');
+                """, tx, ("$song", first));
+        });
+        again.Media.FoldDanishTags();
+        var second = again.Add("Grethe", "Danish night", "Rock", 1986);
+        var folded = again.Media.Categories(true).Where(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Single(folded);
+        Assert.Equal("genre-danish", folded[0].Slug);
+        Assert.Contains(folded[0].Id, again.Media.CategoryIds(first));
+        Assert.Contains(folded[0].Id, again.Media.CategoryIds(second));
     }
 
     [Fact]

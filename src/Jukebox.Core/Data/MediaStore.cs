@@ -540,29 +540,20 @@ public sealed class MediaStore
             {
                 while (reader.Read())
                 {
-                    var name = reader.GetString(1);
+                    var name = reader.GetString(1).Trim();
                     if (!name.Equals("Danish", StringComparison.OrdinalIgnoreCase))
                         continue;
                     matches.Add((reader.GetString(0), name, reader.GetString(2), reader.GetString(3)));
                 }
             }
 
-            if (matches.Count < 2)
+            if (matches.Count == 0)
                 return;
 
             var preferred = Categorizer.Slug("genre", "Danish");
             var keeper = matches.Find(item => item.Slug == preferred);
             if (keeper.Id is null)
-                keeper = matches.Find(item => item.Kind == "genre");
-            if (keeper.Id is null)
                 keeper = matches[0];
-
-            if (keeper.Name != "Danish")
-            {
-                JukeboxDatabase.Execute(connection, """
-                    UPDATE categories SET name='Danish' WHERE id=$id;
-                    """, tx, ("$id", keeper.Id));
-            }
 
             var touched = new HashSet<string>();
             foreach (var alias in matches)
@@ -585,6 +576,13 @@ public sealed class MediaStore
             {
                 while (reader.Read())
                     touched.Add(reader.GetString(0));
+            }
+
+            if (keeper.Name != "Danish" || keeper.Slug != preferred || keeper.Kind != "genre")
+            {
+                JukeboxDatabase.Execute(connection, """
+                    UPDATE categories SET name='Danish', slug=$slug, kind='genre' WHERE id=$id;
+                    """, tx, ("$slug", preferred), ("$id", keeper.Id));
             }
 
             foreach (var mediaId in touched)

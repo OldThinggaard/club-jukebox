@@ -33,17 +33,16 @@ public static partial class Categorizer
                     list.Add(new CategoryDraft(decadeName, "decade"));
                     continue;
                 }
-                list.Add(new CategoryDraft(TitleCase(name), "genre"));
+                list.Add(new CategoryDraft(DanishName(name), "genre"));
             }
         }
 
         var blob = $"{title} {album} {artist} {genre}";
         if (LivePattern().IsMatch(blob))
             list.Add(new CategoryDraft("Live Concerts", "rule"));
-        // The file's own genre already made a Danish chip. A second one shows
-        // the same song twice.
-        if (DanishPattern().IsMatch(blob) && !list.Exists(item => item.Name.Equals("Danish", StringComparison.OrdinalIgnoreCase)))
-            list.Add(new CategoryDraft("Danish", "rule"));
+        // Same chip as a genre named Danish. A second kind showed the same song twice.
+        if (DanishPattern().IsMatch(blob))
+            list.Add(new CategoryDraft("Danish", "genre"));
 
         return list
             .GroupBy(item => item.Kind + "|" + item.Name, StringComparer.OrdinalIgnoreCase)
@@ -63,6 +62,15 @@ public static partial class Categorizer
 
     private static string TitleCase(string value) =>
         ClubCulture.Danish.TextInfo.ToTitleCase(value.ToLower(ClubCulture.Danish));
+
+    private static string DanishName(string value)
+    {
+        var titled = TitleCase(value);
+        return titled.Equals("Dansk", StringComparison.OrdinalIgnoreCase)
+            || titled.Equals("Danish", StringComparison.OrdinalIgnoreCase)
+            ? "Danish"
+            : titled;
+    }
 
     [GeneratedRegex(@"[;,/|]+")]
     private static partial Regex GenreSplit();
