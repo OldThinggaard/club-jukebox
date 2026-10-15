@@ -208,6 +208,10 @@ if ! grep -q 'Indstillinger' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.j
   echo "The settings page must be named Indstillinger." >&2
   exit 1
 fi
+if ! grep -q 'Scan to choose a song' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The QR code must say Scan to choose a song." >&2
+  exit 1
+fi
 if ! grep -q 'back_forward' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "A sideways swipe must not open administration." >&2
   exit 1

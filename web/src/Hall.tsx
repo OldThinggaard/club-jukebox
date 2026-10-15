@@ -86,7 +86,7 @@ export function Hall() {
               </div>
               <div className="qr-card">
                 <img src="/api/qr.svg" alt="QR code for the jukebox" />
-                <p>Scan to choose a film</p>
+                <p>Scan to choose a song</p>
               </div>
             </div>
           </>
