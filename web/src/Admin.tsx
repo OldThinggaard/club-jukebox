@@ -159,7 +159,7 @@ export function Admin() {
           ["overview", "overview"],
           ["library", "library"],
           ["sources", "sources"],
-          ["playback", "lyd"],
+          ["playback", "indstillinger"],
           ["backups", "backups"],
           ["updates", "opdatering"],
           ["netværk", "netværk"],
@@ -316,7 +316,7 @@ function PlaybackPanel() {
     void admin<Settings>("/api/admin/settings").then(setSettings);
     void admin<{ displays: { name: string; connected: boolean; width: number }[] }>("/api/admin/displays").then((body) => setDisplays(body.displays));
   }, []);
-  if (!settings) return <p>Henter lyd…</p>;
+  if (!settings) return <p>Henter indstillinger…</p>;
   const current = settings;
   const set = (patch: Partial<Settings>) => setSettings({ ...current, ...patch });
   async function saveSound(patch: Partial<Settings>) {
@@ -328,12 +328,12 @@ function PlaybackPanel() {
       setSettings(saved);
       setSoundNote("Gemt");
     } catch {
-      setSoundNote("Lyden blev ikke gemt");
+      setSoundNote("Indstillingerne blev ikke gemt");
     }
   }
   return (
     <section className="panel">
-      <h2 className="font-serif text-2xl">Lyd</h2>
+      <h2 className="font-serif text-2xl">Indstillinger</h2>
       {soundNote && <p>{soundNote}</p>}
       <div className="form-grid">
         <Field label="Klubnavn"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
