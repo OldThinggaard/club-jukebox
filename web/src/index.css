@@ -189,10 +189,27 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .card p { margin: 0; color: #b7ab9c; font-size: 14px; }
 .card small { color: #e2b15a; }
 .card.blocked { opacity: 0.55; }
+.card.cooling img,
+.card.cooling .fallback { opacity: 0.62; }
+.cooling-note {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  color: #f4efe6;
+  font-size: 14px;
+  line-height: 1.25;
+  background: rgba(9, 8, 7, 0.42);
+}
 .badge {
   position: absolute;
   left: 8px;
   bottom: 8px;
+  z-index: 2;
   background: rgba(16,14,12,0.82);
   border-radius: 999px;
   padding: 4px 8px;
