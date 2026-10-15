@@ -40,6 +40,7 @@ public static class Endpoints
             {
                 clubName = club.ClubName,
                 showClubName = club.ShowClubNameOnHall,
+                showQr = club.ShowQrOnHall,
                 welcomeMessage = club.WelcomeMessage,
                 instructions = club.Instructions,
                 publicUrl = club.PublicBaseUrl,

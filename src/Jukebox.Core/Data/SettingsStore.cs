@@ -1,4 +1,5 @@
 using Jukebox.Core.Domain;
+using Jukebox.Core.Queue;
 using Jukebox.Core.Security;
 
 namespace Jukebox.Core.Data;
@@ -7,6 +8,8 @@ public sealed class ClubSettings
 {
     public string ClubName { get; init; } = "Oak & Iron Clubhouse";
     public bool ShowClubNameOnHall { get; init; }
+    public bool ShowQrOnHall { get; init; } = true;
+    public int MaxQueueLength { get; init; } = QueuePolicy.MaxQueueLength;
     public string WelcomeMessage { get; init; } = "Welcome. Choose a film on the touchscreen, or scan the code with your phone.";
     public string Instructions { get; init; } = "The queue plays in order. A film cannot be skipped, moved, or removed. You can pick it again after the cooldown.";
     public string PublicBaseUrl { get; init; } = "http://jukebox.local:47123";
@@ -40,6 +43,8 @@ public sealed class SettingsStore
             PutIfMissing(connection, tx, SettingKeys.IdleStrategy, defaults.IdleStrategy);
             PutIfMissing(connection, tx, SettingKeys.ClubName, defaults.ClubName);
             PutIfMissing(connection, tx, SettingKeys.ShowClubNameOnHall, defaults.ShowClubNameOnHall ? "1" : "0");
+            PutIfMissing(connection, tx, SettingKeys.ShowQrOnHall, defaults.ShowQrOnHall ? "1" : "0");
+            PutIfMissing(connection, tx, SettingKeys.MaxQueueLength, defaults.MaxQueueLength.ToString());
             PutIfMissing(connection, tx, SettingKeys.WelcomeMessage, defaults.WelcomeMessage);
             PutIfMissing(connection, tx, SettingKeys.Instructions, defaults.Instructions);
             PutIfMissing(connection, tx, SettingKeys.PublicBaseUrl, defaults.PublicBaseUrl);
@@ -60,6 +65,8 @@ public sealed class SettingsStore
         {
             ClubName = Get(map, SettingKeys.ClubName, "Oak & Iron Clubhouse"),
             ShowClubNameOnHall = Flag(map, SettingKeys.ShowClubNameOnHall, false),
+            ShowQrOnHall = Flag(map, SettingKeys.ShowQrOnHall, true),
+            MaxQueueLength = Math.Clamp(Int(map, SettingKeys.MaxQueueLength, QueuePolicy.MaxQueueLength), 1, QueuePolicy.MaxQueueLength),
             WelcomeMessage = Get(map, SettingKeys.WelcomeMessage, ""),
             Instructions = Get(map, SettingKeys.Instructions, ""),
             PublicBaseUrl = Get(map, SettingKeys.PublicBaseUrl, "http://jukebox.local:47123"),
@@ -86,6 +93,8 @@ public sealed class SettingsStore
         {
             [SettingKeys.ClubName] = settings.ClubName.Trim(),
             [SettingKeys.ShowClubNameOnHall] = settings.ShowClubNameOnHall ? "1" : "0",
+            [SettingKeys.ShowQrOnHall] = settings.ShowQrOnHall ? "1" : "0",
+            [SettingKeys.MaxQueueLength] = Math.Clamp(settings.MaxQueueLength, 1, QueuePolicy.MaxQueueLength).ToString(),
             [SettingKeys.WelcomeMessage] = settings.WelcomeMessage.Trim(),
             [SettingKeys.Instructions] = settings.Instructions.Trim(),
             [SettingKeys.PublicBaseUrl] = settings.PublicBaseUrl.Trim(),

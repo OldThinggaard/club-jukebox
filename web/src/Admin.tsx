@@ -44,6 +44,8 @@ type AdminMedia = {
 type Settings = {
   clubName: string;
   showClubNameOnHall: boolean;
+  showQrOnHall: boolean;
+  maxQueueLength: number;
   welcomeMessage: string;
   instructions: string;
   publicBaseUrl: string;
@@ -345,6 +347,15 @@ function PlaybackPanel() {
           />
           Vis klubnavn på fjernsynet
         </label>
+        <label className="field flex items-center gap-3 text-sm text-[#b7ab9c]">
+          <input
+            type="checkbox"
+            checked={settings.showQrOnHall}
+            onChange={(event) => void saveSound({ showQrOnHall: event.target.checked })}
+          />
+          Vis QR-kode på fjernsynet
+        </label>
+        <Field label="Sange i køen"><input type="number" min={1} max={100} value={settings.maxQueueLength} onChange={(event) => set({ maxQueueLength: Number(event.target.value) })} /></Field>
         <Field label="Public address"><input value={settings.publicBaseUrl} onChange={(event) => set({ publicBaseUrl: event.target.value })} /></Field>
         <Field label="Cooldown minutes"><input type="number" value={settings.cooldownMinutes} onChange={(event) => set({ cooldownMinutes: Number(event.target.value) })} /></Field>
         <Field label="Idle seconds"><input type="number" value={settings.idleTimeoutSeconds} onChange={(event) => set({ idleTimeoutSeconds: Number(event.target.value) })} /></Field>

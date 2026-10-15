@@ -41,6 +41,7 @@ export type NowPlaying = {
 export type Screen = {
   clubName: string;
   showClubName: boolean;
+  showQr: boolean;
   welcomeMessage: string;
   instructions: string;
   publicUrl: string;

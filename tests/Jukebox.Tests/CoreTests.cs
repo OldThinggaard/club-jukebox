@@ -596,6 +596,23 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void Stops_when_the_queue_reaches_the_chosen_number()
+    {
+        using var fixture = new TempLibrary();
+        fixture.Settings.Set(SettingKeys.MaxQueueLength, "2");
+        var first = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var second = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        var third = fixture.Add("House", "Filler", "Pop", 2000);
+        Assert.True(fixture.Queue.TryEnqueue(first, Origins.User, "touch").Ok);
+        Assert.True(fixture.Queue.TryEnqueue(second, Origins.User, "touch").Ok);
+        var blocked = fixture.Queue.TryEnqueue(third, Origins.User, "touch");
+        Assert.False(blocked.Ok);
+        Assert.Equal("The queue is full. Wait for a film to finish.", blocked.Reason);
+        Assert.Equal(2, fixture.Settings.Get().MaxQueueLength);
+        Assert.True(fixture.Settings.Get().ShowQrOnHall);
+    }
+
+    [Fact]
     public void Refuses_a_second_copy_in_the_queue()
     {
         using var fixture = new TempLibrary();

@@ -84,10 +84,12 @@ export function Hall() {
                 {event && <p className="muted">{event.title}</p>}
                 <p className="muted">{screen?.instructions}</p>
               </div>
-              <div className="qr-card">
-                <img src="/api/qr.svg" alt="QR code for the jukebox" />
-                <p>Scan to choose a song</p>
-              </div>
+              {screen?.showQr !== false && (
+                <div className="qr-card">
+                  <img src="/api/qr.svg" alt="QR code for the jukebox" />
+                  <p>Scan to choose a song</p>
+                </div>
+              )}
             </div>
           </>
         )}

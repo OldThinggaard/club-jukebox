@@ -56,6 +56,8 @@ public static class SettingKeys
     public const string IdleStrategy = "idle.strategy";
     public const string ClubName = "club.name";
     public const string ShowClubNameOnHall = "club.show_name_on_hall";
+    public const string ShowQrOnHall = "hall.show_qr";
+    public const string MaxQueueLength = "queue.max_length";
     public const string WelcomeMessage = "club.welcome_message";
     public const string Instructions = "club.instructions";
     public const string PublicBaseUrl = "qr.public_url";
