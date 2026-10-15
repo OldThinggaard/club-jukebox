@@ -237,6 +237,10 @@ if ! grep -q 'Vis klubnavn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js
   echo "The package is missing the club-name switch." >&2
   exit 1
 fi
+if grep -q 'From the queue\|House selection' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The television must not say where the song came from." >&2
+  exit 1
+fi
 if ! grep -q 'song-text' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The television title must leave the picture between the opening and the ending." >&2
   exit 1
