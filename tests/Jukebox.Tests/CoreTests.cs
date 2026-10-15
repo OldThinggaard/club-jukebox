@@ -395,6 +395,10 @@ public class HallPlaybackTests
         Assert.False(HallPlayback.EndIsBelievable(0));
         Assert.False(HallPlayback.EndIsBelievable(4_999));
         Assert.True(HallPlayback.EndIsBelievable(5_000));
+        Assert.False(HallPlayback.StuckBeforeItPlays(10_000, 0));
+        Assert.False(HallPlayback.StuckBeforeItPlays(45_000, -1));
+        Assert.False(HallPlayback.StuckBeforeItPlays(45_000, 5_000));
+        Assert.True(HallPlayback.StuckBeforeItPlays(45_000, 500));
     }
 
     [Fact]
@@ -414,6 +418,8 @@ public class HallPlaybackTests
             HallPlayback.AtomicWrite(clock, "this\n180000\n180000\n1\n");
             Assert.True(HallPlayback.ClockEnded(clock, "this"));
             Assert.Equal(180_000, HallPlayback.ClockDurationMs(clock, "this"));
+            Assert.Equal(180_000, HallPlayback.ClockPositionMs(clock, "this"));
+            Assert.Equal(-1, HallPlayback.ClockPositionMs(clock, "other"));
             Assert.Equal(0, HallPlayback.ClockDurationMs(clock, "other"));
             var request = HallPlayback.Request("this", "/media/song.mp4", "video", 180_000, null);
             Assert.StartsWith("this\n/media/song.mp4\nvideo\n180000\n", request);

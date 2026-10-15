@@ -120,33 +120,46 @@ stop_play() {
   kill_play
 }
 
-start_play() {
+force_ao=""
+chosen_ao=""
+fell_back=0
+prefer_alsa=0
+progress_max=0
+saw_clock=0
+jumps=0
+
+active_path=""
+active_kind=""
+active_duration=0
+active_art=""
+
+launch_mpv() {
   local path="$1" kind="$2" duration="$3" art="$4"
-  local screen seconds probed ao
-  if [[ "$kind" != "image" ]]; then
-    probed="$(probe_ms "$path")"
-    if [[ "$probed" -ge 3000 ]]; then
-      duration="$probed"
-    elif [[ "$duration" -lt 20000 ]]; then
-      duration=0
-    fi
-  fi
+  local screen seconds ao
+  active_path="$path"
+  active_kind="$kind"
+  active_duration="$duration"
+  active_art="$art"
   apply_audio
-  # One start. Asking for the sound card again, or opening the file twice,
-  # makes the first song begin again.
-  if [[ -n "$SINK" ]]; then
-    ao="pulse"
-  else
+  # One open. A sound device that blinks makes mpv open the file again,
+  # and the queue never reaches the next song.
+  if [[ -n "$force_ao" ]]; then
+    ao="$force_ao"
+  elif [[ "$prefer_alsa" -eq 1 || -z "$SINK" ]]; then
     ao="alsa"
+  else
+    ao="pulse"
   fi
+  chosen_ao="$ao"
   screen="$(monitor_index || true)"
   local -a args
   rm -f "$SOCK"
   args=(
     --no-config --no-terminal --really-quiet --no-border --ontop
-    --keep-open=no --loop-file=no --idle=no --audio-display=no
+    --keep-open=no --loop-file=no --loop-playlist=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --audio-wait-open=3 --ao="$ao" --volume=100 --ao-volume=100
+    --force-window=immediate --audio-stream-silence=yes
+    --ao="$ao" --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
   if [[ "$ao" == "pulse" && -n "$SINK" ]]; then
@@ -176,6 +189,75 @@ start_play() {
   play_ms="$duration"
   play_kind="$kind"
   started_epoch=$(date +%s)
+  progress_max=0
+  saw_clock=0
+  jumps=0
+}
+
+start_play() {
+  local path="$1" kind="$2" duration="$3" art="$4"
+  local probed
+  if [[ "$kind" != "image" ]]; then
+    probed="$(probe_ms "$path")"
+    if [[ "$probed" -ge 3000 ]]; then
+      duration="$probed"
+    elif [[ "$duration" -lt 20000 ]]; then
+      duration=0
+    fi
+  fi
+  fell_back=0
+  if [[ "$prefer_alsa" -eq 1 ]]; then
+    force_ao="alsa"
+  else
+    force_ao=""
+  fi
+  launch_mpv "$path" "$kind" "$duration" "$art"
+  force_ao=""
+}
+
+note_progress() {
+  [[ -f /var/lib/jukebox/play.clock ]] || return 0
+  local cid ms
+  cid="$(sed -n '1p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  ms="$(sed -n '2p' /var/lib/jukebox/play.clock 2>/dev/null || true)"
+  [[ "$cid" == "$last" ]] || return 0
+  case "$ms" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  saw_clock=1
+  if [[ "$ms" -gt "$progress_max" ]]; then
+    progress_max="$ms"
+  elif [[ "$progress_max" -gt 2000 && "$ms" -lt 1000 ]]; then
+    jumps=$((jumps + 1))
+  fi
+}
+
+recover_if_stuck() {
+  [[ -n "${play_pid}" && "$started_epoch" -gt 0 ]] || return 0
+  note_progress
+  if [[ "$jumps" -ge 2 ]]; then
+    note_finished "$last"
+    kill_play
+    return 0
+  fi
+  [[ "$saw_clock" -eq 1 && "$progress_max" -lt 1500 ]] || return 0
+  local now age
+  now=$(date +%s)
+  age=$((now - started_epoch))
+  [[ "$age" -ge 8 ]] || return 0
+  if [[ "$fell_back" -eq 0 && "$chosen_ao" == "pulse" ]]; then
+    fell_back=1
+    prefer_alsa=1
+    force_ao="alsa"
+    stop_play
+    launch_mpv "$active_path" "$active_kind" "$active_duration" "$active_art"
+    force_ao=""
+    return 0
+  fi
+  if [[ "$age" -ge 20 ]]; then
+    note_finished "$last"
+    kill_play
+  fi
 }
 
 past_limit() {
@@ -270,6 +352,7 @@ while true; do
     ''|*[!0-9]*) duration=0 ;;
   esac
   if [[ "$id" == "$last" ]]; then
+    recover_if_stuck
     finish_if_stopped
     sleep 0.4
     continue

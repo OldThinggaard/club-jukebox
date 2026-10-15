@@ -42,6 +42,28 @@ public static class HallPlayback
     /// </summary>
     public static bool EndIsBelievable(long elapsedMs) => elapsedMs >= 5_000;
 
+    /// <summary>
+    /// The file is being opened again and again, so the queue must move on.
+    /// A missing clock is -1 and must not count: the song may still be playing.
+    /// </summary>
+    public static bool StuckBeforeItPlays(long elapsedMs, long maxPositionMs) =>
+        maxPositionMs >= 0 && maxPositionMs < 2_000 && elapsedMs >= 45_000;
+
+    public static long ClockPositionMs(string clockPath, string queueId)
+    {
+        try
+        {
+            var lines = ReadClock(clockPath, queueId);
+            if (lines is null || lines.Length < 2)
+                return -1;
+            return long.TryParse(lines[1].Trim(), out var ms) && ms >= 0 ? ms : -1;
+        }
+        catch (IOException)
+        {
+            return -1;
+        }
+    }
+
     public static void AtomicWrite(string path, string text)
     {
         var directory = Path.GetDirectoryName(path);
