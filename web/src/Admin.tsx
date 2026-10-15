@@ -100,6 +100,34 @@ export function Admin() {
     fetch("/api/admin/session").then((response) => response.json()).then((body: { authenticated: boolean }) => setAuthed(body.authenticated)).catch(() => setAuthed(false));
   }, []);
 
+  useEffect(() => {
+    let last = Date.now();
+    let seconds = 0;
+    let left = false;
+    const mark = () => { last = Date.now(); };
+    const read = () => {
+      fetch("/api/screen").then((response) => response.json()).then((body: { idleTimeoutSeconds?: number }) => {
+        seconds = Number(body.idleTimeoutSeconds) || 0;
+      }).catch(() => undefined);
+    };
+    read();
+    window.addEventListener("pointerdown", mark, true);
+    window.addEventListener("keydown", mark, true);
+    const pull = window.setInterval(read, 5000);
+    const watch = window.setInterval(() => {
+      if (left || seconds <= 0) return;
+      if (Date.now() - last < seconds * 1000) return;
+      left = true;
+      window.location.replace("/");
+    }, 1000);
+    return () => {
+      window.removeEventListener("pointerdown", mark, true);
+      window.removeEventListener("keydown", mark, true);
+      window.clearInterval(pull);
+      window.clearInterval(watch);
+    };
+  }, []);
+
   async function login() {
     const response = await fetch("/api/admin/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
     if (!response.ok) {

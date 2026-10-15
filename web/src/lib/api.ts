@@ -58,6 +58,7 @@ export type Screen = {
   indexing: boolean;
   version: string;
   cooldownMinutes: number;
+  idleTimeoutSeconds: number;
 };
 
 export type ArtistGroup = {

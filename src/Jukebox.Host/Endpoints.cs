@@ -61,7 +61,8 @@ public static class Endpoints
                 libraryCount = counts.Ready,
                 indexing = !indexer.InitialScanCompleted,
                 version = JukeboxVersion.Current,
-                cooldownMinutes = club.CooldownMinutes
+                cooldownMinutes = club.CooldownMinutes,
+                idleTimeoutSeconds = club.IdleTimeoutSeconds
             });
         });
 

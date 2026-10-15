@@ -80,6 +80,42 @@ export function Kiosk() {
     }).catch(() => undefined);
   }, [screen?.libraryCount]);
 
+  const idleAt = useRef(Date.now());
+  const idleSeconds = useRef(0);
+  const view = useRef({ query: "", searchOpen: false, category: "", showArtists: false, artist: "", letter: "", queueOpen: false, staffPin: false });
+  idleSeconds.current = screen?.idleTimeoutSeconds ?? 0;
+  view.current = { query, searchOpen, category, showArtists, artist, letter, queueOpen, staffPin };
+
+  useEffect(() => {
+    const mark = () => { idleAt.current = Date.now(); };
+    window.addEventListener("pointerdown", mark, true);
+    window.addEventListener("keydown", mark, true);
+    const timer = window.setInterval(() => {
+      const seconds = idleSeconds.current;
+      if (seconds <= 0) return;
+      if (Date.now() - idleAt.current < seconds * 1000) return;
+      const state = view.current;
+      if (state.query.trim()) return;
+      const away = state.searchOpen || state.category !== "" || state.showArtists || state.artist !== "" || state.letter !== "" || state.queueOpen || state.staffPin;
+      if (!away) return;
+      idleAt.current = Date.now();
+      setQuery("");
+      setSearchOpen(false);
+      setCategory("");
+      setShowArtists(false);
+      setArtist("");
+      setLetter("");
+      setQueueOpen(false);
+      setStaffPin(false);
+      setShift(false);
+    }, 1000);
+    return () => {
+      window.removeEventListener("pointerdown", mark, true);
+      window.removeEventListener("keydown", mark, true);
+      window.clearInterval(timer);
+    };
+  }, []);
+
   useEffect(() => {
     let current = true;
     const handle = window.setTimeout(() => {
