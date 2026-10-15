@@ -306,9 +306,26 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
   inset: 0;
   background: linear-gradient(180deg, rgba(9,8,7,0.2), rgba(9,8,7,0.78));
 }
+.hall-mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30%;
+  z-index: 1;
+  margin: 0;
+  padding: 0 3vw;
+  transform: translateY(-50%);
+  text-align: center;
+  white-space: nowrap;
+  font-family: Fraunces, serif;
+  font-weight: 600;
+  line-height: 0.85;
+  color: rgba(244, 239, 230, 0.2);
+  pointer-events: none;
+}
 .hall-copy {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   min-height: 100dvh;
   display: grid;
   align-content: end;

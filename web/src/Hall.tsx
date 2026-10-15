@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, type NowPlaying, type Screen } from "./lib/api";
 import { songTextVisible } from "./lib/songText";
 
@@ -52,12 +52,16 @@ export function Hall() {
   const showBrowserMedia = screen?.engine !== "mpv" && playing && !hideVideo;
   const clock = playbackClock(playing, showBrowserMedia ? videoRef.current ?? audioRef.current : null, tick, anchor.current);
   const showSongText = Boolean(playing && screen?.engine !== "mpv" && songTextVisible(clock.positionMs, clock.durationMs));
-  const showClubName = Boolean(screen?.showClubName && screen.clubName);
+  const clubName = screen?.clubName?.trim() ?? "";
+  const showClubMark = Boolean(!playing && screen?.showClubName && clubName);
 
   return (
     <main className="hall">
       {backdrop && <img className="hall-bg" src={backdrop} alt="" />}
-      {(!playing || showSongText || showClubName) && <div className="hall-shade" />}
+      {(!playing || showSongText) && <div className="hall-shade" />}
+      {showClubMark && (
+        <p className="hall-mark" style={clubMark(clubName)} aria-hidden="true">{clubName}</p>
+      )}
       {showBrowserMedia && playing.mediaType === "video" && (
         <video ref={videoRef} key={playing.queueId} className="hall-video" src={playing.contentUrl} autoPlay playsInline onEnded={() => songEnded(playing.queueId)} onError={() => setHideVideo(true)} />
       )}
@@ -68,7 +72,6 @@ export function Hall() {
         <img className="hall-audio-art" src={playing.contentUrl} alt="" />
       )}
       <section className="hall-copy">
-        {showClubName ? <p className="eyebrow">{screen?.clubName}</p> : null}
         {showSongText && playing ? (
           <div className="play-meta song-text">
             <h2>{playing.title}</h2>
@@ -96,6 +99,19 @@ export function Hall() {
       </section>
     </main>
   );
+}
+
+function clubMark(name: string): CSSProperties {
+  const chars = Math.max(Array.from(name).length, 1);
+  const widthFactor = 0.56;
+  const fontVw = Math.min(10, 90 / (chars * widthFactor));
+  const naturalVw = chars * widthFactor * fontVw;
+  const gaps = Math.max(chars - 1, 1);
+  const trackingEm = chars > 1 ? Math.min(0.6, Math.max(0, (90 - naturalVw) / fontVw / gaps)) : 0;
+  return {
+    fontSize: `${fontVw}vw`,
+    letterSpacing: `${trackingEm.toFixed(3)}em`,
+  };
 }
 
 function playbackClock(
