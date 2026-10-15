@@ -226,44 +226,10 @@ public sealed class PlaybackCoordinator
             if (_current is not null)
                 return null;
 
-            var next = _queue.ClaimOldest();
-            if (next is null)
-            {
-                next = MaybeAutoplay();
-            }
-
-            if (next is null)
+            var next = _queue.ClaimOldest() ?? MaybeAutoplay();
+            var job = Accept(next, screenIndex, audioDevice, imageSeconds);
+            if (job is null)
                 return null;
-
-            var source = _media.ListSources().FirstOrDefault(item => item.Id == _media.Get(next.MediaId)?.SourceId);
-            var item = _media.Get(next.MediaId);
-            if (item is null || source is null)
-            {
-                _queue.Complete(next.Id, "abandoned");
-                _lastError = "The queued file is no longer in the library.";
-                return null;
-            }
-
-            var path = Path.GetFullPath(Path.Combine(source.Path, item.RelativePath));
-            var duration = item.MediaType == MediaTypes.Image
-                ? imageSeconds * 1000L
-                : Math.Max(1000, item.DurationMs ?? 10_000);
-            if (item.MediaType == MediaTypes.Audio)
-                duration += 1500;
-            var job = new PlayJob
-            {
-                Entry = next,
-                AbsolutePath = path,
-                ScreenIndex = screenIndex,
-                AudioDevice = audioDevice,
-                DurationMs = duration
-            };
-            if (!File.Exists(path))
-            {
-                _queue.Complete(next.Id, "abandoned");
-                _lastError = "The file could not be opened.";
-                return null;
-            }
 
             _current = job;
             _published = false;
@@ -273,10 +239,81 @@ public sealed class PlaybackCoordinator
         }
     }
 
+    /// <summary>
+    /// A song the system started gives way at once when a person picks one.
+    /// A song a person already chose keeps playing. The returned song is
+    /// already on the screen, so the player only has to open that file.
+    /// </summary>
+    public PlayJob? TakeGuestSong(PlayJob playing)
+    {
+        lock (_gate)
+        {
+            if (_current is null || _current.Entry.Id != playing.Entry.Id)
+                return null;
+            if (Origins.IsHuman(_current.Entry.Origin))
+                return null;
+
+            var imageSeconds = Math.Max(1, _settings.Get().ImageSeconds);
+            var job = Accept(_queue.ClaimOldestHuman(), playing.ScreenIndex, playing.AudioDevice, imageSeconds);
+            if (job is null)
+                return null;
+
+            var house = _current;
+            _queue.Complete(house.Entry.Id, "completed");
+            _media.RecordPlay(house.Entry.MediaId, house.Entry.Origin, false, house.Entry.Title, house.Entry.Artist);
+            _current = job;
+            _published = true;
+            _positionMs = 0;
+            _finishedQueueId = null;
+            _lastError = null;
+            return job;
+        }
+    }
+
+    private PlayJob? Accept(QueueEntry? next, int screenIndex, string? audioDevice, int imageSeconds)
+    {
+        if (next is null)
+            return null;
+
+        var source = _media.ListSources().FirstOrDefault(item => item.Id == _media.Get(next.MediaId)?.SourceId);
+        var item = _media.Get(next.MediaId);
+        if (item is null || source is null)
+        {
+            _queue.Complete(next.Id, "abandoned");
+            _lastError = "The queued file is no longer in the library.";
+            return null;
+        }
+
+        var path = Path.GetFullPath(Path.Combine(source.Path, item.RelativePath));
+        var duration = item.MediaType == MediaTypes.Image
+            ? imageSeconds * 1000L
+            : Math.Max(1000, item.DurationMs ?? 10_000);
+        if (item.MediaType == MediaTypes.Audio)
+            duration += 1500;
+        var job = new PlayJob
+        {
+            Entry = next,
+            AbsolutePath = path,
+            ScreenIndex = screenIndex,
+            AudioDevice = audioDevice,
+            DurationMs = duration
+        };
+        if (!File.Exists(path))
+        {
+            _queue.Complete(next.Id, "abandoned");
+            _lastError = "The file could not be opened.";
+            return null;
+        }
+
+        return job;
+    }
+
     public void Finish(PlayJob job, PlayResult result)
     {
         lock (_gate)
         {
+            if (_current is not null && _current.Entry.Id != job.Entry.Id)
+                job = _current;
             _queue.Complete(job.Entry.Id, result.Ok ? "completed" : "abandoned");
             if (result.Ok)
                 _media.RecordPlay(job.Entry.MediaId, job.Entry.Origin, true, job.Entry.Title, job.Entry.Artist);

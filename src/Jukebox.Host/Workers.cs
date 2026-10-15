@@ -92,10 +92,11 @@ public sealed class PlaybackWorker(
                 var playerReady = await HallPlayerReady(stoppingToken);
                 coordinator.SetEngine(playerReady ? "mpv" : "timer");
                 coordinator.Publish();
-                var result = playerReady
+                var outcome = playerReady
                     ? await WaitForHallPlayer(job, stoppingToken)
                     : await WaitForShownMedia(job, stoppingToken);
-                coordinator.Finish(job, result);
+                job = outcome.Job;
+                coordinator.Finish(job, outcome.Result);
                 job = null;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -160,7 +161,41 @@ public sealed class PlaybackWorker(
         return HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5));
     }
 
-    private async Task<PlayResult> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
+    private async Task<(PlayJob Job, PlayResult Result)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
+    {
+        ArmHall(job);
+        var started = Environment.TickCount64;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var guest = coordinator.TakeGuestSong(job);
+            if (guest is not null)
+            {
+                job = guest;
+                ArmHall(job);
+                started = Environment.TickCount64;
+                continue;
+            }
+
+            var elapsed = Environment.TickCount64 - started;
+            coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
+            // The stored length must not end the song. The welcome screen came
+            // up, and the same file started again. The player exiting is the end.
+            var image = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase);
+            if (HallPlayback.EndIsBelievable(elapsed) && HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id))
+                return (job, PlayResult.Done());
+            var cap = image
+                ? HallPlayback.PlaybackCap(job.DurationMs, job.Entry.MediaType)
+                : TimeSpan.FromHours(3);
+            if (TimeSpan.FromMilliseconds(elapsed) >= cap)
+                return (job, PlayResult.Done());
+            ApplySavedAudio();
+            await Task.Delay(400, stoppingToken);
+        }
+
+        return (job, PlayResult.Done());
+    }
+
+    private void ArmHall(PlayJob job)
     {
         coordinator.MarkFinished(null);
         try
@@ -179,41 +214,29 @@ public sealed class PlaybackWorker(
         if (string.IsNullOrWhiteSpace(art) || !File.Exists(art))
             art = "";
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
-        var started = Environment.TickCount64;
-        var image = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase);
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            var elapsed = Environment.TickCount64 - started;
-            coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
-            // The stored length must not end the song. The welcome screen came
-            // up, and the same file started again. The player exiting is the end.
-            if (HallPlayback.EndIsBelievable(elapsed) && HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id))
-                return PlayResult.Done();
-            var cap = image
-                ? HallPlayback.PlaybackCap(job.DurationMs, job.Entry.MediaType)
-                : TimeSpan.FromHours(3);
-            if (TimeSpan.FromMilliseconds(elapsed) >= cap)
-                return PlayResult.Done();
-            ApplySavedAudio();
-            await Task.Delay(400, stoppingToken);
-        }
-
-        return PlayResult.Done();
     }
 
-    private async Task<PlayResult> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
+    private async Task<(PlayJob Job, PlayResult Result)> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
     {
         var started = Environment.TickCount64;
         while (!stoppingToken.IsCancellationRequested)
         {
+            var guest = coordinator.TakeGuestSong(job);
+            if (guest is not null)
+            {
+                job = guest;
+                started = Environment.TickCount64;
+                continue;
+            }
+
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
             if (coordinator.IsFinished(job.Entry.Id) || elapsed >= job.DurationMs)
-                return PlayResult.Done();
+                return (job, PlayResult.Done());
             await Task.Delay(200, stoppingToken);
         }
 
-        return PlayResult.Done();
+        return (job, PlayResult.Done());
     }
 }
 

@@ -613,6 +613,55 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_guest_song_replaces_the_house_song_at_once()
+    {
+        using var fixture = new TempLibrary();
+        var houseId = fixture.Add("House", "Filler", "Pop", 2000);
+        var guestId = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "House - Filler.mp4"), [1]);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1, 2, 3]);
+        Assert.True(fixture.Queue.TryEnqueue(houseId, Origins.Auto, "idle").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var house = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(house);
+        coordinator.SetEngine("mpv");
+        coordinator.Publish();
+        Assert.True(fixture.Queue.TryEnqueue(guestId, Origins.User, "touch").Ok);
+
+        var guest = coordinator.TakeGuestSong(house!);
+
+        Assert.NotNull(guest);
+        Assert.Equal(guestId, guest!.Entry.MediaId);
+        Assert.Equal("user", guest.Entry.Origin);
+        Assert.Equal(guest.Entry.Id, coordinator.Snapshot().Current!.Entry.Id);
+        Assert.Equal("mpv", coordinator.Snapshot().Engine);
+        var active = fixture.Queue.Active();
+        Assert.Single(active);
+        Assert.Equal(guest.Entry.Id, active[0].Id);
+        Assert.Equal("playing", active[0].Status);
+    }
+
+    [Fact]
+    public void A_persons_song_is_not_cut_off()
+    {
+        using var fixture = new TempLibrary();
+        var firstId = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var secondId = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "ABBA - Dancing Queen.mp4"), [1, 2]);
+        Assert.True(fixture.Queue.TryEnqueue(firstId, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var first = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(first);
+        coordinator.Publish();
+        Assert.True(fixture.Queue.TryEnqueue(secondId, Origins.Mobile, "phone").Ok);
+
+        Assert.Null(coordinator.TakeGuestSong(first!));
+        Assert.Equal(first!.Entry.Id, coordinator.Snapshot().Current!.Entry.Id);
+        Assert.Equal(2, fixture.Queue.Active().Count);
+    }
+
+    [Fact]
     public void A_finished_signal_releases_only_that_song()
     {
         using var fixture = new TempLibrary();

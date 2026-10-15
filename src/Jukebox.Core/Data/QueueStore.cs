@@ -112,16 +112,25 @@ public sealed class QueueStore
         return list;
     }
 
-    public QueueEntry? ClaimOldest()
+    public QueueEntry? ClaimOldest() => ClaimNextQueued(humanOnly: false);
+
+    /// <summary>
+    /// The oldest song a person chose. A house song must not be claimed here,
+    /// so a guest pick is what replaces the one the system started.
+    /// </summary>
+    public QueueEntry? ClaimOldestHuman() => ClaimNextQueued(humanOnly: true);
+
+    private QueueEntry? ClaimNextQueued(bool humanOnly)
     {
         return _database.InWrite((connection, tx) =>
         {
             using var reader = JukeboxDatabase.Query(connection, """
                 SELECT q.id FROM queue_items q
                 WHERE q.status='queued'
+                  AND ($human = 0 OR q.origin IN ('user','mobile'))
                 ORDER BY q.enqueued_at
                 LIMIT 1;
-                """, tx);
+                """, tx, ("$human", humanOnly ? 1 : 0));
             if (!reader.Read())
                 return null;
             var id = reader.GetString(0);
