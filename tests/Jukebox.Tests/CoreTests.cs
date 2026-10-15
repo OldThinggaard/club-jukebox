@@ -63,6 +63,12 @@ public class MetadataAndCategoryTests
     {
         Assert.Equal("Song Name", TitleCleaner.Strip("Song Name (Clean) Official Video"));
         Assert.Equal("Song Name", TitleCleaner.Strip("Song Name ( clean )"));
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name (Dirty) Official Video"));
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name ( dirty )"));
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name (XXX) Live"));
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name ( xxx )"));
+        Assert.Equal("Song Name (Clean Version)", TitleCleaner.Strip("Song Name (Clean Version)"));
+        Assert.Equal("Song Name (Dirty Version)", TitleCleaner.Strip("Song Name (Dirty Version)"));
         Assert.Equal("Bohemian Rhapsody", TitleCleaner.Strip("Bohemian Rhapsody"));
         var resolved = MetadataMerger.Resolve(
             new ProbeTags { Title = "Song Name (Clean) Official Video", Artist = "Queen" },

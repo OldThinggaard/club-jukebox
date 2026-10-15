@@ -15,6 +15,6 @@ public static partial class TitleCleaner
         return kept.Length == 0 ? title.Trim() : kept;
     }
 
-    [GeneratedRegex(@"\(\s*Clean\s*\)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"\(\s*(?:Clean|Dirty|XXX)\s*\)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex CleanMark();
 }
