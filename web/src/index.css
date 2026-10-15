@@ -150,7 +150,13 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 }
 .chip.active, .letter.active { background: #e2b15a; color: #1a140c; }
 
-.stage { overflow: auto; padding: 8px 16px 16px; min-height: 0; }
+.stage {
+  overflow: auto;
+  padding: 8px 16px 16px;
+  min-height: 0;
+  scrollbar-width: none;
+}
+.stage::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -200,12 +206,16 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
 .artist-name {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 24px;
   min-height: 56px;
   padding: 0 16px;
   border-radius: 16px;
   background: #1c1814;
   font-size: 20px;
 }
+.artist-name span:first-child { min-width: 0; text-align: left; }
+.artist-name .muted { flex-shrink: 0; }
 
 .nowbar {
   display: grid;
