@@ -119,25 +119,28 @@ stop_play() {
   kill_play
 }
 
+cached_screen=""
 launch_mpv() {
   local path="$1" kind="$2"
-  local screen seconds
+  local seconds
   apply_audio
-  screen="$(monitor_index || true)"
+  if [[ -z "$cached_screen" ]]; then
+    cached_screen="$(monitor_index || true)"
+  fi
   local -a args
   rm -f "$SOCK"
   args=(
     --no-config --no-terminal --really-quiet --no-border --ontop
-    --keep-open=yes --loop-file=no --idle=no --audio-display=no
+    --keep-open=yes --loop-file=no --idle=yes --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
+    --force-window=no --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
   if [[ -n "$SINK" ]]; then
     args+=(--audio-device="pulse/${SINK}")
   fi
-  if [[ -n "$screen" ]]; then
-    args+=(--fs --fs-screen="$screen")
+  if [[ -n "$cached_screen" ]]; then
+    args+=(--fs --fs-screen="$cached_screen")
   else
     args+=(--fs)
   fi
@@ -146,8 +149,9 @@ launch_mpv() {
     if [[ "$seconds" -lt 1 ]]; then
       seconds=8
     fi
-    args+=(--image-display-duration="$seconds" "$path")
-  else
+    args+=(--image-display-duration="$seconds")
+  fi
+  if [[ -n "$path" ]]; then
     # The file itself must be what mpv is waiting on. A cover picture keeps
     # the player open after the song, so the next one in the queue never starts.
     args+=("$path")
@@ -156,15 +160,33 @@ launch_mpv() {
   mpv "${args[@]}" >"$LOG" 2>&1 &
   play_pid=$!
   applied_volume=""
-  sleep 0.4
+  sleep 0.2
   [[ -S "$SOCK" ]] && chmod 666 "$SOCK" 2>/dev/null || true
+}
+
+ensure_player() {
+  if [[ -n "${play_pid}" ]] && kill -0 "${play_pid}" >/dev/null 2>&1; then
+    return 0
+  fi
+  play_pid=""
+  launch_mpv "" ""
 }
 
 start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
   play_kind="$kind"
   play_ms="$duration"
+  ensure_player
+  if load_file "$path"; then
+    return 0
+  fi
+  stop_play
   launch_mpv "$path" "$kind"
+}
+
+hide_playback() {
+  [[ -S "$SOCK" ]] || return 0
+  python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" hide >/dev/null 2>&1 || true
 }
 
 note_finished() {
@@ -210,6 +232,8 @@ finish_if_stopped() {
 
 last=""
 opened_at=0
+resting=0
+ensure_player
 while true; do
   touch "$STAMP" 2>/dev/null || true
   apply_audio
@@ -227,6 +251,10 @@ while true; do
     ''|*[!0-9]*) duration=0 ;;
   esac
   if [[ "$id" == "$last" ]]; then
+    if [[ "$resting" -eq 1 ]]; then
+      sleep 0.1
+      continue
+    fi
     if [[ -n "${play_pid}" ]] && ! kill -0 "${play_pid}" >/dev/null 2>&1; then
       wait "${play_pid}" >/dev/null 2>&1 || true
       play_pid=""
@@ -256,20 +284,24 @@ while true; do
         sleep 0.1
       done
       if [[ -z "$waited" ]]; then
-        stop_play
+        hide_playback
+        resting=1
       fi
     fi
     sleep 0.2
     continue
   fi
   last="$id"
+  resting=0
   if [[ -z "$id" || -z "$path" || ! -f "$path" ]]; then
     stop_play
     printf '%s\n' "$id" > "$DONE"
     sleep 0.2
     continue
   fi
-  if [[ "$kind" == "$play_kind" ]] && load_file "$path"; then
+  play_ms="$duration"
+  if [[ "$kind" != "image" ]] && load_file "$path"; then
+    play_kind="$kind"
     opened_at=$(date +%s)
     sleep 0.1
     continue

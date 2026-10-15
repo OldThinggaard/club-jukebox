@@ -176,7 +176,17 @@ sock.connect(path)
 try:
     if volume == "load":
         target = sys.argv[3]
+        request(sock, {"command": ["set_property", "force-window", "yes"]})
+        request(sock, {"command": ["set_property", "keep-open", "yes"]})
+        request(sock, {"command": ["set_property", "fullscreen", "yes"]})
         reply = request(sock, {"command": ["loadfile", target, "replace"]})
+        if reply.get("error") not in (None, "success"):
+            raise SystemExit(1)
+    elif volume == "hide":
+        request(sock, {"command": ["set_property", "keep-open", "no"]})
+        request(sock, {"command": ["set_property", "force-window", "no"]})
+        request(sock, {"command": ["set_property", "fullscreen", "no"]})
+        reply = request(sock, {"command": ["stop"]})
         if reply.get("error") not in (None, "success"):
             raise SystemExit(1)
     elif volume == "eof":

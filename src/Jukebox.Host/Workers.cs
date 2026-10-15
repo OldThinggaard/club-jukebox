@@ -51,12 +51,14 @@ public sealed class PlaybackWorker(
 {
     private IReadOnlyList<DisplayInfo> _displays = [];
     private long _displaysAt = long.MinValue;
+    private int _screenIndex;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var waitUntil = DateTime.UtcNow.AddSeconds(8);
         while (!indexer.InitialScanCompleted && DateTime.UtcNow < waitUntil && !stoppingToken.IsCancellationRequested)
             await Task.Delay(200, stoppingToken);
+        RememberScreen();
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -64,32 +66,19 @@ public sealed class PlaybackWorker(
             try
             {
                 var club = settings.Get();
-                ApplySavedAudio();
-                var displays = CurrentDisplays();
-                if (string.IsNullOrWhiteSpace(club.UiOutput) || string.IsNullOrWhiteSpace(club.PlaybackOutput))
-                {
-                    var (ui, hall) = DisplayAudioProbe.AutoAssign(displays);
-                    if (!string.IsNullOrWhiteSpace(ui) && string.IsNullOrWhiteSpace(club.UiOutput))
-                        settings.Set(SettingKeys.UiOutput, ui);
-                    if (!string.IsNullOrWhiteSpace(hall) && string.IsNullOrWhiteSpace(club.PlaybackOutput))
-                        settings.Set(SettingKeys.PlaybackOutput, hall);
-                    club = settings.Get();
-                }
-
-                DisplayAudioProbe.WriteDisplayFile(paths.DisplaysFile, displays, club.UiOutput, club.PlaybackOutput);
-                var screen = DisplayAudioProbe.ScreenIndex(displays, club.PlaybackOutput);
-                job = coordinator.ClaimNext(screen, null, club.ImageSeconds);
+                // A tap during the pause picture must not wait for a screen probe.
+                job = coordinator.ClaimNext(_screenIndex, null, club.ImageSeconds);
                 if (job is null)
                 {
-                    await Task.Delay(400, stoppingToken);
+                    RememberScreen();
+                    ApplySavedAudio();
+                    await Task.Delay(100, stoppingToken);
                     continue;
                 }
 
-                // hall-player.sh plays the file from disk in the graphical session.
-                // A timer is only the fallback when that player is not there.
-                // The song stays hidden until the engine is chosen. Otherwise the
-                // hall browser starts it, and mpv starts the same file again.
-                var playerReady = await HallPlayerReady(stoppingToken);
+                // Tell the television at once. Waiting here left the pause picture up.
+                var playerReady = File.Exists("/opt/jukebox/bin/hall-player.sh")
+                    && HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(15));
                 coordinator.SetEngine(playerReady ? "mpv" : "timer");
                 coordinator.Publish();
                 var outcome = playerReady
@@ -127,11 +116,11 @@ public sealed class PlaybackWorker(
         }
     }
 
-    private IReadOnlyList<DisplayInfo> CurrentDisplays()
+    private void RememberScreen()
     {
         var now = Environment.TickCount64;
-        if (_displays.Count > 0 && now - _displaysAt < 30_000)
-            return _displays;
+        if (_displaysAt != long.MinValue && now - _displaysAt < 30_000)
+            return;
         _displaysAt = now;
         try
         {
@@ -144,22 +133,27 @@ public sealed class PlaybackWorker(
             logger.LogDebug(ex, "Display probe failed");
         }
 
-        return _displays;
-    }
-
-    private async Task<bool> HallPlayerReady(CancellationToken stoppingToken)
-    {
-        if (!File.Exists("/opt/jukebox/bin/hall-player.sh"))
-            return false;
-        var deadline = DateTime.UtcNow.AddSeconds(20);
-        while (DateTime.UtcNow < deadline && !stoppingToken.IsCancellationRequested)
+        var club = settings.Get();
+        if (string.IsNullOrWhiteSpace(club.UiOutput) || string.IsNullOrWhiteSpace(club.PlaybackOutput))
         {
-            if (HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5)))
-                return true;
-            await Task.Delay(400, stoppingToken);
+            var (ui, hall) = DisplayAudioProbe.AutoAssign(_displays);
+            if (!string.IsNullOrWhiteSpace(ui) && string.IsNullOrWhiteSpace(club.UiOutput))
+                settings.Set(SettingKeys.UiOutput, ui);
+            if (!string.IsNullOrWhiteSpace(hall) && string.IsNullOrWhiteSpace(club.PlaybackOutput))
+                settings.Set(SettingKeys.PlaybackOutput, hall);
+            club = settings.Get();
         }
 
-        return HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5));
+        try
+        {
+            DisplayAudioProbe.WriteDisplayFile(paths.DisplaysFile, _displays, club.UiOutput, club.PlaybackOutput);
+        }
+        catch (IOException ex)
+        {
+            logger.LogDebug(ex, "Could not write the display map");
+        }
+
+        _screenIndex = DisplayAudioProbe.ScreenIndex(_displays, club.PlaybackOutput);
     }
 
     private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)

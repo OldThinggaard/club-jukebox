@@ -38,6 +38,10 @@ if command -v wpctl >/dev/null 2>&1; then
       sleep 1
       wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 || true
       wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.8 || true
+      # Silence keeps the output awake, so the next song does not wait for it.
+      if command -v paplay >/dev/null 2>&1; then
+        paplay --raw --rate 48000 --channels 2 --format s16le /dev/zero >/dev/null 2>&1 &
+      fi
       if [[ -f /opt/jukebox/lib/mpv-volume.py ]]; then
         python3 /opt/jukebox/lib/mpv-volume.py active 80 || true
       fi
