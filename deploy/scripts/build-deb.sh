@@ -200,6 +200,10 @@ if grep -q 'Lydstyrke' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; the
   echo "The volume buttons must stay off the sound page." >&2
   exit 1
 fi
+if grep -q 'Indbyggede højttalere' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+  echo "The speaker and headphone buttons must stay off the sound page." >&2
+  exit 1
+fi
 if ! grep -q 'Tegn' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The keyboard must offer signs such as !." >&2
   exit 1

@@ -319,7 +319,6 @@ function PlaybackPanel() {
   if (!settings) return <p>Henter lyd…</p>;
   const current = settings;
   const set = (patch: Partial<Settings>) => setSettings({ ...current, ...patch });
-  const headphones = current.audioDevice === "headphones" || current.audioDevice.includes("headphone");
   async function saveSound(patch: Partial<Settings>) {
     const next: Settings = { ...current, ...patch };
     setSettings(next);
@@ -335,11 +334,6 @@ function PlaybackPanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-2xl">Lyd</h2>
-      <div className="sound-choice">
-        <button className={headphones ? "" : "active"} type="button" onClick={() => void saveSound({ audioDevice: "speakers" })}>Indbyggede højttalere</button>
-        <button className={headphones ? "active" : ""} type="button" onClick={() => void saveSound({ audioDevice: "headphones" })}>Hovedtelefonudgang</button>
-      </div>
-      <p className="muted">Tryk på den udgang, lyden skal komme fra. Valget gemmes med det samme. Styrken sættes til fuld ved start og kan ikke ændres her.</p>
       {soundNote && <p>{soundNote}</p>}
       <div className="form-grid">
         <Field label="Klubnavn"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
@@ -379,7 +373,6 @@ function PlaybackPanel() {
       <Field label="Welcome"><textarea value={settings.welcomeMessage} onChange={(event) => set({ welcomeMessage: event.target.value })} /></Field>
       <Field label="Instructions"><textarea value={settings.instructions} onChange={(event) => set({ instructions: event.target.value })} /></Field>
       <div className="actions">
-        <p className="muted">Hovedtelefonudgangen er stikket bagi. Sæt ledningen i, før du vælger den.</p>
         <Button type="button" onClick={() => void admin("/api/admin/settings", { method: "PUT", body: JSON.stringify(settings) })}>Gem</Button>
       </div>
       <PinChange />
