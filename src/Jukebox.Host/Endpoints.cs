@@ -257,6 +257,7 @@ public static class Endpoints
                 autoPlayCount = item.AutoPlayCount,
                 thumbnailUrl = Thumb(item),
                 relativePath = item.RelativePath,
+                sourceId = item.SourceId,
                 availableFrom = item.AvailableFrom,
                 availableUntil = item.AvailableUntil,
                 categoryIds = media.CategoryIds(item.Id)
@@ -285,6 +286,51 @@ public static class Endpoints
             if (body.CategoryIds is not null)
                 media.SetManualCategories(id, body.CategoryIds);
             settings.Audit("metadata", id);
+            return Results.Ok(new { ok = true });
+        }).AddEndpointFilter(Gate);
+
+        admin.MapDelete("/media/{id}", (string id, MediaStore media, QueueStore queue, SettingsStore settings, JukeboxPaths paths) =>
+        {
+            var item = media.Get(id);
+            if (item is null)
+                return Results.NotFound();
+            var full = LocalCopy.InsideLibrary(paths.Library, item.RelativePath);
+            if (item.SourceId != LocalCopy.SourceId || full is null)
+                return Results.Json(new { ok = false, reason = "Only a song copied from USB can be deleted." }, statusCode: StatusCodes.Status409Conflict);
+            if (queue.IsPlaying(id))
+                return Results.Json(new { ok = false, reason = "The song is playing. Wait until it finishes." }, statusCode: StatusCodes.Status409Conflict);
+            try
+            {
+                if (File.Exists(full))
+                    File.Delete(full);
+            }
+            catch (Exception)
+            {
+                return Results.Json(new { ok = false, reason = "The song file could not be removed." }, statusCode: StatusCodes.Status409Conflict);
+            }
+
+            if (!string.IsNullOrWhiteSpace(item.ThumbnailPath))
+            {
+                try
+                {
+                    if (File.Exists(item.ThumbnailPath))
+                        File.Delete(item.ThumbnailPath);
+                }
+                catch (Exception)
+                {
+                    // The song itself is already gone.
+                }
+            }
+
+            media.DeleteItem(id);
+            settings.Audit("delete-song", item.RelativePath);
+            return Results.Ok(new { ok = true });
+        }).AddEndpointFilter(Gate);
+
+        admin.MapDelete("/queue", (QueueStore queue, SettingsStore settings) =>
+        {
+            queue.ClearWaiting();
+            settings.Audit("queue-clear", null);
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
 

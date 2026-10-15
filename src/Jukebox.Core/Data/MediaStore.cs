@@ -688,6 +688,13 @@ public sealed class MediaStore
         });
     }
 
+    public void DeleteItem(string id) =>
+        _database.InWrite((connection, tx) =>
+        {
+            JukeboxDatabase.Execute(connection, "DELETE FROM media_fts WHERE media_id=$id;", tx, ("$id", id));
+            JukeboxDatabase.Execute(connection, "DELETE FROM media_items WHERE id=$id;", tx, ("$id", id));
+        });
+
     public void MarkForReindex() =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, "UPDATE media_items SET force_reindex=1, is_ready=0, index_state='pending';", tx));
 

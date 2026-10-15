@@ -169,6 +169,16 @@ public sealed class QueueStore
             UPDATE queue_items SET status=$status, finished_at=$now WHERE id=$id;
             """, tx, ("$status", status), ("$now", ClubCulture.Iso(DateTime.UtcNow)), ("$id", queueId)));
 
+    public bool IsPlaying(string mediaId)
+    {
+        using var connection = _database.Open();
+        using var reader = JukeboxDatabase.Query(connection, "SELECT 1 FROM queue_items WHERE media_id=$id AND status='playing' LIMIT 1;", null, ("$id", mediaId));
+        return reader.Read();
+    }
+
+    public void ClearWaiting() =>
+        _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, "DELETE FROM queue_items WHERE status='queued';", tx));
+
     public void ResetInterrupted() =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, """
             UPDATE queue_items SET status='queued', started_at=NULL WHERE status='playing';

@@ -613,6 +613,46 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_library_copy_can_be_removed_without_leaving_the_folder()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "jukebox-copy-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        var kept = LocalCopy.InsideLibrary(root, "Queen - Bohemian Rhapsody.mp4");
+        Assert.NotNull(kept);
+        Assert.StartsWith(Path.GetFullPath(root), kept);
+        Assert.Null(LocalCopy.InsideLibrary(root, "../secret.mp4"));
+    }
+
+    [Fact]
+    public void Deleting_a_song_removes_it_from_the_queue()
+    {
+        using var fixture = new TempLibrary();
+        var id = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        Assert.True(fixture.Queue.TryEnqueue(id, Origins.User, "touch").Ok);
+        fixture.Media.DeleteItem(id);
+        Assert.Null(fixture.Media.Get(id));
+        Assert.Empty(fixture.Queue.Active());
+    }
+
+    [Fact]
+    public void Clearing_the_queue_leaves_the_song_that_is_playing()
+    {
+        using var fixture = new TempLibrary();
+        var playing = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var waiting = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        Assert.True(fixture.Queue.TryEnqueue(playing, Origins.User, "touch").Ok);
+        Assert.True(fixture.Queue.TryEnqueue(waiting, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        Assert.NotNull(coordinator.ClaimNext(0, null, 8));
+        fixture.Queue.ClearWaiting();
+        var active = fixture.Queue.Active();
+        Assert.Single(active);
+        Assert.Equal("playing", active[0].Status);
+        Assert.Equal(playing, active[0].MediaId);
+    }
+
+    [Fact]
     public void Refuses_a_second_copy_in_the_queue()
     {
         using var fixture = new TempLibrary();

@@ -38,6 +38,7 @@ type AdminMedia = {
   userPlayCount: number;
   autoPlayCount: number;
   relativePath: string;
+  sourceId: string;
   thumbnailUrl: string | null;
 };
 
@@ -268,7 +269,15 @@ function LibraryPanel() {
               <td><strong>{item.title}</strong><div className="muted">{item.artist} · {item.relativePath}</div></td>
               <td>{item.isReady ? (item.isHidden ? "Hidden" : "On the shelf") : item.indexState}{item.error ? ` — ${item.error}` : ""}</td>
               <td>{item.userPlayCount} guest / {item.autoPlayCount} house</td>
-              <td><Button variant="ghost" type="button" onClick={() => setEditing(item)}>Edit</Button></td>
+              <td>
+                <Button variant="ghost" type="button" onClick={() => setEditing(item)}>Edit</Button>
+                {item.sourceId === "local-media" && (
+                  <Button variant="danger" type="button" onClick={() => {
+                    if (!confirm("Slet denne sang fra jukeboksen? Filen på USB-nøglen bliver liggende.")) return;
+                    void admin(`/api/admin/media/${item.id}`, { method: "DELETE" }).then(() => load());
+                  }}>Slet</Button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -365,6 +374,12 @@ function PlaybackPanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-2xl">Indstillinger</h2>
+      <div className="actions">
+        <Button variant="danger" type="button" onClick={() => {
+          if (!confirm("Slet de sange, der venter? Den sang der spiller, fortsætter.")) return;
+          void admin("/api/admin/queue", { method: "DELETE" });
+        }}>Slet køen</Button>
+      </div>
       {soundNote && <p>{soundNote}</p>}
       <div className="form-grid">
         <Field label="Klubnavn"><input value={settings.clubName} onChange={(event) => set({ clubName: event.target.value })} /></Field>
