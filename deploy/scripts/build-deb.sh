@@ -132,6 +132,14 @@ if [[ "$(grep -c '^[[:space:]]*mpv ' "$pkg/opt/jukebox/bin/hall-player.sh")" -ne
   echo "The player must open a song once." >&2
   exit 1
 fi
+if grep -q 'wait_for_sink' "$pkg/opt/jukebox/bin/hall-player.sh"; then
+  echo "Looking up the sound card again restarts the song." >&2
+  exit 1
+fi
+if ! python3 "$pkg/opt/jukebox/lib/mpv-volume.py" self-test; then
+  echo "The opening of a song must not count as the end." >&2
+  exit 1
+fi
 if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then
   echo "Startup must know which output is playing." >&2
   exit 1

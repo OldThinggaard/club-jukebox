@@ -184,9 +184,10 @@ public sealed class PlaybackWorker(
         {
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
-            if (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
-                || coordinator.IsFinished(job.Entry.Id)
-                || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id))
+            if (HallPlayback.EndIsBelievable(elapsed)
+                && (HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id)
+                    || coordinator.IsFinished(job.Entry.Id)
+                    || HallPlayback.ClockEnded(paths.PlayClock, job.Entry.Id)))
                 return PlayResult.Done();
             var known = job.DurationMs;
             if (!string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase))

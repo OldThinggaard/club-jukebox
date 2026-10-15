@@ -36,6 +36,12 @@ public static class HallPlayback
         return known + slack;
     }
 
+    /// <summary>
+    /// An end signal in the first seconds is mpv opening the file, not the
+    /// song finishing. Acting on it starts the same song again.
+    /// </summary>
+    public static bool EndIsBelievable(long elapsedMs) => elapsedMs >= 5_000;
+
     public static void AtomicWrite(string path, string text)
     {
         var directory = Path.GetDirectoryName(path);

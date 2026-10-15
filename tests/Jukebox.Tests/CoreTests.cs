@@ -392,6 +392,9 @@ public class HallPlaybackTests
         Assert.Equal(TimeSpan.FromHours(4) + TimeSpan.FromSeconds(8), HallPlayback.PlaybackCap(4L * 60 * 60 * 1000, "video"));
         Assert.Equal(TimeSpan.FromHours(3), HallPlayback.PlaybackCap(10_000));
         Assert.Equal(TimeSpan.FromSeconds(14), HallPlayback.PlaybackCap(12_000, "image"));
+        Assert.False(HallPlayback.EndIsBelievable(0));
+        Assert.False(HallPlayback.EndIsBelievable(4_999));
+        Assert.True(HallPlayback.EndIsBelievable(5_000));
     }
 
     [Fact]

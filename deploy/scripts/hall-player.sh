@@ -120,17 +120,6 @@ stop_play() {
   kill_play
 }
 
-wait_for_sink() {
-  local n
-  [[ -n "$SINK" ]] && return 0
-  for n in 1 2 3 4 5 6 7 8; do
-    sleep 0.4
-    applied_sink=""
-    apply_audio
-    [[ -n "$SINK" ]] && return 0
-  done
-}
-
 start_play() {
   local path="$1" kind="$2" duration="$3" art="$4"
   local screen seconds probed ao
@@ -143,10 +132,8 @@ start_play() {
     fi
   fi
   apply_audio
-  if [[ -z "$SINK" ]]; then
-    wait_for_sink
-  fi
-  # One start. A second start makes the first song begin again.
+  # One start. Asking for the sound card again, or opening the file twice,
+  # makes the first song begin again.
   if [[ -n "$SINK" ]]; then
     ao="pulse"
   else
@@ -159,7 +146,7 @@ start_play() {
     --no-config --no-terminal --really-quiet --no-border --ontop
     --keep-open=no --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
-    --force-window=immediate --ao="$ao" --volume=100 --ao-volume=100
+    --force-window=immediate --audio-wait-open=3 --ao="$ao" --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
   )
   if [[ "$ao" == "pulse" && -n "$SINK" ]]; then
@@ -241,6 +228,15 @@ finish_if_stopped() {
     fi
   fi
   learn_length
+  if [[ "$ended" -eq 1 && "$started_epoch" -gt 0 ]]; then
+    local now age
+    now=$(date +%s)
+    age=$((now - started_epoch))
+    # The opening moments look like the end. Leave the song alone.
+    if [[ "$age" -lt 5 ]]; then
+      ended=0
+    fi
+  fi
   if [[ "$ended" -eq 1 ]] || past_limit; then
     note_finished "${last}"
     kill_play
