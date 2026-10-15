@@ -6,6 +6,15 @@ export DISPLAY="${DISPLAY:-:0}"
 export XAUTHORITY="${XAUTHORITY:-/home/jukebox/.Xauthority}"
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 
+# The analog output sleeps after a few quiet seconds, and the first song
+# then waits while it wakes. Keep it awake for the whole evening.
+if [[ -e /sys/module/snd_hda_intel/parameters/power_save ]]; then
+  sudo -n sh -c 'printf "%s\n" 0 > /sys/module/snd_hda_intel/parameters/power_save' 2>/dev/null || true
+fi
+if [[ -e /sys/module/snd_hda_intel/parameters/power_save_controller ]]; then
+  sudo -n sh -c 'printf "%s\n" N > /sys/module/snd_hda_intel/parameters/power_save_controller' 2>/dev/null || true
+fi
+
 if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && command -v dbus-launch >/dev/null 2>&1; then
   eval "$(dbus-launch --sh-syntax)"
 fi

@@ -128,7 +128,7 @@ launch_mpv() {
   rm -f "$SOCK"
   args=(
     --no-config --no-terminal --really-quiet --no-border --ontop
-    --keep-open=no --loop-file=no --idle=no --audio-display=no
+    --keep-open=yes --loop-file=no --idle=no --audio-display=no
     --no-osc --osd-level=0 --cursor-autohide=always
     --force-window=immediate --ao=pulse --volume=100 --ao-volume=100
     --input-ipc-server="$SOCK"
@@ -176,6 +176,22 @@ note_finished() {
     -d "{\"queueId\":\"${id}\"}" >/dev/null 2>&1 || true
 }
 
+# The same window loads the next file. Closing it shows the pause picture.
+load_file() {
+  local target="$1"
+  [[ -n "${play_pid}" && -S "$SOCK" ]] || return 1
+  kill -0 "${play_pid}" >/dev/null 2>&1 || return 1
+  python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" load "$target"
+}
+
+# Exit 0 while the file is still going. Exit 2 when mpv has reached the end.
+file_reached_end() {
+  [[ -S "$SOCK" ]] || return 1
+  python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" eof "$last"
+  local status=$?
+  [[ "$status" -eq 2 ]]
+}
+
 finish_if_stopped() {
   if [[ -z "${play_pid}" ]]; then
     return 0
@@ -193,6 +209,7 @@ finish_if_stopped() {
 }
 
 last=""
+opened_at=0
 while true; do
   touch "$STAMP" 2>/dev/null || true
   apply_audio
@@ -210,17 +227,55 @@ while true; do
     ''|*[!0-9]*) duration=0 ;;
   esac
   if [[ "$id" == "$last" ]]; then
-    finish_if_stopped
-    sleep 0.4
+    if [[ -n "${play_pid}" ]] && ! kill -0 "${play_pid}" >/dev/null 2>&1; then
+      wait "${play_pid}" >/dev/null 2>&1 || true
+      play_pid=""
+      note_finished "${last}"
+      sleep 0.2
+      continue
+    fi
+    now=$(date +%s)
+    if [[ "$opened_at" -gt 0 && $((now - opened_at)) -lt 5 ]]; then
+      sleep 0.2
+      continue
+    fi
+    if [[ -S "$SOCK" ]]; then
+      python3 /opt/jukebox/lib/mpv-volume.py "$SOCK" - "$last" >/dev/null 2>&1 || true
+    fi
+    if file_reached_end; then
+      # Stay on the last frame until the next song is ready. The pause
+      # picture is what shows through once this window closes.
+      note_finished "${last}"
+      waited=""
+      for _ in $(seq 1 30); do
+        waited="$(sed -n '1p' "$REQUEST" 2>/dev/null || true)"
+        if [[ -n "$waited" && "$waited" != "$last" ]]; then
+          break
+        fi
+        waited=""
+        sleep 0.1
+      done
+      if [[ -z "$waited" ]]; then
+        stop_play
+      fi
+    fi
+    sleep 0.2
     continue
   fi
   last="$id"
-  stop_play
   if [[ -z "$id" || -z "$path" || ! -f "$path" ]]; then
+    stop_play
     printf '%s\n' "$id" > "$DONE"
-    sleep 0.4
+    sleep 0.2
     continue
   fi
+  if [[ "$kind" == "$play_kind" ]] && load_file "$path"; then
+    opened_at=$(date +%s)
+    sleep 0.1
+    continue
+  fi
+  stop_play
   start_play "$path" "$kind" "$duration" "$art"
-  sleep 0.4
+  opened_at=$(date +%s)
+  sleep 0.2
 done

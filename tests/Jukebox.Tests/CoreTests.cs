@@ -766,6 +766,49 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void The_next_waiting_song_stays_on_screen()
+    {
+        using var fixture = new TempLibrary();
+        var firstId = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        var secondId = fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "ABBA - Dancing Queen.mp4"), [1, 2]);
+        Assert.True(fixture.Queue.TryEnqueue(firstId, Origins.User, "touch").Ok);
+        Assert.True(fixture.Queue.TryEnqueue(secondId, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var first = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(first);
+        coordinator.Publish();
+
+        var next = coordinator.HandOff(first!, true);
+
+        Assert.NotNull(next);
+        Assert.Equal(secondId, next!.Entry.MediaId);
+        Assert.Equal(next.Entry.Id, coordinator.Snapshot().Current!.Entry.Id);
+        var active = fixture.Queue.Active();
+        Assert.Single(active);
+        Assert.Equal("playing", active[0].Status);
+        Assert.Equal(secondId, active[0].MediaId);
+    }
+
+    [Fact]
+    public void The_pause_picture_returns_when_the_queue_is_empty()
+    {
+        using var fixture = new TempLibrary();
+        var id = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        File.WriteAllBytes(Path.Combine(fixture.Root, "library", "Queen - Bohemian Rhapsody.mp4"), [1]);
+        Assert.True(fixture.Queue.TryEnqueue(id, Origins.User, "touch").Ok);
+        var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
+        var job = coordinator.ClaimNext(0, null, 8);
+        Assert.NotNull(job);
+        coordinator.Publish();
+
+        Assert.Null(coordinator.HandOff(job!, true));
+        Assert.Null(coordinator.Snapshot().Current);
+        Assert.Empty(fixture.Queue.Active());
+    }
+
+    [Fact]
     public void A_finished_signal_releases_only_that_song()
     {
         using var fixture = new TempLibrary();

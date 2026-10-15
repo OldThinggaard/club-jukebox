@@ -314,19 +314,58 @@ public sealed class PlaybackCoordinator
     public void Finish(PlayJob job, PlayResult result)
     {
         lock (_gate)
+            Close(job, result);
+    }
+
+    /// <summary>
+    /// The song that just ended gives the screen to the next one that is
+    /// already waiting. The pause picture stays away until the queue is empty.
+    /// </summary>
+    public PlayJob? HandOff(PlayJob finished, bool ok)
+    {
+        lock (_gate)
         {
-            if (_current is not null && _current.Entry.Id != job.Entry.Id)
-                job = _current;
-            _queue.Complete(job.Entry.Id, result.Ok ? "completed" : "abandoned");
-            if (result.Ok)
-                _media.RecordPlay(job.Entry.MediaId, job.Entry.Origin, true, job.Entry.Title, job.Entry.Artist);
-            else
-                _lastError = result.Error;
-            if (_current?.Entry.Id == job.Entry.Id)
-                _current = null;
-            _published = false;
+            Close(finished, ok ? PlayResult.Done() : PlayResult.Failed("The song stopped."));
+            var imageSeconds = Math.Max(1, _settings.Get().ImageSeconds);
+            PlayJob? next = null;
+            while (next is null)
+            {
+                var claimed = _queue.ClaimOldest();
+                if (claimed is null)
+                    break;
+                next = Accept(claimed, finished.ScreenIndex, finished.AudioDevice, imageSeconds);
+            }
+
             _positionMs = 0;
+            _finishedQueueId = null;
+            if (next is null)
+            {
+                _current = null;
+                _published = false;
+                return null;
+            }
+
+            _current = next;
+            _published = true;
+            _pauseShownUtc = null;
+            _lastError = null;
+            return next;
         }
+    }
+
+    private void Close(PlayJob job, PlayResult result)
+    {
+        if (_current is not null && _current.Entry.Id != job.Entry.Id)
+            job = _current;
+        _queue.Complete(job.Entry.Id, result.Ok ? "completed" : "abandoned");
+        if (result.Ok)
+            _media.RecordPlay(job.Entry.MediaId, job.Entry.Origin, true, job.Entry.Title, job.Entry.Artist);
+        else
+            _lastError = result.Error;
+        if (_current?.Entry.Id == job.Entry.Id)
+            _current = null;
+        _published = false;
+        _positionMs = 0;
     }
 
     private QueueEntry? MaybeAutoplay()

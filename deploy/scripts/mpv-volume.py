@@ -130,6 +130,19 @@ if path == "active":
     raise SystemExit(0)
 
 
+def file_ended(eof, time_pos, duration):
+    """The file itself reached the end. A hiccup in the middle is not the end."""
+    if eof is not True:
+        return False
+    if time_pos is None or time_pos < 1:
+        return False
+    if duration is not None and duration >= 5 and time_pos < duration - 2:
+        return False
+    if time_pos < 5 and (duration is None or duration >= 5):
+        return False
+    return True
+
+
 def reached_end(eof, idle, percent, time_pos, duration):
     # The opening, and a hiccup in the middle, both look like the end.
     # Closing the file there shows the welcome screen and starts the song again.
@@ -147,6 +160,13 @@ if path == "self-test":
     assert reached_end(False, False, None, 10, 180) is False
     assert reached_end(True, False, None, 179, 180) is True
     assert reached_end(False, False, None, 179.6, 180) is True
+    assert file_ended(False, 179, 180) is False
+    assert file_ended(True, 0.2, 180) is False
+    assert file_ended(True, 3, 180) is False
+    assert file_ended(True, 30, 180) is False
+    assert file_ended(True, 179, 180) is True
+    assert file_ended(True, 3.5, 4) is True
+    assert file_ended(True, 8, None) is True
     raise SystemExit(0)
 
 
@@ -154,7 +174,18 @@ sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.settimeout(0.4)
 sock.connect(path)
 try:
-    if volume != "-":
+    if volume == "load":
+        target = sys.argv[3]
+        reply = request(sock, {"command": ["loadfile", target, "replace"]})
+        if reply.get("error") not in (None, "success"):
+            raise SystemExit(1)
+    elif volume == "eof":
+        eof = prop(sock, "eof-reached") is True
+        time_pos = number(prop(sock, "time-pos"))
+        duration = number(prop(sock, "duration"))
+        if file_ended(eof, time_pos, duration):
+            raise SystemExit(2)
+    elif volume != "-":
         level = max(0, min(100, int(volume)))
         reply = request(sock, {"command": ["set_property", "volume", level]})
         if reply.get("error") not in (None, "success"):

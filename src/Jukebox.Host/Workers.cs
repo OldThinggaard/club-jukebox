@@ -96,7 +96,8 @@ public sealed class PlaybackWorker(
                     ? await WaitForHallPlayer(job, stoppingToken)
                     : await WaitForShownMedia(job, stoppingToken);
                 job = outcome.Job;
-                coordinator.Finish(job, outcome.Result);
+                if (!outcome.Closed)
+                    coordinator.Finish(job, outcome.Result);
                 job = null;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -161,7 +162,7 @@ public sealed class PlaybackWorker(
         return HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(5));
     }
 
-    private async Task<(PlayJob Job, PlayResult Result)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
+    private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
     {
         ArmHall(job);
         var started = Environment.TickCount64;
@@ -182,17 +183,25 @@ public sealed class PlaybackWorker(
             // up, and the same file started again. The player exiting is the end.
             var image = string.Equals(job.Entry.MediaType, "image", StringComparison.OrdinalIgnoreCase);
             if (HallPlayback.EndIsBelievable(elapsed) && HallPlayback.DoneIs(paths.PlayDone, job.Entry.Id))
-                return (job, PlayResult.Done());
+            {
+                var next = coordinator.HandOff(job, true);
+                if (next is null)
+                    return (job, PlayResult.Done(), true);
+                job = next;
+                ArmHall(job);
+                started = Environment.TickCount64;
+                continue;
+            }
             var cap = image
                 ? HallPlayback.PlaybackCap(job.DurationMs, job.Entry.MediaType)
                 : TimeSpan.FromHours(3);
             if (TimeSpan.FromMilliseconds(elapsed) >= cap)
-                return (job, PlayResult.Done());
+                return (job, PlayResult.Done(), false);
             ApplySavedAudio();
-            await Task.Delay(400, stoppingToken);
+            await Task.Delay(200, stoppingToken);
         }
 
-        return (job, PlayResult.Done());
+        return (job, PlayResult.Done(), false);
     }
 
     private void ArmHall(PlayJob job)
@@ -216,7 +225,7 @@ public sealed class PlaybackWorker(
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
     }
 
-    private async Task<(PlayJob Job, PlayResult Result)> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
+    private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
     {
         var started = Environment.TickCount64;
         while (!stoppingToken.IsCancellationRequested)
@@ -232,11 +241,18 @@ public sealed class PlaybackWorker(
             var elapsed = Environment.TickCount64 - started;
             coordinator.SetPosition(Math.Min(job.DurationMs, elapsed));
             if (coordinator.IsFinished(job.Entry.Id) || elapsed >= job.DurationMs)
-                return (job, PlayResult.Done());
+            {
+                var next = coordinator.HandOff(job, true);
+                if (next is null)
+                    return (job, PlayResult.Done(), true);
+                job = next;
+                started = Environment.TickCount64;
+                continue;
+            }
             await Task.Delay(200, stoppingToken);
         }
 
-        return (job, PlayResult.Done());
+        return (job, PlayResult.Done(), false);
     }
 }
 

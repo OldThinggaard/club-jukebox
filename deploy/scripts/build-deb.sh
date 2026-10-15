@@ -48,6 +48,10 @@ install -m 0644 "$ROOT/deploy/systemd/jukebox-pending.service" "$pkg/etc/systemd
 install -m 0644 "$ROOT/deploy/systemd/jukebox-boot-guard.service" "$pkg/etc/systemd/system/jukebox-boot-guard.service"
 install -m 0644 "$ROOT/deploy/systemd/jukebox-panel.service" "$pkg/etc/systemd/system/jukebox-panel.service"
 install -d "$pkg/etc/X11/xorg.conf.d"
+install -d "$pkg/etc/wireplumber/wireplumber.conf.d"
+install -d "$pkg/etc/modprobe.d"
+install -m 0644 "$ROOT/deploy/package/wireplumber/51-jukebox-awake.conf" "$pkg/etc/wireplumber/wireplumber.conf.d/51-jukebox-awake.conf"
+install -m 0644 "$ROOT/deploy/package/modprobe/jukebox-audio.conf" "$pkg/etc/modprobe.d/jukebox-audio.conf"
 cat > "$pkg/etc/X11/xorg.conf.d/10-jukebox.conf" <<'EOF'
 Section "ServerFlags"
   Option "BlankTime" "0"

@@ -20,7 +20,7 @@ export function Hall() {
       }).catch(() => undefined);
     };
     pull();
-    const timer = window.setInterval(pull, 1000);
+    const timer = window.setInterval(pull, 400);
     return () => {
       stop = true;
       window.clearInterval(timer);
@@ -53,12 +53,13 @@ export function Hall() {
   const clock = playbackClock(playing, showBrowserMedia ? videoRef.current ?? audioRef.current : null, tick, anchor.current);
   const showSongText = Boolean(playing && screen?.engine !== "mpv" && songTextVisible(clock.positionMs, clock.durationMs));
   const clubName = screen?.clubName?.trim() ?? "";
-  const showClubMark = Boolean(!playing && screen?.showClubName && clubName);
+  const showPause = !playing && (screen?.queue.length ?? 0) === 0;
+  const showClubMark = Boolean(showPause && screen?.showClubName && clubName);
 
   return (
     <main className="hall">
       {backdrop && <img className="hall-bg" src={backdrop} alt="" />}
-      {(!playing || showSongText) && <div className="hall-shade" />}
+      {(showPause || showSongText) && <div className="hall-shade" />}
       {showClubMark && (
         <p className="hall-mark" style={clubMark(clubName)} aria-hidden="true">{clubName}</p>
       )}
@@ -77,7 +78,7 @@ export function Hall() {
             <h2>{playing.title}</h2>
             <p>{playing.artist}</p>
           </div>
-        ) : playing ? null : (
+        ) : showPause ? (
           <>
             <h1>{screen?.clock ?? "—"}</h1>
             <p className="date">{screen?.dateLabel}</p>
@@ -95,7 +96,7 @@ export function Hall() {
               )}
             </div>
           </>
-        )}
+        ) : null}
       </section>
     </main>
   );
