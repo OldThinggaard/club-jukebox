@@ -41,7 +41,7 @@ public static class MetadataMerger
         var genre = First(@override?.Genre, embedded.Genre) ?? "";
         int? year = @override is not null ? @override.Year : embedded.Year ?? fileName.Year;
 
-        title = string.IsNullOrWhiteSpace(title) ? stem : title.Trim();
+        title = TitleCleaner.Strip(string.IsNullOrWhiteSpace(title) ? stem : title);
         artist = artist.Trim();
         return new ResolvedMetadata
         {

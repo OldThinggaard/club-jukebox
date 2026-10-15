@@ -154,7 +154,7 @@ public sealed class MediaIndexer
                 FileNameParts = parts,
                 Resolved = new ResolvedMetadata
                 {
-                    Title = parts.Title ?? info.Name,
+                    Title = TitleCleaner.Strip(parts.Title ?? info.Name),
                     Artist = parts.Artist ?? "",
                     ArtistLetter = ClubCulture.Letter(parts.Artist),
                     Year = parts.Year,

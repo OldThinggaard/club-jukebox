@@ -59,6 +59,20 @@ public class MetadataAndCategoryTests
     }
 
     [Fact]
+    public void Clean_marker_and_the_text_after_it_leave_the_title()
+    {
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name (Clean) Official Video"));
+        Assert.Equal("Song Name", TitleCleaner.Strip("Song Name ( clean )"));
+        Assert.Equal("Bohemian Rhapsody", TitleCleaner.Strip("Bohemian Rhapsody"));
+        var resolved = MetadataMerger.Resolve(
+            new ProbeTags { Title = "Song Name (Clean) Official Video", Artist = "Queen" },
+            FilenameParser.Parse("Queen - Song Name (Clean) Official Video.mp4"),
+            null,
+            "Queen - Song Name (Clean) Official Video.mp4");
+        Assert.Equal("Song Name", resolved.Title);
+    }
+
+    [Fact]
     public void Administrator_override_wins_over_embedded_tags()
     {
         var resolved = MetadataMerger.Resolve(

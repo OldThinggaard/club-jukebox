@@ -762,7 +762,7 @@ public sealed class MediaStore
         Bitrate = Ni(reader, 13),
         VideoCodec = Ns(reader, 14),
         AudioCodec = Ns(reader, 15),
-        Title = reader.GetString(16),
+        Title = TitleCleaner.Strip(reader.GetString(16)),
         Artist = reader.GetString(17),
         Album = reader.GetString(18),
         Genre = reader.GetString(19),

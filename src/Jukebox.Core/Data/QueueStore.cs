@@ -1,4 +1,5 @@
 using Jukebox.Core.Domain;
+using Jukebox.Core.Metadata;
 using Jukebox.Core.Queue;
 
 namespace Jukebox.Core.Data;
@@ -99,7 +100,7 @@ public sealed class QueueStore
                 Status = reader.GetString(3),
                 EnqueuedAt = reader.GetString(4),
                 ClientLabel = reader.IsDBNull(5) ? null : reader.GetString(5),
-                Title = reader.GetString(6),
+                Title = TitleCleaner.Strip(reader.GetString(6)),
                 Artist = reader.GetString(7),
                 MediaType = reader.GetString(8),
                 ThumbnailPath = reader.IsDBNull(9) ? null : reader.GetString(9),
@@ -144,7 +145,7 @@ public sealed class QueueStore
                 Status = loaded.GetString(3),
                 EnqueuedAt = loaded.GetString(4),
                 ClientLabel = loaded.IsDBNull(5) ? null : loaded.GetString(5),
-                Title = loaded.GetString(6),
+                Title = TitleCleaner.Strip(loaded.GetString(6)),
                 Artist = loaded.GetString(7),
                 MediaType = loaded.GetString(8),
                 ThumbnailPath = loaded.IsDBNull(9) ? null : loaded.GetString(9),
