@@ -1,10 +1,10 @@
 Package: videojukebox
-Version: 1.3.83
+Version: 1.3.84
 Section: misc
 Priority: optional
 Architecture: amd64
 Maintainer: Carsten Thinggaard <carsten@thinggaard.org>
-Depends: sudo, curl, ca-certificates, locales, network-manager, wpasupplicant, avahi-daemon, xserver-xorg, xserver-xorg-legacy, xserver-xorg-input-libinput, xserver-xorg-video-all, xinit, x11-xserver-utils, xinput, openbox, unclutter, chromium, mpv, ffmpeg, pipewire, pipewire-pulse, wireplumber, alsa-utils, python3, pciutils, usbutils, ntfs-3g, exfatprogs, fonts-dejavu-core, dbus, dbus-x11
+Depends: sudo, curl, ca-certificates, locales, network-manager, wpasupplicant, avahi-daemon, xserver-xorg, xserver-xorg-legacy, xserver-xorg-input-libinput, xserver-xorg-video-all, xinit, x11-xserver-utils, xinput, libxfixes3, openbox, unclutter, chromium, mpv, ffmpeg, pipewire, pipewire-pulse, wireplumber, alsa-utils, python3, pciutils, usbutils, ntfs-3g, exfatprogs, fonts-dejavu-core, dbus, dbus-x11
 Description: Videojukebox til touchskærm
  Installerer Videojukebox på en Debian 13-computer.
  Disken bliver ikke slettet. Genstart computeren, når installationen er færdig.

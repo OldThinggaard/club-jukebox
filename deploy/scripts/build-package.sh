@@ -14,6 +14,7 @@ mkdir -p "$dest/bin" "$dest/lib" "$dest/avahi" "$dest/systemd"
 cp -a "$ROOT/publish/app/." "$dest/app/"
 cp -a "$ROOT/publish/updater/." "$dest/updater/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$dest/bin/kiosk.sh"
+install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$dest/lib/hide-cursor.py"
 install -m 0755 "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/bin/session.sh" "$dest/bin/session.sh"
 install -m 0755 \
   "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/onlime-open.sh" \

@@ -22,6 +22,7 @@ cp -a "$ROOT/publish/updater/." "$pkg/opt/jukebox/updater/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
 install -m 0755 "$ROOT/deploy/scripts/mpv-volume.py" "$pkg/opt/jukebox/lib/mpv-volume.py"
+install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$pkg/opt/jukebox/lib/hide-cursor.py"
 sed '/jukebox-installer/,/^fi$/d' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/bin/session.sh" > "$pkg/opt/jukebox/bin/session.sh"
 chmod 0755 "$pkg/opt/jukebox/bin/session.sh"
 if grep -q jukebox-installer "$pkg/opt/jukebox/bin/session.sh"; then
@@ -150,6 +151,18 @@ if ! grep -q 'wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.8' "$pkg/opt/jukebox/bin/s
 fi
 if ! grep -q 'mpv-volume.py active 80' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The idle jack must be turned off once at startup." >&2
+  exit 1
+fi
+if ! grep -q 'hide-cursor.py' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "The pointer must stay hidden." >&2
+  exit 1
+fi
+if ! python3 "$pkg/opt/jukebox/lib/hide-cursor.py" self-test; then
+  echo "The pointer must stay hidden." >&2
+  exit 1
+fi
+if ! grep -q 'cursor:none' "$pkg/opt/jukebox/current/wwwroot/assets/"*.css; then
+  echo "The shelf must not show a pointer." >&2
   exit 1
 fi
 if grep -q 'mpv-volume.py active' "$pkg/opt/jukebox/bin/hall-player.sh"; then

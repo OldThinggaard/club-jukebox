@@ -58,8 +58,12 @@ xset dpms force on || true
 if [[ -x /opt/jukebox/lib/panel-on.sh ]]; then
   sudo -n /opt/jukebox/lib/panel-on.sh >/dev/null 2>&1 || /opt/jukebox/lib/panel-on.sh >/dev/null 2>&1 || true
 fi
-if command -v unclutter >/dev/null 2>&1; then
-  unclutter -idle 3 -root >/dev/null 2>&1 &
+# Hide the pointer for the whole session. A finger still works.
+# unclutter brought the arrow back as soon as something moved.
+if [[ -f /opt/jukebox/lib/hide-cursor.py ]]; then
+  python3 /opt/jukebox/lib/hide-cursor.py >/var/log/jukebox-cursor.log 2>&1 &
+elif command -v unclutter >/dev/null 2>&1; then
+  unclutter -idle 0 -root >/dev/null 2>&1 &
 fi
 
 # The touch panel must not share its coordinates with the television.

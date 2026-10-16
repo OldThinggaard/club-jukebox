@@ -37,7 +37,8 @@ chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.Update
   /opt/jukebox/bin/kiosk.sh /opt/jukebox/bin/session.sh \
   /opt/jukebox/lib/onlime-open.sh /opt/jukebox/lib/onlime-login.sh \
   /opt/jukebox/lib/onlime-boot.sh /opt/jukebox/lib/wifi-connect.sh \
-  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/panel-on.sh
+  /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/panel-on.sh \
+  /opt/jukebox/lib/hide-cursor.py
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
 
 mkdir -p /etc/systemd/system

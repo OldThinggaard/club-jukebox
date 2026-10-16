@@ -12,7 +12,7 @@
   text-rendering: optimizeLegibility;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; cursor: none !important; }
 html, body, #root { min-height: 100%; margin: 0; }
 body { background: #110e0b; }
 html, body {
@@ -27,7 +27,6 @@ input, textarea {
   user-select: text;
 }
 button, input, select, textarea { font: inherit; }
-button { cursor: pointer; }
 .font-serif { font-family: Fraunces, serif; }
 
 .kiosk, .admin, .hall, .install {

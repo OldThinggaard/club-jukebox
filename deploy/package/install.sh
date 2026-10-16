@@ -82,6 +82,7 @@ if [[ -f "$SRC/lib/panel-on.sh" ]]; then
   install -m 0755 "$SRC/lib/panel-on.sh" /opt/jukebox/lib/panel-on.sh
 fi
 install -m 0755 "$SRC/lib/onlime_prompts.py" /opt/jukebox/lib/onlime_prompts.py
+install -m 0755 "$SRC/lib/hide-cursor.py" /opt/jukebox/lib/hide-cursor.py
 chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.UpdateAgent
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
 
