@@ -289,17 +289,19 @@ export function Kiosk() {
         ) : (
           <div className="grid">
             {media.map((item) => {
-              const cooling = item.blockReason?.startsWith("This was played") === true;
+              const onPicture = item.blockReason === "This is playing now."
+                || item.blockReason === "This is already in the queue."
+                || item.blockReason?.startsWith("This was played") === true;
               return (
-                <button key={item.id} className={cooling ? "card cooling" : item.canQueue ? "card" : "card blocked"} type="button" onClick={() => void choose(item)}>
+                <button key={item.id} className={onPicture ? "card noted" : item.canQueue ? "card" : "card blocked"} type="button" onClick={() => void choose(item)}>
                   <figure>
                     {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : <span className="fallback">{item.title.slice(0, 1)}</span>}
-                    {!cooling && formatDuration(item.durationMs) && <span className="badge">{formatDuration(item.durationMs)}</span>}
-                    {cooling && <span className="cooling-note">{item.blockReason}</span>}
+                    {!onPicture && formatDuration(item.durationMs) && <span className="badge">{formatDuration(item.durationMs)}</span>}
+                    {onPicture && <span className="picture-note">{item.blockReason}</span>}
                   </figure>
                   <h2>{item.title}</h2>
                   <p>{item.artist || "Unknown artist"}</p>
-                  {!item.canQueue && !cooling && <small>{item.blockReason}</small>}
+                  {!item.canQueue && !onPicture && <small>{item.blockReason}</small>}
                 </button>
               );
             })}
