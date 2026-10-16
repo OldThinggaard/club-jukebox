@@ -236,7 +236,7 @@ def point_firmware(directory, part, start_lba, size_lba, part_guid):
             continue
         order.append(number)
     write_var(var_file(directory, "BootOrder"), struct.pack("<" + "H" * len(order), *order))
-    write_var(var_file(directory, "BootNext"), struct.pack("<H", chosen))
+    # BootNext is a one-shot start. On this PC it turns into start, stop, start, stop.
     check = boot_entries(directory)
     _part, paths = check[chosen][1], check[chosen][2]
     if not paths or norm(paths[-1]) != norm(target):
@@ -407,11 +407,9 @@ def ensure_efivars():
 def install_hook():
     hook = Path("/etc/kernel/postinst.d/zzz-jukebox-secure-boot")
     try:
-        hook.parent.mkdir(parents=True, exist_ok=True)
-        hook.write_text("#!/bin/sh\n/opt/jukebox/lib/secure-boot.sh || true\n", encoding="utf-8")
-        hook.chmod(0o755)
-    except OSError as exc:
-        say(f"Kunne ikke gemme den senere start-rettelse: {exc}")
+        hook.unlink()
+    except OSError:
+        pass
 
 
 def repair_machine(bundle):
@@ -499,6 +497,9 @@ def self_test(bundle):
                 shim_count += 1
         if shim_count != 1 or norm(again) != norm(first):
             say("FEJL: opstartslisten fik mere end én shim.")
+            return 1
+        if var_file(efivars, "BootNext").exists():
+            say("FEJL: en engangsstart får PC'en til at starte og stoppe.")
             return 1
     return 0
 

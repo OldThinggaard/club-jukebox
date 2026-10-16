@@ -180,8 +180,12 @@ if grep -q 'grub-install' "$pkg/opt/jukebox/lib/secure-boot.sh"; then
   echo "The package must not let GRUB write the start file." >&2
   exit 1
 fi
-if ! grep -q 'secure-boot.sh' "$pkg/DEBIAN/postinst"; then
-  echo "An update must install Debian's signed start." >&2
+if grep -q 'secure-boot.sh' "$pkg/DEBIAN/postinst"; then
+  echo "An update must not rewrite the PC start." >&2
+  exit 1
+fi
+if ! grep -q 'BootNext-' "$pkg/DEBIAN/postinst"; then
+  echo "An update must clear the one-shot start." >&2
   exit 1
 fi
 if grep -q -- '--no-nvram' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/install-to-disk.sh"; then

@@ -38,7 +38,7 @@ chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.Update
   /opt/jukebox/lib/onlime-open.sh /opt/jukebox/lib/onlime-login.sh \
   /opt/jukebox/lib/onlime-boot.sh /opt/jukebox/lib/wifi-connect.sh \
   /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/panel-on.sh \
-  /opt/jukebox/lib/hide-cursor.py /opt/jukebox/lib/secure-boot.sh
+  /opt/jukebox/lib/hide-cursor.py
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
 
 mkdir -p /etc/systemd/system
@@ -179,10 +179,14 @@ enable_wants jukebox-onlime.service
 rm -f /etc/systemd/system/sysinit.target.wants/jukebox-boot-guard.service
 enable_wants jukebox-boot-guard.service
 
-boot_note="Tag USB-nøglen ud, og genstart computeren. Secure Boot skal stadig være slået fra."
-if [[ -x /opt/jukebox/lib/secure-boot.sh ]] && /opt/jukebox/lib/secure-boot.sh; then
-  boot_note="Tag USB-nøglen ud, og genstart computeren. Secure Boot må gerne være slået til."
+# The one-shot start entry makes this PC power on and off after the power button.
+# Leave the existing start files alone. Secure Boot stays off.
+rm -f /etc/kernel/postinst.d/zzz-jukebox-secure-boot
+bootnext=/sys/firmware/efi/efivars/BootNext-8be4df61-93ca-11d2-aa0d-00e098032b8c
+if [[ -e "$bootnext" ]]; then
+  chattr -i "$bootnext" 2>/dev/null || true
+  rm -f "$bootnext" || true
 fi
-echo "Videojukebox er installeret. ${boot_note}"
-wall "Videojukebox er installeret. ${boot_note}" || true
+echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren. Secure Boot skal være slået fra."
+wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren. Secure Boot skal være slået fra." || true
 exit 0
