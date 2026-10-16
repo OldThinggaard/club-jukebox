@@ -176,6 +176,10 @@ if ! "$pkg/opt/jukebox/lib/secure-boot.sh" self-test "$pkg/usr/share/jukebox/sec
   echo "Debian's signed start files must be in the package." >&2
   exit 1
 fi
+if grep -q 'grub-install' "$pkg/opt/jukebox/lib/secure-boot.sh"; then
+  echo "The package must not let GRUB write the start file." >&2
+  exit 1
+fi
 if ! grep -q 'secure-boot.sh' "$pkg/DEBIAN/postinst"; then
   echo "An update must install Debian's signed start." >&2
   exit 1
