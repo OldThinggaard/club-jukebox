@@ -21,6 +21,32 @@ public static class HallPlayback
     public const string WakeId = "wake";
     public const string WakeFile = "/opt/jukebox/lib/wake.mp4";
 
+    /// <summary>
+    /// After a restart the television player is still starting. The wake film
+    /// has to wait for it. Starting the song before that skips the film and
+    /// cuts the first song.
+    /// </summary>
+    public static readonly TimeSpan HallPlayerWait = TimeSpan.FromSeconds(90);
+
+    public static bool HoldForHallPlayer(bool hallScriptExists, bool stampFresh, bool alreadyWoke, bool gaveUp) =>
+        hallScriptExists && !alreadyWoke && !gaveUp && !stampFresh;
+
+    public static void ClearStalePlay(string requestPath, string donePath, string clockPath)
+    {
+        foreach (var path in new[] { requestPath, donePath, clockPath })
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch (IOException)
+            {
+                // The player writes a new line when the next title starts.
+            }
+        }
+    }
+
     public static string StopRequest() => Request("stop", "", "", 0, null);
 
     public static string WakeRequest() => Request(WakeId, WakeFile, "video", 3_000, null);

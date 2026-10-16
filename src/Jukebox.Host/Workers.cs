@@ -53,6 +53,8 @@ public sealed class PlaybackWorker(
     private long _displaysAt = long.MinValue;
     private int _screenIndex;
     private bool _playerWoken;
+    private bool _stoppedWaitingForPlayer;
+    private long _playerWaitUntil = long.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -66,6 +68,12 @@ public sealed class PlaybackWorker(
             PlayJob? job = null;
             try
             {
+                if (HoldQueueForPlayer())
+                {
+                    await Task.Delay(200, stoppingToken);
+                    continue;
+                }
+
                 var club = settings.Get();
                 // A tap during the pause picture must not wait for a screen probe.
                 job = coordinator.ClaimNext(_screenIndex, null, club.ImageSeconds);
@@ -116,6 +124,23 @@ public sealed class PlaybackWorker(
                 await Task.Delay(1000, stoppingToken);
             }
         }
+    }
+
+    private bool HoldQueueForPlayer()
+    {
+        var scriptExists = File.Exists("/opt/jukebox/bin/hall-player.sh");
+        var stampFresh = HallPlayback.StampFresh(paths.PlayerStamp, TimeSpan.FromSeconds(15));
+        if (!HallPlayback.HoldForHallPlayer(scriptExists, stampFresh, _playerWoken, _stoppedWaitingForPlayer))
+            return false;
+        if (_playerWaitUntil == long.MinValue)
+            _playerWaitUntil = Environment.TickCount64 + (long)HallPlayback.HallPlayerWait.TotalMilliseconds;
+        if (Environment.TickCount64 >= _playerWaitUntil)
+        {
+            _stoppedWaitingForPlayer = true;
+            return false;
+        }
+
+        return true;
     }
 
     private void ApplySavedAudio()
@@ -244,7 +269,7 @@ public sealed class PlaybackWorker(
                 return null;
             }
 
-            if (elapsed >= 12_000)
+            if (elapsed >= 20_000)
             {
                 _playerWoken = true;
                 return null;

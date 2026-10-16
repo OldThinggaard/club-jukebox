@@ -87,6 +87,7 @@ if (config.WatchUsb)
 media.SeedSources(sources);
 media.UpsertSource(sources.First(source => source.Id == "onlime-reklamer"));
 app.Services.GetRequiredService<QueueStore>().ResetInterrupted();
+HallPlayback.ClearStalePlay(paths.PlayRequest, paths.PlayDone, paths.PlayClock);
 if (config.SeedSampleMedia)
     await SampleLibrarySeeder.SeedAsync(paths, CancellationToken.None);
 

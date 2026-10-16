@@ -458,6 +458,12 @@ public class HallPlaybackTests
         Assert.True(HallPlayback.EndIsBelievable(5_000));
         Assert.Equal("wake", HallPlayback.WakeId);
         Assert.StartsWith("wake\n/opt/jukebox/lib/wake.mp4\n", HallPlayback.WakeRequest());
+        Assert.True(HallPlayback.HallPlayerWait >= TimeSpan.FromSeconds(60));
+        Assert.True(HallPlayback.HoldForHallPlayer(true, false, false, false));
+        Assert.False(HallPlayback.HoldForHallPlayer(true, true, false, false));
+        Assert.False(HallPlayback.HoldForHallPlayer(false, false, false, false));
+        Assert.False(HallPlayback.HoldForHallPlayer(true, false, true, false));
+        Assert.False(HallPlayback.HoldForHallPlayer(true, false, false, true));
         Assert.True(HallPlayback.StillInTheMiddle(40_000, 180_000));
         Assert.False(HallPlayback.StillInTheMiddle(175_000, 180_000));
         Assert.False(HallPlayback.StillInTheMiddle(-1, 180_000));
@@ -491,6 +497,12 @@ public class HallPlaybackTests
             Assert.Equal(180_000, HallPlayback.ClockPositionMs(clock, "this"));
             Assert.Equal(-1, HallPlayback.ClockPositionMs(clock, "other"));
             Assert.Equal(0, HallPlayback.ClockDurationMs(clock, "other"));
+            var stale = Path.Combine(root.FullName, "play.request");
+            HallPlayback.AtomicWrite(stale, "old-song\n");
+            HallPlayback.ClearStalePlay(stale, done, clock);
+            Assert.False(File.Exists(stale));
+            Assert.False(File.Exists(done));
+            Assert.False(File.Exists(clock));
             var request = HallPlayback.Request("this", "/media/song.mp4", "video", 180_000, null);
             Assert.StartsWith("this\n/media/song.mp4\nvideo\n180000\n", request);
         }
