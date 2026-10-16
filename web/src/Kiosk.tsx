@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DanishKeyboard } from "./components/Keyboard";
 import { api, type Category, type Media, type Screen } from "./lib/api";
 import { formatDuration } from "./lib/utils";
@@ -23,6 +23,7 @@ export function Kiosk() {
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
   const [staffPin, setStaffPin] = useState(false);
   const [level, setLevel] = useState(80);
+  const stage = useRef<HTMLElement>(null);
   const hold = useRef<number | null>(null);
   const levelSend = useRef<{ pending: number | null; busy: boolean }>({ pending: null, busy: false });
 
@@ -178,6 +179,10 @@ export function Kiosk() {
 
   const grouped = useMemo(() => artists.filter((group) => !letter || group.letter === letter), [artists, letter]);
 
+  useLayoutEffect(() => {
+    stage.current?.scrollTo(0, 0);
+  }, [letter]);
+
   async function choose(item: Media) {
     const note = noteOnPicture(item, playingId, queuedIds, cooledIds);
     if (note || otherBlock(item)) {
@@ -252,7 +257,7 @@ export function Kiosk() {
           </button>
         ))}
       </div>
-      <main className="stage">
+      <main className="stage" ref={stage}>
         {showArtists ? (
           <div className="artists">
             <div className="letters">
