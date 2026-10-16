@@ -70,6 +70,20 @@ public sealed class PlaybackWorker(
                 job = coordinator.ClaimNext(_screenIndex, null, club.ImageSeconds);
                 if (job is null)
                 {
+                    if (coordinator.Halted())
+                    {
+                        try
+                        {
+                            HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.StopRequest());
+                        }
+                        catch (IOException)
+                        {
+                            // The screen has already let the song go.
+                        }
+
+                        coordinator.AcknowledgeHalt();
+                    }
+
                     RememberScreen();
                     ApplySavedAudio();
                     await Task.Delay(100, stoppingToken);
@@ -159,9 +173,13 @@ public sealed class PlaybackWorker(
     private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
     {
         ArmHall(job);
+        if (HaltIfAsked(job) is { } halted)
+            return halted;
         var started = Environment.TickCount64;
         while (!stoppingToken.IsCancellationRequested)
         {
+            if (HaltIfAsked(job) is { } haltedNow)
+                return haltedNow;
             var guest = coordinator.TakeGuestSong(job);
             if (guest is not null)
             {
@@ -219,11 +237,30 @@ public sealed class PlaybackWorker(
         HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.Request(job.Entry.Id, job.AbsolutePath, job.Entry.MediaType, job.DurationMs, art));
     }
 
+    private (PlayJob Job, PlayResult Result, bool Closed)? HaltIfAsked(PlayJob job)
+    {
+        if (!coordinator.Halted())
+            return null;
+        try
+        {
+            HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.StopRequest());
+        }
+        catch (IOException)
+        {
+            // The screen has already let the song go.
+        }
+
+        coordinator.AcknowledgeHalt();
+        return (job, PlayResult.Stopped(), true);
+    }
+
     private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForShownMedia(PlayJob job, CancellationToken stoppingToken)
     {
         var started = Environment.TickCount64;
         while (!stoppingToken.IsCancellationRequested)
         {
+            if (HaltIfAsked(job) is { } haltedNow)
+                return haltedNow;
             var guest = coordinator.TakeGuestSong(job);
             if (guest is not null)
             {

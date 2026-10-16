@@ -18,6 +18,8 @@ public static class HallPlayback
         return AudioEnv(null, port, volumePercent);
     }
 
+    public static string StopRequest() => Request("stop", "", "", 0, null);
+
     public static string Request(string queueId, string absolutePath, string mediaType, long durationMs, string? artPath) =>
         string.Join('\n', Clean(queueId), Clean(absolutePath), Clean(mediaType), Math.Max(0, durationMs).ToString(), Clean(artPath)) + "\n";
 

@@ -293,6 +293,12 @@ while true; do
   fi
   last="$id"
   resting=0
+  if [[ "$id" == "stop" ]]; then
+    hide_playback
+    resting=1
+    sleep 0.1
+    continue
+  fi
   if [[ -z "$id" || -z "$path" || ! -f "$path" ]]; then
     stop_play
     printf '%s\n' "$id" > "$DONE"

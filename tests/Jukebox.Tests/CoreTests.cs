@@ -636,7 +636,7 @@ public class LibrarySearchTests
     }
 
     [Fact]
-    public void Clearing_the_queue_leaves_the_song_that_is_playing()
+    public void Clearing_the_queue_stops_the_song_that_is_playing()
     {
         using var fixture = new TempLibrary();
         var playing = fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
@@ -646,11 +646,10 @@ public class LibrarySearchTests
         Assert.True(fixture.Queue.TryEnqueue(waiting, Origins.User, "touch").Ok);
         var coordinator = new PlaybackCoordinator(fixture.Queue, fixture.Media, fixture.Settings);
         Assert.NotNull(coordinator.ClaimNext(0, null, 8));
-        fixture.Queue.ClearWaiting();
-        var active = fixture.Queue.Active();
-        Assert.Single(active);
-        Assert.Equal("playing", active[0].Status);
-        Assert.Equal(playing, active[0].MediaId);
+        coordinator.ClearQueue();
+        Assert.Empty(fixture.Queue.Active());
+        Assert.Null(coordinator.Snapshot().Current);
+        Assert.True(coordinator.Halted());
     }
 
     [Fact]

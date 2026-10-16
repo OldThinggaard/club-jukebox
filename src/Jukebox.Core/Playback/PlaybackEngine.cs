@@ -19,6 +19,7 @@ public sealed class PlayResult
     public string? Error { get; init; }
     public static PlayResult Done() => new() { Ok = true };
     public static PlayResult Failed(string error) => new() { Ok = false, Error = error };
+    public static PlayResult Stopped() => new() { Ok = false };
 }
 
 public interface IMediaPlayer
@@ -154,6 +155,7 @@ public sealed class PlaybackCoordinator
     private string _engine = "timer";
     private string? _lastError;
     private string? _finishedQueueId;
+    private bool _halt;
 
     public PlaybackCoordinator(QueueStore queue, MediaStore media, SettingsStore settings)
     {
@@ -311,6 +313,35 @@ public sealed class PlaybackCoordinator
         return job;
     }
 
+    /// <summary>
+    /// Drops every waiting song and the one on screen. The pause picture
+    /// starts its own clock, and the player is asked to let go of the file.
+    /// </summary>
+    public void ClearQueue()
+    {
+        lock (_gate)
+        {
+            _queue.ClearWaiting();
+            if (_current is null)
+                return;
+            Close(_current, PlayResult.Stopped());
+            _pauseShownUtc = DateTime.UtcNow;
+            _halt = true;
+        }
+    }
+
+    public bool Halted()
+    {
+        lock (_gate)
+            return _halt;
+    }
+
+    public void AcknowledgeHalt()
+    {
+        lock (_gate)
+            _halt = false;
+    }
+
     public void Finish(PlayJob job, PlayResult result)
     {
         lock (_gate)
@@ -360,7 +391,7 @@ public sealed class PlaybackCoordinator
         _queue.Complete(job.Entry.Id, result.Ok ? "completed" : "abandoned");
         if (result.Ok)
             _media.RecordPlay(job.Entry.MediaId, job.Entry.Origin, true, job.Entry.Title, job.Entry.Artist);
-        else
+        else if (result.Error is not null)
             _lastError = result.Error;
         if (_current?.Entry.Id == job.Entry.Id)
             _current = null;

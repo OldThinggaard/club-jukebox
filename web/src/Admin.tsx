@@ -377,7 +377,7 @@ function PlaybackPanel() {
       <h2 className="font-serif text-2xl">Indstillinger</h2>
       <div className="actions">
         <Button variant="danger" type="button" onClick={() => {
-          if (!confirm("Slet de sange, der venter? Den sang der spiller, fortsætter.")) return;
+          if (!confirm("Slet køen og stop den sang, der spiller?")) return;
           void admin("/api/admin/queue", { method: "DELETE" });
         }}>Slet køen</Button>
       </div>

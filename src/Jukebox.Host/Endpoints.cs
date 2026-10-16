@@ -328,9 +328,18 @@ public static class Endpoints
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
 
-        admin.MapDelete("/queue", (QueueStore queue, SettingsStore settings) =>
+        admin.MapDelete("/queue", (PlaybackCoordinator playback, SettingsStore settings, JukeboxPaths paths) =>
         {
-            queue.ClearWaiting();
+            playback.ClearQueue();
+            try
+            {
+                HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.StopRequest());
+            }
+            catch (IOException)
+            {
+                // The player notices the empty queue on its next look.
+            }
+
             settings.Audit("queue-clear", null);
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
