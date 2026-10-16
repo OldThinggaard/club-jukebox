@@ -118,7 +118,7 @@ export function Kiosk() {
 
   const playingId = screen?.nowPlaying?.mediaId ?? "";
   const queuedIds = new Set(screen?.queue.map((item) => item.mediaId) ?? []);
-  const shelfKey = `${playingId}|${screen?.queue.map((item) => item.mediaId).join(",") ?? ""}`;
+  const cooledIds = new Set(screen?.cooled ?? []);
 
   useEffect(() => {
     let current = true;
@@ -143,7 +143,7 @@ export function Kiosk() {
       current = false;
       window.clearTimeout(handle);
     };
-  }, [query, category, artist, letter, screen?.libraryCount, screen?.nowPlaying?.queueId, shelfKey]);
+  }, [query, category, artist, letter, screen?.libraryCount]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -179,8 +179,8 @@ export function Kiosk() {
   const grouped = useMemo(() => artists.filter((group) => !letter || group.letter === letter), [artists, letter]);
 
   async function choose(item: Media) {
-    const note = noteOnPicture(item, playingId, queuedIds);
-    if (!item.canQueue || note) {
+    const note = noteOnPicture(item, playingId, queuedIds, cooledIds);
+    if (note || otherBlock(item)) {
       setToast({ text: note ?? item.blockReason ?? "This film is not available.", bad: true });
       return;
     }
@@ -294,9 +294,10 @@ export function Kiosk() {
         ) : (
           <div className="grid">
             {media.map((item) => {
-              const onPicture = noteOnPicture(item, playingId, queuedIds);
+              const onPicture = noteOnPicture(item, playingId, queuedIds, cooledIds);
+              const aside = otherBlock(item);
               return (
-                <button key={item.id} className={onPicture ? "card noted" : item.canQueue ? "card" : "card blocked"} type="button" onClick={() => void choose(item)}>
+                <button key={item.id} className={onPicture ? "card noted" : aside ? "card blocked" : "card"} type="button" onClick={() => void choose(item)}>
                   <figure>
                     {item.thumbnailUrl ? <img src={item.thumbnailUrl} alt="" loading="lazy" decoding="async" /> : <span className="fallback">{item.title.slice(0, 1)}</span>}
                     {!onPicture && formatDuration(item.durationMs) && <span className="badge">{formatDuration(item.durationMs)}</span>}
@@ -304,7 +305,7 @@ export function Kiosk() {
                   </figure>
                   <h2>{item.title}</h2>
                   <p>{item.artist || "Unknown artist"}</p>
-                  {!item.canQueue && !onPicture && <small>{item.blockReason}</small>}
+                  {aside && <small>{aside}</small>}
                 </button>
               );
             })}
@@ -374,12 +375,18 @@ export function Kiosk() {
   );
 }
 
-function noteOnPicture(item: Media, playingId: string, queuedIds: ReadonlySet<string>): string | null {
+function noteOnPicture(item: Media, playingId: string, queuedIds: ReadonlySet<string>, cooledIds: ReadonlySet<string>): string | null {
   if (playingId && item.id === playingId) return "This is playing now.";
   if (queuedIds.has(item.id)) return "This is already in the queue.";
-  if (item.blockReason?.startsWith("This was played") === true) return item.blockReason;
-  if (item.blockReason === "This is playing now." || item.blockReason === "This is already in the queue.") return item.blockReason;
+  if (cooledIds.has(item.id)) return "This was played recently. You can choose it again later.";
   return null;
+}
+
+function otherBlock(item: Media): string | null {
+  const reason = item.blockReason;
+  if (!reason || reason === "This is playing now." || reason === "This is already in the queue." || reason.startsWith("This was played"))
+    return null;
+  return reason;
 }
 
 function placeSongs(shown: Media[], next: Media[], random: boolean): Media[] {

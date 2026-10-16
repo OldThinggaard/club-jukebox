@@ -248,7 +248,7 @@ if ! grep -q 'volume-rail' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js;
   echo "The touch screen must have the volume slider." >&2
   exit 1
 fi
-if ! grep -q 'nowPlaying?.queueId' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
+if ! grep -q 'nowPlaying?.mediaId' "$pkg/opt/jukebox/current/wwwroot/assets/"index-*.js; then
   echo "The shelf must move the playing label when the song changes." >&2
   exit 1
 fi

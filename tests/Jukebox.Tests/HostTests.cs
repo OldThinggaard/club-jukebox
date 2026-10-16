@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Jukebox.Core.Data;
 using Jukebox.Host;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -153,6 +154,15 @@ public class HostTests : IClassFixture<JukeboxFactory>
 
         var screen = await client.GetFromJsonAsync<ScreenDto>("/api/screen");
         Assert.Contains("Oak", screen!.ClubName);
+    }
+
+    [Fact]
+    public async Task The_screen_lists_songs_in_cooldown_without_the_catalog()
+    {
+        var client = _factory.CreateClient();
+        var screen = await client.GetAsync("/api/screen");
+        var body = await screen.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Array, body.GetProperty("cooled").ValueKind);
     }
 
     private sealed record HealthDto(string Status);

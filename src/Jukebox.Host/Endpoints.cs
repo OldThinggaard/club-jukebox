@@ -62,7 +62,8 @@ public static class Endpoints
                 indexing = !indexer.InitialScanCompleted,
                 version = JukeboxVersion.Current,
                 cooldownMinutes = club.CooldownMinutes,
-                idleTimeoutSeconds = club.IdleTimeoutSeconds
+                idleTimeoutSeconds = club.IdleTimeoutSeconds,
+                cooled = Cooled(media, club.CooldownMinutes, active)
             });
         });
 
@@ -596,6 +597,14 @@ public static class Endpoints
             canQueue = reason is null,
             blockReason = reason
         };
+    }
+
+    private static string[] Cooled(MediaStore media, int minutes, IReadOnlyList<QueueEntry> active)
+    {
+        if (minutes <= 0)
+            return [];
+        var busy = new HashSet<string>(active.Select(item => item.MediaId));
+        return media.RecentHumanPlays(DateTime.UtcNow.AddMinutes(-minutes)).Where(id => !busy.Contains(id)).ToArray();
     }
 
     private static object? Wifi(Jukebox.Core.Network.WirelessLink? link) =>

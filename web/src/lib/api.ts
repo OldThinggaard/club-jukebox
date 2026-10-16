@@ -59,6 +59,7 @@ export type Screen = {
   version: string;
   cooldownMinutes: number;
   idleTimeoutSeconds: number;
+  cooled: string[];
 };
 
 export type ArtistGroup = {
