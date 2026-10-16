@@ -185,18 +185,11 @@ if [[ "$SKIP_BOOT" -eq 0 ]]; then
   chroot "$MNT" dpkg --purge --force-depends live-boot live-config live-config-systemd live-tools >/dev/null 2>&1 \
     || say "Live-opstarten blev ikke fjernet helt."
   chroot "$MNT" update-initramfs -u -k all
-  chroot "$MNT" grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=jukebox --removable --no-nvram
-  KERNEL="$(basename "$(ls -1 "$MNT"/boot/vmlinuz-* | head -n 1)")"
-  INITRD="$(basename "$(ls -1 "$MNT"/boot/initrd.img-* | head -n 1)")"
-  cat > "$MNT/boot/grub/grub.cfg" <<EOF
-set timeout=2
-set default=0
-menuentry "Videojukebox" {
-  search --fs-uuid --set=root ${ROOT_UUID}
-  linux /boot/${KERNEL} root=UUID=${ROOT_UUID} ro quiet
-  initrd /boot/${INITRD}
-}
-EOF
+  # Debian's signed shim, not a home-made boot file. Secure Boot accepts it.
+  if [[ ! -x "$MNT/opt/jukebox/lib/secure-boot.sh" ]]; then
+    fail "Den godkendte start mangler på nøglen."
+  fi
+  chroot "$MNT" /opt/jukebox/lib/secure-boot.sh || fail "Disken kan ikke starte med Secure Boot."
   umount "$MNT/dev" "$MNT/proc" "$MNT/sys" "$MNT/run" || true
 fi
 

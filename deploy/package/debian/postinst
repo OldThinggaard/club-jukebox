@@ -38,7 +38,7 @@ chmod 0755 /opt/jukebox/current/Jukebox.Host /opt/jukebox/updater/Jukebox.Update
   /opt/jukebox/lib/onlime-open.sh /opt/jukebox/lib/onlime-login.sh \
   /opt/jukebox/lib/onlime-boot.sh /opt/jukebox/lib/wifi-connect.sh \
   /opt/jukebox/lib/onlime_prompts.py /opt/jukebox/lib/panel-on.sh \
-  /opt/jukebox/lib/hide-cursor.py
+  /opt/jukebox/lib/hide-cursor.py /opt/jukebox/lib/secure-boot.sh
 chown -R jukebox:jukebox /opt/jukebox /var/lib/jukebox /home/jukebox
 
 mkdir -p /etc/systemd/system
@@ -179,6 +179,10 @@ enable_wants jukebox-onlime.service
 rm -f /etc/systemd/system/sysinit.target.wants/jukebox-boot-guard.service
 enable_wants jukebox-boot-guard.service
 
-echo "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren."
-wall "Videojukebox er installeret. Tag USB-nøglen ud, og genstart computeren." || true
+boot_note="Tag USB-nøglen ud, og genstart computeren. Secure Boot skal stadig være slået fra."
+if [[ -x /opt/jukebox/lib/secure-boot.sh ]] && /opt/jukebox/lib/secure-boot.sh; then
+  boot_note="Tag USB-nøglen ud, og genstart computeren. Secure Boot må gerne være slået til."
+fi
+echo "Videojukebox er installeret. ${boot_note}"
+wall "Videojukebox er installeret. ${boot_note}" || true
 exit 0

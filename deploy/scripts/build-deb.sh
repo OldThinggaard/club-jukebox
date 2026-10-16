@@ -23,6 +23,12 @@ install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
 install -m 0755 "$ROOT/deploy/scripts/mpv-volume.py" "$pkg/opt/jukebox/lib/mpv-volume.py"
 install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$pkg/opt/jukebox/lib/hide-cursor.py"
+install -m 0755 "$ROOT/deploy/package/secure-boot.sh" "$pkg/opt/jukebox/lib/secure-boot.sh"
+install -d "$pkg/usr/share/jukebox/secure-boot"
+install -m 0644 "$ROOT/deploy/package/secure-boot/"*.efi.signed \
+  "$ROOT/deploy/package/secure-boot/copyright-shim" \
+  "$ROOT/deploy/package/secure-boot/copyright-grub" \
+  "$pkg/usr/share/jukebox/secure-boot/"
 sed '/jukebox-installer/,/^fi$/d' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/bin/session.sh" > "$pkg/opt/jukebox/bin/session.sh"
 chmod 0755 "$pkg/opt/jukebox/bin/session.sh"
 if grep -q jukebox-installer "$pkg/opt/jukebox/bin/session.sh"; then
@@ -159,6 +165,18 @@ if ! grep -q 'hide-cursor.py' "$pkg/opt/jukebox/bin/session.sh"; then
 fi
 if ! python3 "$pkg/opt/jukebox/lib/hide-cursor.py" self-test; then
   echo "The pointer must stay hidden." >&2
+  exit 1
+fi
+if ! "$pkg/opt/jukebox/lib/secure-boot.sh" self-test "$pkg/usr/share/jukebox/secure-boot"; then
+  echo "Debian's signed start files must be in the package." >&2
+  exit 1
+fi
+if ! grep -q 'secure-boot.sh' "$pkg/DEBIAN/postinst"; then
+  echo "An update must install Debian's signed start." >&2
+  exit 1
+fi
+if grep -q -- '--no-nvram' "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/install-to-disk.sh"; then
+  echo "The disk must not skip the firmware boot list." >&2
   exit 1
 fi
 if ! grep -q 'cursor:none' "$pkg/opt/jukebox/current/wwwroot/assets/"*.css; then

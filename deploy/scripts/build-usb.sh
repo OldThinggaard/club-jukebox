@@ -32,6 +32,12 @@ mkdir -p "$stage/current" "$stage/bin" "$stage/lib"
 cp -a "$ROOT/publish/app/." "$stage/current/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$stage/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$stage/lib/hide-cursor.py"
+install -m 0755 "$ROOT/deploy/package/secure-boot.sh" "$stage/lib/secure-boot.sh"
+install -d "$LIVE/config/includes.chroot/usr/share/jukebox/secure-boot"
+install -m 0644 "$ROOT/deploy/package/secure-boot/"*.efi.signed \
+  "$ROOT/deploy/package/secure-boot/copyright-shim" \
+  "$ROOT/deploy/package/secure-boot/copyright-grub" \
+  "$LIVE/config/includes.chroot/usr/share/jukebox/secure-boot/"
 install -m 0644 "$LIVE/apt/jotta.key.chroot" "$stage/lib/jotta.gpg"
 rm -rf "$LIVE/config/archives"
 chmod 0755 "$stage/bin/session.sh" "$LIVE/auto/config" \
