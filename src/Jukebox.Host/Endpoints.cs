@@ -84,6 +84,8 @@ public static class Endpoints
             var remote = http.Connection.RemoteIpAddress;
             if (remote is null || !IPAddress.IsLoopback(remote))
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
+            if (string.Equals(body.QueueId, HallPlayback.WakeId, StringComparison.Ordinal))
+                return Results.NoContent();
             playback.MarkFinished(body.QueueId);
             return Results.NoContent();
         });

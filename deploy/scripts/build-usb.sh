@@ -33,6 +33,7 @@ cp -a "$ROOT/publish/app/." "$stage/current/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$stage/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$stage/lib/hide-cursor.py"
 install -m 0755 "$ROOT/deploy/package/secure-boot.sh" "$stage/lib/secure-boot.sh"
+install -m 0644 "$ROOT/deploy/package/wake.mp4" "$stage/lib/wake.mp4"
 install -d "$LIVE/config/includes.chroot/usr/share/jukebox/secure-boot"
 install -m 0644 "$ROOT/deploy/package/secure-boot/"*.efi.signed \
   "$ROOT/deploy/package/secure-boot/copyright-shim" \

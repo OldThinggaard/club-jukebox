@@ -52,6 +52,7 @@ public sealed class PlaybackWorker(
     private IReadOnlyList<DisplayInfo> _displays = [];
     private long _displaysAt = long.MinValue;
     private int _screenIndex;
+    private bool _playerWoken;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -172,6 +173,8 @@ public sealed class PlaybackWorker(
 
     private async Task<(PlayJob Job, PlayResult Result, bool Closed)> WaitForHallPlayer(PlayJob job, CancellationToken stoppingToken)
     {
+        if (await WakeHall(job, stoppingToken) is { } woken)
+            return woken;
         ArmHall(job);
         if (HaltIfAsked(job) is { } halted)
             return halted;
@@ -216,9 +219,45 @@ public sealed class PlaybackWorker(
         return (job, PlayResult.Done(), false);
     }
 
-    private void ArmHall(PlayJob job)
+    private async Task<(PlayJob Job, PlayResult Result, bool Closed)?> WakeHall(PlayJob job, CancellationToken stoppingToken)
     {
-        coordinator.MarkFinished(null);
+        // The player starts empty and says the file is already over. That cuts
+        // the first song. A short black film takes that false end. The queue
+        // then starts on a player that is already running.
+        if (_playerWoken || !File.Exists(HallPlayback.WakeFile))
+        {
+            _playerWoken = true;
+            return null;
+        }
+
+        ClearHallSignals();
+        HallPlayback.AtomicWrite(paths.PlayRequest, HallPlayback.WakeRequest());
+        var started = Environment.TickCount64;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            if (HaltIfAsked(job) is { } halted)
+                return halted;
+            var elapsed = Environment.TickCount64 - started;
+            if (HallPlayback.EndIsBelievable(elapsed) && HallPlayback.DoneIs(paths.PlayDone, HallPlayback.WakeId))
+            {
+                _playerWoken = true;
+                return null;
+            }
+
+            if (elapsed >= 12_000)
+            {
+                _playerWoken = true;
+                return null;
+            }
+
+            await Task.Delay(200, stoppingToken);
+        }
+
+        return null;
+    }
+
+    private void ClearHallSignals()
+    {
         try
         {
             if (File.Exists(paths.PlayDone))
@@ -230,6 +269,12 @@ public sealed class PlaybackWorker(
         {
             // The player writes a new line when this title ends.
         }
+    }
+
+    private void ArmHall(PlayJob job)
+    {
+        coordinator.MarkFinished(null);
+        ClearHallSignals();
 
         var art = job.Entry.ThumbnailPath;
         if (string.IsNullOrWhiteSpace(art) || !File.Exists(art))

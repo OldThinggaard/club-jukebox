@@ -22,6 +22,7 @@ cp -a "$ROOT/publish/updater/." "$pkg/opt/jukebox/updater/"
 install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
 install -m 0755 "$ROOT/deploy/scripts/mpv-volume.py" "$pkg/opt/jukebox/lib/mpv-volume.py"
+install -m 0644 "$ROOT/deploy/package/wake.mp4" "$pkg/opt/jukebox/lib/wake.mp4"
 install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$pkg/opt/jukebox/lib/hide-cursor.py"
 install -m 0755 "$ROOT/deploy/package/secure-boot.sh" "$pkg/opt/jukebox/lib/secure-boot.sh"
 install -d "$pkg/usr/share/jukebox/secure-boot"
@@ -145,6 +146,10 @@ if ! grep -q -- '--audio-device=' "$pkg/opt/jukebox/bin/hall-player.sh"; then
 fi
 if ! python3 "$pkg/opt/jukebox/lib/mpv-volume.py" self-test; then
   echo "The opening of a song must not count as the end." >&2
+  exit 1
+fi
+if [[ ! -s "$pkg/opt/jukebox/lib/wake.mp4" ]]; then
+  echo "The player must wake on a black film before the queue." >&2
   exit 1
 fi
 if ! grep -q 'def active_output' "$pkg/opt/jukebox/lib/mpv-volume.py"; then

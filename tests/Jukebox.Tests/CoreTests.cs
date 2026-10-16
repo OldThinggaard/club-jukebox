@@ -456,6 +456,8 @@ public class HallPlaybackTests
         Assert.False(HallPlayback.EndIsBelievable(0));
         Assert.False(HallPlayback.EndIsBelievable(4_999));
         Assert.True(HallPlayback.EndIsBelievable(5_000));
+        Assert.Equal("wake", HallPlayback.WakeId);
+        Assert.StartsWith("wake\n/opt/jukebox/lib/wake.mp4\n", HallPlayback.WakeRequest());
         Assert.True(HallPlayback.StillInTheMiddle(40_000, 180_000));
         Assert.False(HallPlayback.StillInTheMiddle(175_000, 180_000));
         Assert.False(HallPlayback.StillInTheMiddle(-1, 180_000));
