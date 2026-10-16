@@ -3,6 +3,7 @@ import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
 import { DanishKeyboard } from "./components/Keyboard";
 import { OnlimeCode } from "./OnlimeCode";
+import { WifiChip } from "./components/WifiChip";
 
 type Tab = "overview" | "library" | "sources" | "playback" | "backups" | "updates" | "netværk" | "onlime";
 
@@ -486,6 +487,7 @@ function NetworkPanel() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [bad, setBad] = useState(false);
+  const [link, setLink] = useState<{ ssid: string; signal: number } | null>(null);
 
   async function load() {
     setBusy(true);
@@ -499,7 +501,10 @@ function NetworkPanel() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    fetch("/api/admin/wifi/current").then((response) => response.json()).then((body) => setLink(body?.ssid ? body : null)).catch(() => setLink(null));
+  }, []);
 
   async function connect() {
     setBusy(true);
@@ -529,7 +534,8 @@ function NetworkPanel() {
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Netværk</h2>
-      <p>Et kabel virker uden opsætning. Trådløst netværk vælges her, efter installationen.</p>
+      {link?.ssid ? <WifiChip ssid={link.ssid} signal={link.signal} /> : <p className="muted">Intet trådløst netværk. Et kabel virker uden opsætning.</p>}
+      <p>Trådløst netværk vælges her, efter installationen.</p>
       <div className="choice-list">
         {networks.length === 0 && <p className="muted">{busy ? "Leder efter netværk…" : "Ingen trådløse netværk fundet."}</p>}
         {networks.map((network) => (

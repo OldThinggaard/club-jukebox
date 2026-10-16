@@ -52,6 +52,8 @@ public class HostTests : IClassFixture<JukeboxFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, adminOnlime.StatusCode);
         var adminWifi = await client.GetAsync("/api/admin/wifi");
         Assert.Equal(HttpStatusCode.Unauthorized, adminWifi.StatusCode);
+        var adminLink = await client.GetAsync("/api/admin/wifi/current");
+        Assert.Equal(HttpStatusCode.Unauthorized, adminLink.StatusCode);
     }
 
     [Fact]

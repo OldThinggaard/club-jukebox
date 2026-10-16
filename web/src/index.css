@@ -112,6 +112,19 @@ button { cursor: pointer; }
 .eyebrow { margin: 0; letter-spacing: 0.16em; text-transform: uppercase; font-size: 11px; color: #e2b15a; }
 .brand h1 { margin: 0; font-family: Fraunces, serif; font-size: clamp(28px, 3vw, 42px); font-weight: 560; line-height: 1; }
 .clock-block { margin-left: auto; text-align: right; }
+.panel .wifi-chip { margin: 8px 0 12px; }
+.wifi-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 240px;
+  margin: 0;
+  color: #f4efe6;
+  font-size: 15px;
+}
+.wifi-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wifi-mark { width: 26px; height: 26px; flex: none; color: #e2b15a; }
 .top-actions { display: flex; gap: 8px; }
 .top-actions .icon-button { min-width: 88px; }
 .clock-block strong { display: block; font-family: Fraunces, serif; font-size: 32px; font-weight: 560; }

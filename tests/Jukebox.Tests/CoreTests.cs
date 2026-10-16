@@ -4,6 +4,7 @@ using Jukebox.Core.Data;
 using Jukebox.Core.Domain;
 using Jukebox.Core.Indexing;
 using Jukebox.Core.Metadata;
+using Jukebox.Core.Network;
 using Jukebox.Core.Playback;
 using Jukebox.Core.Queue;
 using Jukebox.Core.Thumbnails;
@@ -829,6 +830,33 @@ public class LibrarySearchTests
         var house = fixture.Queue.TryEnqueue(id, Origins.Auto, "reklame");
         Assert.False(guest.Ok);
         Assert.True(house.Ok);
+    }
+}
+
+public class WirelessLinkTests
+{
+    [Fact]
+    public void Reads_the_network_the_machine_is_using()
+    {
+        var link = WirelessLink.Parse(" :Naboen:40\n*:Klubben:82\n");
+        Assert.Equal("Klubben", link!.Ssid);
+        Assert.Equal(82, link.Signal);
+    }
+
+    [Fact]
+    public void Keeps_a_colon_inside_the_network_name()
+    {
+        var link = WirelessLink.Parse("*:Cafe\\:Net:64");
+        Assert.Equal("Cafe:Net", link!.Ssid);
+        Assert.Equal(64, link.Signal);
+    }
+
+    [Fact]
+    public void Stays_quiet_on_a_cable()
+    {
+        Assert.Null(WirelessLink.Parse(" :Naboen:40\n"));
+        Assert.Null(WirelessLink.Parse(null));
+        Assert.Null(WirelessLink.Parse("*:--:0"));
     }
 }
 

@@ -535,6 +535,7 @@ public static class Endpoints
         }).AddEndpointFilter(Gate);
 
         admin.MapGet("/audit", (SettingsStore settings) => Results.Ok(settings.RecentAudit(40))).AddEndpointFilter(Gate);
+        admin.MapGet("/wifi/current", () => Results.Ok(Wifi(WirelessProbe.Current()))).AddEndpointFilter(Gate);
         admin.MapGet("/wifi", InstallEndpoints.ListWifi).AddEndpointFilter(Gate);
         admin.MapPost("/wifi", async (WifiBody body) => await InstallEndpoints.ConnectWifi(body.Ssid, body.Psk)).AddEndpointFilter(Gate);
         admin.MapGet("/onlime/status", () => Results.Ok(OnlimeSync.Status())).AddEndpointFilter(Gate);
@@ -596,6 +597,9 @@ public static class Endpoints
             blockReason = reason
         };
     }
+
+    private static object? Wifi(Jukebox.Core.Network.WirelessLink? link) =>
+        link is null ? null : new { ssid = link.Ssid, signal = link.Signal };
 
     private static object Card(QueueEntry item) => new
     {
