@@ -131,14 +131,17 @@ if path == "active":
 
 
 def file_ended(eof, time_pos, duration):
-    """The file itself reached the end. A hiccup in the middle is not the end."""
+    """The file itself reached the end. A hiccup in the middle is not the end.
+
+    After a restart the player is still idle. It says the file ended before
+    it knows the length. A missing length, or a position still in the song,
+    must keep the first song playing.
+    """
     if eof is not True:
         return False
-    if time_pos is None or time_pos < 1:
+    if time_pos is None or time_pos < 1 or duration is None or duration < 1:
         return False
-    if duration is not None and duration >= 5 and time_pos < duration - 2:
-        return False
-    if time_pos < 5 and (duration is None or duration >= 5):
+    if time_pos < duration - 2:
         return False
     return True
 
@@ -165,8 +168,12 @@ if path == "self-test":
     assert file_ended(True, 3, 180) is False
     assert file_ended(True, 30, 180) is False
     assert file_ended(True, 179, 180) is True
+    assert file_ended(True, 178, 180) is True
     assert file_ended(True, 3.5, 4) is True
-    assert file_ended(True, 8, None) is True
+    assert file_ended(True, 8, None) is False
+    assert file_ended(True, 8, 0) is False
+    assert file_ended(True, 179, None) is False
+    assert file_ended(True, 8, 180) is False
     raise SystemExit(0)
 
 
