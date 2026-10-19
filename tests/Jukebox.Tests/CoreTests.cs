@@ -596,6 +596,43 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_hidden_genre_and_its_songs_leave_the_shelf()
+    {
+        using var fixture = new TempLibrary();
+        var christmas = fixture.Add("Wham", "Last Christmas", "Christmas", 1984);
+        var mixed = fixture.Add("Wham", "Club Tropicana", "Pop, Christmas", 1983);
+        var rock = fixture.Add("Queen", "Radio Ga Ga", "Rock", 1984);
+        var jul = fixture.Add("Gasolin", "Jul på Vesterbro", "Jul", 1976);
+
+        var christmasGenre = fixture.Media.Categories(false).Single(item => item.Name == "Christmas");
+        var julGenre = fixture.Media.Categories(false).Single(item => item.Name == "Jul");
+        var decade = fixture.Media.Categories(false).Single(item => item.Name == "80s");
+        Assert.False(fixture.Media.SetGenreHidden(decade.Id, true));
+        Assert.False(fixture.Media.SetGenreHidden("missing", true));
+        Assert.True(fixture.Media.SetGenreHidden(christmasGenre.Id, true));
+        Assert.True(fixture.Media.SetGenreHidden(julGenre.Id, true));
+
+        var shelf = fixture.Media.Query(new CatalogFilter { Limit = 20 });
+        Assert.Equal(rock, Assert.Single(shelf).Id);
+        Assert.DoesNotContain(fixture.Media.Categories(true), item => item.Name is "Christmas" or "Jul");
+        Assert.Equal(1, fixture.Media.Categories(true).Single(item => item.Name == "80s").Count);
+        Assert.DoesNotContain(fixture.Media.Artists(), item => item.Name == "Wham");
+        Assert.Contains(fixture.Media.Artists(), item => item.Name == "Queen");
+        Assert.DoesNotContain(fixture.Media.AutoplayCandidates(), item => item.Id == christmas || item.Id == mixed || item.Id == jul);
+        Assert.False(fixture.Queue.TryEnqueue(christmas, Origins.User, "touchscreen").Ok);
+        Assert.Contains(fixture.Media.Query(new CatalogFilter { Limit = 20, IncludeUnready = true }), item => item.Id == christmas);
+
+        Assert.True(fixture.Media.SetGenreHidden(christmasGenre.Id, false));
+        Assert.True(fixture.Media.SetGenreHidden(julGenre.Id, false));
+        var shown = fixture.Media.Query(new CatalogFilter { Limit = 20 });
+        Assert.Contains(shown, item => item.Id == christmas);
+        Assert.Contains(shown, item => item.Id == mixed);
+        Assert.Contains(shown, item => item.Id == jul);
+        Assert.Contains(fixture.Media.Categories(true), item => item.Name == "Christmas");
+        Assert.Contains(fixture.Media.Categories(true), item => item.Name == "Jul");
+    }
+
+    [Fact]
     public void The_next_page_holds_the_songs_after_the_first()
     {
         using var fixture = new TempLibrary();

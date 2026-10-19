@@ -387,6 +387,12 @@ public static class Endpoints
             media.UpdateCategory(id, body.Name, body.Hidden);
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(Gate);
+        admin.MapPut("/genres/{id}/hidden", (string id, GenreHidden body, MediaStore media) =>
+        {
+            if (!media.SetGenreHidden(id, body.Hidden))
+                return Results.NotFound();
+            return Results.Ok(new { ok = true });
+        }).AddEndpointFilter(Gate);
         admin.MapDelete("/categories/{id}", (string id, MediaStore media) =>
         {
             media.DeleteCategory(id);
@@ -724,6 +730,7 @@ public static class Endpoints
     private sealed record MediaEdit(string? Title, string? Artist, string? Album, string? Genre, int? Year, bool? Hidden, string? AvailableFrom, string? AvailableUntil, List<string>? CategoryIds);
     private sealed record NameBody(string? Name);
     private sealed record CategoryEdit(string Name, bool Hidden);
+    private sealed record GenreHidden(bool Hidden);
     private sealed record SourceBody(string Name, string Kind, string Path, int Priority, bool Enabled, string Role);
     private sealed record PinBody(string? Current, string? Next);
 }

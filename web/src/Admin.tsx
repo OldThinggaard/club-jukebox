@@ -248,6 +248,50 @@ function OverviewPanel() {
   );
 }
 
+type GenreRow = { id: string; name: string; kind: string; count: number; isHidden: boolean };
+
+function GenrePanel() {
+  const [genres, setGenres] = useState<GenreRow[]>([]);
+  const [note, setNote] = useState("");
+  const load = () => admin<GenreRow[]>("/api/admin/categories").then((rows) => {
+    setGenres(rows.filter((row) => row.kind === "genre").sort((a, b) => a.name.localeCompare(b.name, "da")));
+  });
+  useEffect(() => { void load().catch(() => setNote("Genrerne kunne ikke hentes.")); }, []);
+  async function toggle(genre: GenreRow) {
+    setNote("");
+    try {
+      await admin(`/api/admin/genres/${genre.id}/hidden`, {
+        method: "PUT",
+        body: JSON.stringify({ hidden: !genre.isHidden }),
+      });
+      await load();
+    } catch {
+      setNote("Genren blev ikke gemt.");
+    }
+  }
+  return (
+    <section className="panel">
+      <h2 className="font-serif text-2xl">Skjul genre</h2>
+      <p className="muted">En skjult genre forsvinder fra hylden. Sangene i den vises heller ikke. Tryk Vis, når de skal frem igen.</p>
+      {note && <p className="banner">{note}</p>}
+      {genres.length === 0 && <p>Ingen genrer endnu.</p>}
+      <div>
+        {genres.map((genre) => (
+          <div key={genre.id} className="flex items-center justify-between gap-3 border-b border-white/10 py-2">
+            <span>
+              <strong>{genre.name}</strong>
+              <span className="muted"> · {genre.count} {genre.count === 1 ? "sang" : "sange"}{genre.isHidden ? " · skjult" : ""}</span>
+            </span>
+            <Button variant={genre.isHidden ? "brass" : "ghost"} size="lg" type="button" onClick={() => void toggle(genre)}>
+              {genre.isHidden ? "Vis" : "Skjul"}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function LibraryPanel() {
   const [items, setItems] = useState<AdminMedia[]>([]);
   const [q, setQ] = useState("");
@@ -255,6 +299,8 @@ function LibraryPanel() {
   const load = (text = q) => admin<AdminMedia[]>(`/api/admin/media?limit=100${text ? `&q=${encodeURIComponent(text)}` : ""}`).then(setItems);
   useEffect(() => { void load(""); }, []);
   return (
+    <>
+    <GenrePanel />
     <section className="panel">
       <div className="actions">
         <input className={inputClass} value={q} placeholder="Find in the whole library" onChange={(event) => setQ(event.target.value)} />
@@ -285,6 +331,7 @@ function LibraryPanel() {
       </table>
       {editing && <MediaEditor item={editing} onClose={() => { setEditing(null); void load(); }} />}
     </section>
+    </>
   );
 }
 

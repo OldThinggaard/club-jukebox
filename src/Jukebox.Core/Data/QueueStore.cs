@@ -31,6 +31,16 @@ public sealed class QueueStore
             var hidden = mediaReader.GetInt64(1) != 0;
             var role = mediaReader.GetString(2);
             mediaReader.Dispose();
+            if (!hidden)
+            {
+                using var genreReader = JukeboxDatabase.Query(connection, """
+                    SELECT 1 FROM media_categories mc
+                    JOIN categories c ON c.id = mc.category_id
+                    WHERE mc.media_id=$id AND c.is_hidden=1 AND c.kind='genre'
+                    LIMIT 1;
+                    """, tx, ("$id", mediaId));
+                hidden = genreReader.Read();
+            }
 
             string? playing = null;
             using (var playingReader = JukeboxDatabase.Query(connection, "SELECT media_id FROM queue_items WHERE status='playing' LIMIT 1;", tx))

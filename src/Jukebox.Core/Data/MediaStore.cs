@@ -320,7 +320,7 @@ public sealed class MediaStore
         var sql = $"SELECT {Columns} FROM media_items WHERE 1=1";
         var parameters = new List<(string, object?)>();
         if (!filter.IncludeUnready)
-            sql += " AND is_ready=1 AND is_hidden=0 AND library_role='catalog'";
+            sql += " AND is_ready=1 AND is_hidden=0 AND library_role='catalog' AND " + OutsideHiddenGenre("id");
         if (!string.IsNullOrWhiteSpace(filter.CategoryId))
         {
             sql += " AND id IN (SELECT media_id FROM media_categories WHERE category_id=$cat)";
@@ -379,10 +379,11 @@ public sealed class MediaStore
     public IReadOnlyList<(string Letter, string Name, int Count)> Artists()
     {
         using var connection = _database.Open();
-        using var reader = JukeboxDatabase.Query(connection, """
+        using var reader = JukeboxDatabase.Query(connection, $"""
             SELECT artist_letter, artist, COUNT(*)
             FROM media_items
             WHERE is_ready=1 AND is_hidden=0 AND library_role='catalog' AND artist <> ''
+              AND {OutsideHiddenGenre("id")}
             GROUP BY artist_letter, artist;
             """);
         var list = new List<(string, string, int)>();
@@ -398,11 +399,12 @@ public sealed class MediaStore
     {
         using var connection = _database.Open();
         var sql = publicOnly
-            ? """
+            ? $"""
               SELECT c.id, c.name, c.slug, c.kind, c.is_auto, c.is_hidden, COUNT(m.id)
               FROM categories c
               JOIN media_categories mc ON mc.category_id=c.id
               JOIN media_items m ON m.id=mc.media_id AND m.is_ready=1 AND m.is_hidden=0 AND m.library_role='catalog'
+                AND {OutsideHiddenGenre("m.id")}
               WHERE c.is_hidden=0
               GROUP BY c.id
               ORDER BY c.kind, c.name;
@@ -444,6 +446,23 @@ public sealed class MediaStore
             """, tx, ("$id", id), ("$name", name.Trim()), ("$slug", slug), ("$now", ClubCulture.Iso(DateTime.UtcNow))));
         return id;
     }
+
+    public bool SetGenreHidden(string id, bool hidden) =>
+        _database.InWrite((connection, tx) =>
+        {
+            string? kind = null;
+            using (var reader = JukeboxDatabase.Query(connection, "SELECT kind FROM categories WHERE id=$id;", tx, ("$id", id)))
+            {
+                if (reader.Read())
+                    kind = reader.GetString(0);
+            }
+
+            if (kind != "genre")
+                return false;
+            JukeboxDatabase.Execute(connection, "UPDATE categories SET is_hidden=$hidden WHERE id=$id;", tx,
+                ("$hidden", hidden ? 1 : 0), ("$id", id));
+            return true;
+        });
 
     public void UpdateCategory(string id, string name, bool hidden) =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, """
@@ -622,6 +641,7 @@ public sealed class MediaStore
         using var reader = JukeboxDatabase.Query(connection, $"""
             SELECT {Columns} FROM media_items
             WHERE is_ready=1 AND is_hidden=0 AND library_role='catalog' AND media_type IN ('video','audio')
+              AND {OutsideHiddenGenre("id")}
               AND id NOT IN (SELECT media_id FROM queue_items WHERE status IN ('queued','playing'))
             ORDER BY user_play_count ASC, COALESCE(last_user_played_at, '') ASC, title
             LIMIT 40;
@@ -748,6 +768,14 @@ public sealed class MediaStore
     }
 
     public static string Key(string sourceId, string relativePath) => sourceId + "\u001f" + relativePath;
+
+    private static string OutsideHiddenGenre(string idColumn) => $"""
+        {idColumn} NOT IN (
+          SELECT hidden_link.media_id FROM media_categories hidden_link
+          JOIN categories hidden_genre ON hidden_genre.id = hidden_link.category_id
+          WHERE hidden_genre.is_hidden = 1 AND hidden_genre.kind = 'genre'
+        )
+        """;
 
     private static void ReplaceAutoCategories(SqliteConnection connection, SqliteTransaction tx, string mediaId, IReadOnlyList<CategoryDraft> categories, string now)
     {
