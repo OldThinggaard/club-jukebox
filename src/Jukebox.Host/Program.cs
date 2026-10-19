@@ -48,6 +48,7 @@ builder.Services.AddSingleton<UsbSongCopy>();
 builder.Services.AddSingleton<PlaybackCoordinator>();
 builder.Services.AddSingleton<BackupManager>();
 builder.Services.AddSingleton<SystemSampler>();
+builder.Services.AddSingleton<OnlimeShareService>();
 if (config.EnableBackground)
 {
     builder.Services.AddHostedService<PidFile>();
@@ -55,6 +56,7 @@ if (config.EnableBackground)
     builder.Services.AddHostedService<PlaybackWorker>();
     builder.Services.AddHostedService<BackupWorker>();
     builder.Services.AddHostedService<SamplerWorker>();
+    builder.Services.AddHostedService<OnlimeShareWorker>();
 }
 
 var app = builder.Build();

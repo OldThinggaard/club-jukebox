@@ -16,6 +16,26 @@ public class HostTests : IClassFixture<JukeboxFactory>
     public HostTests(JukeboxFactory factory) => _factory = factory;
 
     [Fact]
+    public async Task An_onlime_folder_link_is_saved_and_a_plain_page_is_refused()
+    {
+        var client = _factory.CreateClient();
+        var login = await client.PostAsJsonAsync("/api/admin/login", new { pin = "2580" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        var refused = await client.PutAsJsonAsync("/api/admin/onlime/share", new { url = "https://example.com/s/abcdef012345" });
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+
+        var saved = await client.PutAsJsonAsync("/api/admin/onlime/share", new { url = "https://cloud.onlime.dk/s/abcdef012345/thumbs" });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        var status = await client.GetFromJsonAsync<ShareDto>("/api/admin/onlime/share");
+        Assert.Equal("https://cloud.onlime.dk/s/abcdef012345", status!.Url);
+        Assert.False(status.Busy);
+
+        var cleared = await client.PutAsJsonAsync("/api/admin/onlime/share", new { url = "" });
+        Assert.Equal(HttpStatusCode.OK, cleared.StatusCode);
+    }
+
+    [Fact]
     public async Task Health_and_pin_gate_work()
     {
         var client = _factory.CreateClient();
@@ -173,6 +193,7 @@ public class HostTests : IClassFixture<JukeboxFactory>
     private sealed record PackageDto(bool Found, bool CanInstall, string Message);
     private sealed record UsbSongsDto(bool Found, bool CanCopy, bool Busy, string Message);
     private sealed record OnlimeStatusDto(bool Installed, bool CanInstall, string Message);
+    private sealed record ShareDto(string Url, bool Busy, string Message);
 }
 
 public sealed class JukeboxFactory : WebApplicationFactory<Program>

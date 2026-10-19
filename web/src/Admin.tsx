@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
 import { DanishKeyboard } from "./components/Keyboard";
@@ -610,15 +610,43 @@ function NetworkPanel() {
 
 function OnlimePanel() {
   const [sync, setSync] = useState<{ installed: boolean; canInstall: boolean; message: string } | null>(null);
+  const [share, setShare] = useState<{ url: string; busy: boolean; done: number; total: number; message: string } | null>(null);
+  const [url, setUrl] = useState("");
+  const [shift, setShift] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [bad, setBad] = useState(false);
+  const [linkNote, setLinkNote] = useState("");
+  const [linkBad, setLinkBad] = useState(false);
+  const seeded = useRef(false);
 
   useEffect(() => {
     admin<{ installed: boolean; canInstall: boolean; message: string }>("/api/admin/onlime/status")
       .then(setSync)
       .catch(() => setSync({ installed: false, canInstall: false, message: "Kunne ikke læse Onlime." }));
   }, []);
+
+  useEffect(() => {
+    let stop = false;
+    const pull = () => {
+      admin<{ url: string; busy: boolean; done: number; total: number; message: string }>("/api/admin/onlime/share")
+        .then((body) => {
+          if (stop) return;
+          setShare(body);
+          if (!seeded.current) {
+            seeded.current = true;
+            setUrl(body.url);
+          }
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const timer = window.setInterval(pull, 2000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, [seeded]);
 
   async function fetchSync() {
     setBusy(true);
@@ -639,6 +667,42 @@ function OnlimePanel() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function fetchSongs() {
+    setLinkBad(false);
+    setLinkNote("");
+    try {
+      const saved = await admin<{ ok?: boolean; url?: string; reason?: string }>("/api/admin/onlime/share", {
+        method: "PUT",
+        body: JSON.stringify({ url }),
+      });
+      if (saved.url)
+        setUrl(saved.url);
+      const body = await admin<{ message?: string }>("/api/admin/onlime/share", { method: "POST", body: "{}" });
+      setShare({ url: saved.url ?? url, busy: true, done: 0, total: 0, message: body.message ?? "Henter sange." });
+    } catch (reason) {
+      setLinkBad(true);
+      const text = reason instanceof Error ? reason.message : "";
+      try {
+        const body = JSON.parse(text) as { reason?: string };
+        setLinkNote(body.reason ?? "Linket kunne ikke bruges.");
+      } catch {
+        setLinkNote("Linket kunne ikke bruges.");
+      }
+    }
+  }
+
+  async function clearLink() {
+    setLinkBad(false);
+    try {
+      await admin("/api/admin/onlime/share", { method: "PUT", body: JSON.stringify({ url: "" }) });
+      setUrl("");
+      setShare((current) => current ? { ...current, url: "", message: "Linket er fjernet." } : current);
+    } catch {
+      setLinkBad(true);
+      setLinkNote("Linket kunne ikke fjernes.");
     }
   }
 
@@ -667,20 +731,32 @@ function OnlimePanel() {
     }
   }
 
+  const shareBusy = share?.busy ?? false;
+  const shareText = linkBad ? linkNote : share?.message ?? "";
+
   return (
     <section className="panel">
       <h2 className="font-serif text-3xl">Onlime</h2>
+      <p>Sæt et offentligt link til mappen med sangene ind. Maskinen henter kun sange, der ikke allerede ligger på den. Sange der slettes i Onlime, bliver liggende her.</p>
+      <input aria-label="Onlime-link" className={inputClass} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://cloud.onlime.dk/s/" />
+      <DanishKeyboard uppercase={shift} onKey={(key) => setUrl((value) => value + key)} onBackspace={() => setUrl((value) => value.slice(0, -1))} onClear={() => setUrl("")} onSpace={() => setUrl((value) => value + " ")} onShift={() => setShift((value) => !value)} />
+      <div className="install-actions">
+        <Button size="lg" disabled={shareBusy || url.trim().length === 0} onClick={() => void fetchSongs()}>Hent nye sange</Button>
+        {share?.url && <Button variant="ghost" size="lg" disabled={shareBusy} onClick={() => void clearLink()}>Fjern link</Button>}
+      </div>
+      {shareText && <p className={bad ? "warn" : "ok"}>{shareText}</p>}
+      <h2 className="font-serif text-3xl">Onlime Sync</h2>
       {!sync && <p>Leder efter Onlime Sync…</p>}
       {sync && !sync.installed && (
         <>
-          <p>Onlime Sync er ikke på maskinen endnu. Sæt netværkskablet i, og tryk på knappen. Derefter kan du logge ind og kopiere koden.</p>
+          <p>Onlime Sync kan stadig bruges til reklamer. Sæt netværkskablet i, og tryk på knappen. Derefter kan du logge ind og kopiere koden.</p>
           <Button size="lg" disabled={!sync.canInstall || busy} onClick={() => void fetchSync()}>Hent Onlime Sync</Button>
           <p className={bad ? "warn" : "ok"}>{message || sync.message}</p>
         </>
       )}
       {sync?.installed && (
         <>
-          <p>Log ind på Onlime, og kopiér koden. Under Sync skal musik og film ligge i mappen media, og reklamer i mappen reklamer. Tryk Start sync.</p>
+          <p>Log ind på Onlime, og kopiér koden. Under Sync skal reklamer ligge i mappen reklamer. Sange hentes med linket ovenfor. Tryk Start sync.</p>
           <OnlimeCode busy={busy} message={message} bad={bad} openUrl="/api/admin/onlime/open" submitLabel="Start sync" onSubmit={(token) => void start(token)} />
         </>
       )}

@@ -557,6 +557,23 @@ public static class Endpoints
         admin.MapGet("/wifi/current", () => Results.Ok(Wifi(WirelessProbe.Current()))).AddEndpointFilter(Gate);
         admin.MapGet("/wifi", InstallEndpoints.ListWifi).AddEndpointFilter(Gate);
         admin.MapPost("/wifi", async (WifiBody body) => await InstallEndpoints.ConnectWifi(body.Ssid, body.Psk)).AddEndpointFilter(Gate);
+        admin.MapGet("/onlime/share", (OnlimeShareService shares) => Results.Ok(shares.Status())).AddEndpointFilter(Gate);
+        admin.MapPut("/onlime/share", (ShareBody body, OnlimeShareService shares) =>
+        {
+            var result = shares.Save(body.Url);
+            return result.Ok
+                ? Results.Ok(result.Body)
+                : Results.Json(result.Body, statusCode: result.Status);
+        }).AddEndpointFilter(Gate);
+        admin.MapPost("/onlime/share", (OnlimeShareService shares, SettingsStore settings) =>
+        {
+            var result = shares.Begin();
+            if (result.Ok)
+                settings.Audit("onlime-share", "fetch");
+            return result.Ok
+                ? Results.Ok(result.Body)
+                : Results.Json(result.Body, statusCode: result.Status);
+        }).AddEndpointFilter(Gate);
         admin.MapGet("/onlime/status", () => Results.Ok(OnlimeSync.Status())).AddEndpointFilter(Gate);
         admin.MapPost("/onlime/install", (SettingsStore settings) =>
         {
@@ -734,4 +751,5 @@ public static class Endpoints
     private sealed record GenreHidden(bool Hidden);
     private sealed record SourceBody(string Name, string Kind, string Path, int Priority, bool Enabled, string Role);
     private sealed record PinBody(string? Current, string? Next);
+    private sealed record ShareBody(string? Url);
 }

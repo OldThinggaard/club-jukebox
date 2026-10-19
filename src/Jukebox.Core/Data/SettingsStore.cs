@@ -90,6 +90,8 @@ public sealed class SettingsStore
 
     public string? GetPinHash() => All().TryGetValue(SettingKeys.PinHash, out var hash) ? hash : null;
 
+    public string? GetValue(string key) => All().TryGetValue(key, out var value) ? value : null;
+
     public void Save(ClubSettings settings)
     {
         var pairs = new Dictionary<string, string>
