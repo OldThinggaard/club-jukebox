@@ -388,9 +388,12 @@ function LibraryPanel() {
                   <td>{item.userPlayCount} guest / {item.autoPlayCount} house</td>
                   <td>
                     <Button variant="ghost" type="button" onClick={() => setEditing(item)}>Edit</Button>
-                    {item.sourceId === "local-media" && (
+                    {(item.sourceId === "local-media" || item.sourceId === "onlime-media") && (
                       <Button variant="danger" type="button" onClick={() => {
-                        if (!confirm("Slet denne sang fra jukeboksen? Filen på USB-nøglen bliver liggende.")) return;
+                        const question = item.sourceId === "onlime-media"
+                          ? "Slet denne sang fra jukeboksen? Ligger samme filnavn stadig i Onlime-mappen, bliver den hentet igen."
+                          : "Slet denne sang fra jukeboksen? Filen på USB-nøglen bliver liggende.";
+                        if (!confirm(question)) return;
                         void admin(`/api/admin/media/${item.id}`, { method: "DELETE" }).then(() => load());
                       }}>Slet</Button>
                     )}

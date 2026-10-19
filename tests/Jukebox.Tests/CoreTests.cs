@@ -741,6 +741,10 @@ public class LibrarySearchTests
         Assert.NotNull(kept);
         Assert.StartsWith(Path.GetFullPath(root), kept);
         Assert.Null(LocalCopy.InsideLibrary(root, "../secret.mp4"));
+        var onlime = Path.Combine(root, "onlime");
+        Assert.Equal(Path.GetFullPath(Path.Combine(onlime, "Forkert.mp4")), LocalCopy.DeletablePath(LocalCopy.OnlimeSourceId, root, onlime, "Forkert.mp4"));
+        Assert.Null(LocalCopy.DeletablePath("onlime-events", root, onlime, "Friday.png"));
+        Assert.Null(LocalCopy.DeletablePath(LocalCopy.OnlimeSourceId, root, onlime, "../secret.mp4"));
     }
 
     [Fact]

@@ -36,6 +36,24 @@ public class HostTests : IClassFixture<JukeboxFactory>
     }
 
     [Fact]
+    public async Task An_onlime_song_can_be_deleted_and_a_screen_cannot()
+    {
+        var song = _factory.AddStored("onlime-media", Path.Combine("onlime-sync", "media"), "Gasolin", "Forkert version", "video");
+        var screen = _factory.AddStored("onlime-events", Path.Combine("onlime-sync", "events"), "Club", "Friday Bar Extra", "image");
+        var client = _factory.CreateClient();
+        var login = await client.PostAsJsonAsync("/api/admin/login", new { pin = "2580" });
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        var deleted = await client.DeleteAsync($"/api/admin/media/{song}");
+        Assert.Equal(HttpStatusCode.OK, deleted.StatusCode);
+        Assert.False(_factory.FileExists(Path.Combine("onlime-sync", "media"), "Gasolin - Forkert version.mp4"));
+
+        var refused = await client.DeleteAsync($"/api/admin/media/{screen}");
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.True(_factory.FileExists(Path.Combine("onlime-sync", "events"), "Club - Friday Bar Extra.mp4"));
+    }
+
+    [Fact]
     public async Task Health_and_pin_gate_work()
     {
         var client = _factory.CreateClient();
@@ -210,21 +228,23 @@ public sealed class JukeboxFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Jukebox__EnableBackground", "false");
     }
 
-    public string AddFilm(string artist, string title)
+    public string AddFilm(string artist, string title) => AddStored("local-media", "library", artist, title, "video");
+
+    public string AddStored(string sourceId, string folderName, string artist, string title, string mediaType)
     {
         using var scope = Services.CreateScope();
         var media = scope.ServiceProvider.GetRequiredService<MediaStore>();
         var file = $"{artist} - {title}.mp4";
-        var folder = Path.Combine(_directory, "library");
+        var folder = Path.Combine(_directory, folderName);
         Directory.CreateDirectory(folder);
         File.WriteAllBytes(Path.Combine(folder, file), [0, 1, 2, 3]);
         return media.SaveIndexed(new IndexedSave
         {
-            SourceId = "local-media",
+            SourceId = sourceId,
             RelativePath = file,
             FileName = file,
-            MediaType = "video",
-            LibraryRole = "catalog",
+            MediaType = mediaType,
+            LibraryRole = mediaType == "image" ? "event" : "catalog",
             FileSize = 4,
             ModifiedUnix = 1,
             Resolved = new Jukebox.Core.Metadata.ResolvedMetadata { Title = title, Artist = artist, ArtistLetter = "C" },
@@ -232,6 +252,8 @@ public sealed class JukeboxFactory : WebApplicationFactory<Program>
             Ready = true
         }, []);
     }
+
+    public bool FileExists(string folderName, string file) => File.Exists(Path.Combine(_directory, folderName, file));
 
     protected override void Dispose(bool disposing)
     {

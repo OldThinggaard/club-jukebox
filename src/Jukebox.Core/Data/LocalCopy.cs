@@ -3,6 +3,18 @@ namespace Jukebox.Core.Data;
 public static class LocalCopy
 {
     public const string SourceId = "local-media";
+    public const string OnlimeSourceId = "onlime-media";
+
+    public static string? DeletablePath(string sourceId, string libraryRoot, string onlimeRoot, string relativePath)
+    {
+        var root = sourceId switch
+        {
+            SourceId => libraryRoot,
+            OnlimeSourceId => onlimeRoot,
+            _ => null
+        };
+        return root is null ? null : InsideLibrary(root, relativePath);
+    }
 
     public static string? InsideLibrary(string libraryRoot, string relativePath)
     {

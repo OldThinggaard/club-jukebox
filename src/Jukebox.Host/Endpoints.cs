@@ -299,9 +299,9 @@ public static class Endpoints
             var item = media.Get(id);
             if (item is null)
                 return Results.NotFound();
-            var full = LocalCopy.InsideLibrary(paths.Library, item.RelativePath);
-            if (item.SourceId != LocalCopy.SourceId || full is null)
-                return Results.Json(new { ok = false, reason = "Only a song copied from USB can be deleted." }, statusCode: StatusCodes.Status409Conflict);
+            var full = LocalCopy.DeletablePath(item.SourceId, paths.Library, paths.OnlimeMedia, item.RelativePath);
+            if (full is null)
+                return Results.Json(new { ok = false, reason = "Only a song in the club library or the Onlime folder can be deleted." }, statusCode: StatusCodes.Status409Conflict);
             if (queue.IsPlaying(id))
                 return Results.Json(new { ok = false, reason = "The song is playing. Wait until it finishes." }, statusCode: StatusCodes.Status409Conflict);
             try
