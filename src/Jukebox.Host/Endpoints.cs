@@ -225,11 +225,12 @@ public static class Endpoints
             return Results.Ok(sampler.Build(paths.DatabasePath, counts.Ready, counts.Hidden, counts.Errors, club.LastScanAt, club.LastBackupAt, startedUtc, playback.Snapshot().LastError));
         }).AddEndpointFilter(Gate);
 
-        admin.MapGet("/media", (string? q, int? limit, int? offset, MediaStore media) =>
+        admin.MapGet("/media", (string? q, string? letter, int? limit, int? offset, MediaStore media) =>
         {
             var items = media.Query(new CatalogFilter
             {
                 Text = q,
+                Letter = letter,
                 Limit = limit ?? 80,
                 Offset = offset ?? 0,
                 IncludeUnready = true
@@ -239,6 +240,7 @@ public static class Endpoints
                 id = item.Id,
                 title = item.Title,
                 artist = item.Artist,
+                artistLetter = item.ArtistLetter,
                 album = item.Album,
                 genre = item.Genre,
                 year = item.Year,

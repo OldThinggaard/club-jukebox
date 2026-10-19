@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Field, inputClass, Modal } from "./components/ui";
 import { formatBytes } from "./lib/utils";
 import { DanishKeyboard } from "./components/Keyboard";
@@ -24,10 +24,13 @@ type Overview = {
   playbackError: string | null;
 };
 
+const shelfLetters = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ".split(""), "#"];
+
 type AdminMedia = {
   id: string;
   title: string;
   artist: string;
+  artistLetter: string;
   album: string;
   genre: string;
   year: number | null;
@@ -271,21 +274,21 @@ function GenrePanel() {
   }
   return (
     <section className="panel">
-      <h2 className="font-serif text-2xl">Skjul genre</h2>
-      <p className="muted">En skjult genre forsvinder fra hylden. Sangene i den vises heller ikke. Tryk Vis, når de skal frem igen.</p>
+      <h2 className="font-serif text-2xl">Genre</h2>
+      <p className="muted">Tryk på en genre. De gule er skjult fra hylden.</p>
       {note && <p className="banner">{note}</p>}
       {genres.length === 0 && <p>Ingen genrer endnu.</p>}
-      <div>
+      <div className="chips wrap">
         {genres.map((genre) => (
-          <div key={genre.id} className="flex items-center justify-between gap-3 border-b border-white/10 py-2">
-            <span>
-              <strong>{genre.name}</strong>
-              <span className="muted"> · {genre.count} {genre.count === 1 ? "sang" : "sange"}{genre.isHidden ? " · skjult" : ""}</span>
-            </span>
-            <Button variant={genre.isHidden ? "brass" : "ghost"} size="lg" type="button" onClick={() => void toggle(genre)}>
-              {genre.isHidden ? "Vis" : "Skjul"}
-            </Button>
-          </div>
+          <button
+            key={genre.id}
+            type="button"
+            className={genre.isHidden ? "chip active" : "chip"}
+            aria-pressed={genre.isHidden}
+            onClick={() => void toggle(genre)}
+          >
+            {genre.name}
+          </button>
         ))}
       </div>
     </section>
@@ -294,41 +297,110 @@ function GenrePanel() {
 
 function LibraryPanel() {
   const [items, setItems] = useState<AdminMedia[]>([]);
+  const [draft, setDraft] = useState("");
   const [q, setQ] = useState("");
+  const [letter, setLetter] = useState("");
+  const [busy, setBusy] = useState(true);
+  const [note, setNote] = useState("");
   const [editing, setEditing] = useState<AdminMedia | null>(null);
-  const load = (text = q) => admin<AdminMedia[]>(`/api/admin/media?limit=100${text ? `&q=${encodeURIComponent(text)}` : ""}`).then(setItems);
-  useEffect(() => { void load(""); }, []);
+  const request = useRef(0);
+
+  const load = async (text = q, chosen = letter) => {
+    const ticket = ++request.current;
+    setBusy(true);
+    setNote("");
+    const query = text.trim();
+    const collected: AdminMedia[] = [];
+    let offset = 0;
+    try {
+      while (offset < 20000) {
+        const params = new URLSearchParams({ limit: "200", offset: String(offset) });
+        if (query) params.set("q", query);
+        else if (chosen) params.set("letter", chosen);
+        const batch = await admin<AdminMedia[]>(`/api/admin/media?${params}`);
+        if (ticket !== request.current) return;
+        collected.push(...batch);
+        if (batch.length < 200) break;
+        offset += 200;
+      }
+      if (ticket !== request.current) return;
+      setItems(collected);
+      setQ(query);
+      setLetter(query ? "" : chosen);
+      if (collected.length >= 20000) setNote("Viser de første 20000 sange.");
+    } catch {
+      if (ticket === request.current) setNote("Sangene kunne ikke hentes.");
+    } finally {
+      if (ticket === request.current) setBusy(false);
+    }
+  };
+
+  useEffect(() => { void load("", ""); }, []);
+
+  const groups = useMemo(() => {
+    const buckets = new Map<string, AdminMedia[]>();
+    for (const item of items) {
+      const key = shelfLetters.includes(item.artistLetter) ? item.artistLetter : "#";
+      const list = buckets.get(key) ?? [];
+      list.push(item);
+      buckets.set(key, list);
+    }
+    return shelfLetters.filter((key) => buckets.has(key)).map((key) => ({ letter: key, items: buckets.get(key)! }));
+  }, [items]);
+
+  const empty = q ? "Ingen sange med det navn." : letter ? `Ingen sange under ${letter}.` : "Biblioteket er tomt.";
+
   return (
     <>
     <GenrePanel />
     <section className="panel">
+      <div className="admin-letters">
+        <button type="button" className={!q && letter === "" ? "letter active" : "letter"} onClick={() => { setDraft(""); void load("", ""); }}>Alle</button>
+        {shelfLetters.map((item) => (
+          <button key={item} type="button" className={!q && letter === item ? "letter active" : "letter"} onClick={() => { setDraft(""); void load("", item); }}>{item}</button>
+        ))}
+      </div>
       <div className="actions">
-        <input className={inputClass} value={q} placeholder="Find in the whole library" onChange={(event) => setQ(event.target.value)} />
-        <Button type="button" onClick={() => void load()}>Search</Button>
-        <Button variant="ghost" type="button" onClick={() => void admin("/api/admin/library/reindex", { method: "POST" })}>Re-index</Button>
+        <input
+          className={`${inputClass} admin-search`}
+          value={draft}
+          placeholder="Søg efter sang eller artist"
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => { if (event.key === "Enter") void load(draft, ""); }}
+        />
+        <Button type="button" onClick={() => void load(draft, "")}>Søg</Button>
+        <Button variant="ghost" type="button" onClick={() => void admin("/api/admin/library/reindex", { method: "POST" }).then(() => load())}>Re-index</Button>
         <Button variant="danger" type="button" onClick={() => { if (confirm("Rebuild removes the catalogue and reads every folder again. Play counts are cleared.")) void admin("/api/admin/library/rebuild", { method: "POST" }).then(() => load()); }}>Rebuild</Button>
       </div>
-      <table className="table">
-        <thead><tr><th>Title</th><th>State</th><th>Plays</th><th></th></tr></thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id}>
-              <td><strong>{item.title}</strong><div className="muted">{item.artist} · {item.relativePath}</div></td>
-              <td>{item.isReady ? (item.isHidden ? "Hidden" : "On the shelf") : item.indexState}{item.error ? ` — ${item.error}` : ""}</td>
-              <td>{item.userPlayCount} guest / {item.autoPlayCount} house</td>
-              <td>
-                <Button variant="ghost" type="button" onClick={() => setEditing(item)}>Edit</Button>
-                {item.sourceId === "local-media" && (
-                  <Button variant="danger" type="button" onClick={() => {
-                    if (!confirm("Slet denne sang fra jukeboksen? Filen på USB-nøglen bliver liggende.")) return;
-                    void admin(`/api/admin/media/${item.id}`, { method: "DELETE" }).then(() => load());
-                  }}>Slet</Button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <p className="muted">{busy ? "Henter sangene…" : `${items.length} ${items.length === 1 ? "sang" : "sange"}`}</p>
+      {note && <p className="banner">{note}</p>}
+      {!busy && items.length === 0 && <p>{empty}</p>}
+      {groups.map((group) => (
+        <section key={group.letter} className="library-group">
+          <h3>{group.letter}</h3>
+          <table className="table">
+            <thead><tr><th>Title</th><th>State</th><th>Plays</th><th></th></tr></thead>
+            <tbody>
+              {group.items.map((item) => (
+                <tr key={item.id}>
+                  <td><strong>{item.title}</strong><div className="muted">{item.artist} · {item.relativePath}</div></td>
+                  <td>{item.isReady ? (item.isHidden ? "Hidden" : "On the shelf") : item.indexState}{item.error ? ` — ${item.error}` : ""}</td>
+                  <td>{item.userPlayCount} guest / {item.autoPlayCount} house</td>
+                  <td>
+                    <Button variant="ghost" type="button" onClick={() => setEditing(item)}>Edit</Button>
+                    {item.sourceId === "local-media" && (
+                      <Button variant="danger" type="button" onClick={() => {
+                        if (!confirm("Slet denne sang fra jukeboksen? Filen på USB-nøglen bliver liggende.")) return;
+                        void admin(`/api/admin/media/${item.id}`, { method: "DELETE" }).then(() => load());
+                      }}>Slet</Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
       {editing && <MediaEditor item={editing} onClose={() => { setEditing(null); void load(); }} />}
     </section>
     </>

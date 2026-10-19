@@ -153,6 +153,30 @@ a.icon-button { display: inline-flex; align-items: center; text-decoration: none
   touch-action: pan-x;
 }
 .chips::-webkit-scrollbar { display: none; height: 0; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.admin-letters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.admin-letters .letter { width: auto; min-width: 44px; min-height: 44px; }
+.admin-search { flex: 1 1 220px; min-width: min(100%, 220px); }
+.library-group { margin-top: 8px; }
+.library-group h3 {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: 8px 0;
+  background: #1c1814;
+  font-family: Fraunces, serif;
+  font-size: 22px;
+  color: #e2b15a;
+}
+.library-group td:last-child { white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .library-group thead { display: none; }
+  .library-group table, .library-group tbody, .library-group tr, .library-group td { display: block; width: 100%; }
+  .library-group tr { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .library-group td { border: 0; padding: 2px 0; }
+  .library-group td:last-child { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+}
 .chip, .letter {
   height: 44px;
   padding: 0 14px;

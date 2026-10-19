@@ -688,6 +688,19 @@ public class LibrarySearchTests
     }
 
     [Fact]
+    public void A_letter_keeps_every_song_under_that_letter()
+    {
+        using var fixture = new TempLibrary();
+        fixture.Add("ABBA", "Dancing Queen", "Pop", 1976);
+        fixture.Add("Adele", "Rolling in the Deep", "Soul", 2011);
+        fixture.Add("Queen", "Bohemian Rhapsody", "Rock", 1975);
+        fixture.Add("Kim Larsen", "Papirsklip", "Pop", 1986);
+        var underA = fixture.Media.Query(new CatalogFilter { Letter = "A", Limit = 10, IncludeUnready = true });
+        Assert.Equal(["ABBA", "Adele"], underA.Select(item => item.Artist).ToArray());
+        Assert.Equal("K", Assert.Single(fixture.Media.Query(new CatalogFilter { Letter = "K", Limit = 10, IncludeUnready = true })).ArtistLetter);
+    }
+
+    [Fact]
     public void The_next_page_holds_the_songs_after_the_first()
     {
         using var fixture = new TempLibrary();
