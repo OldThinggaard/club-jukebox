@@ -189,6 +189,17 @@ public sealed class QueueStore
     public void ClearWaiting() =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, "DELETE FROM queue_items WHERE status='queued';", tx));
 
+    public void ClearAll() =>
+        _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, "DELETE FROM queue_items WHERE status IN ('queued','playing');", tx));
+
+    public int ActiveCount()
+    {
+        using var connection = _database.Open();
+        using var reader = JukeboxDatabase.Query(connection, "SELECT COUNT(*) FROM queue_items WHERE status IN ('queued','playing');");
+        reader.Read();
+        return reader.GetInt32(0);
+    }
+
     public void ResetInterrupted() =>
         _database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, """
             UPDATE queue_items SET status='queued', started_at=NULL WHERE status='playing';

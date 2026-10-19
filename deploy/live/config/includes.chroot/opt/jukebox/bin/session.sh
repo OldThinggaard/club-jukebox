@@ -172,6 +172,57 @@ prepare_openbox
 openbox >/var/log/jukebox-openbox.log 2>&1 &
 openbox_pid=$!
 
+hall_geom() {
+  xrandr --query 2>/dev/null | awk '
+    $2 == "connected" && $1 !~ /^(eDP|LVDS|DSI)/ {
+      for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+[0-9]+\+[0-9]+$/) { print $i; exit }
+    }
+  '
+}
+
+show_welcome() {
+  local geom="$1" image w h x y
+  image="/var/lib/jukebox/cache/welcome.jpg"
+  if [[ ! -f "$image" ]]; then
+    image="/opt/jukebox/lib/welcome.jpg"
+  fi
+  [[ -f "$image" ]] || return 0
+  [[ "$geom" =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]] || return 0
+  w="${BASH_REMATCH[1]}"
+  h="${BASH_REMATCH[2]}"
+  x="${BASH_REMATCH[3]}"
+  y="${BASH_REMATCH[4]}"
+  command -v mpv >/dev/null 2>&1 || return 0
+  mpv --no-config --no-audio --force-window=yes --ontop=yes --no-border \
+    --keep-open=yes --image-display-duration=inf \
+    --geometry="${w}x${h}+${x}+${y}" \
+    --title=jukebox-welcome \
+    "$image" >/var/log/jukebox-welcome.log 2>&1 &
+  printf '%s\n' "$!" > /var/lib/jukebox/welcome.pid
+}
+
+hide_welcome() {
+  local pid
+  [[ -f /var/lib/jukebox/welcome.pid ]] || return 0
+  pid="$(cat /var/lib/jukebox/welcome.pid 2>/dev/null || true)"
+  if [[ -n "$pid" ]]; then
+    kill "$pid" >/dev/null 2>&1 || true
+  fi
+  rm -f /var/lib/jukebox/welcome.pid
+}
+
+layout_screens
+(
+  for _ in $(seq 1 90); do
+    geom="$(hall_geom || true)"
+    if [[ -n "$geom" ]]; then
+      show_welcome "$geom"
+      exit 0
+    fi
+    sleep 1
+  done
+) &
+
 ready=0
 for _ in $(seq 1 180); do
   if curl -fsS http://127.0.0.1:47123/api/health >/dev/null 2>&1; then
@@ -198,19 +249,22 @@ if [[ -n "$panel" ]]; then
   fi
 fi
 
-hall_geom() {
-  xrandr --query 2>/dev/null | awk '
-    $2 == "connected" && $1 !~ /^(eDP|LVDS|DSI)/ {
-      for (i = 1; i <= NF; i++) if ($i ~ /^[0-9]+x[0-9]+\+[0-9]+\+[0-9]+$/) { print $i; exit }
-    }
-  '
-}
-
 (
   for _ in $(seq 1 90); do
     geom="$(hall_geom || true)"
     if [[ -n "$geom" ]]; then
       HALL_GEOM="$geom" /opt/jukebox/bin/kiosk.sh hall &
+      for _ in $(seq 1 20); do
+        if [[ -s /var/lib/jukebox/play.request ]]; then
+          break
+        fi
+        if xwininfo -root -tree 2>/dev/null | grep -q 'Club jukebox'; then
+          sleep 2
+          break
+        fi
+        sleep 0.5
+      done
+      hide_welcome
       exit 0
     fi
     sleep 2

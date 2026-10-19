@@ -23,6 +23,7 @@ install -m 0755 "$ROOT/deploy/scripts/kiosk.sh" "$pkg/opt/jukebox/bin/kiosk.sh"
 install -m 0755 "$ROOT/deploy/scripts/hall-player.sh" "$pkg/opt/jukebox/bin/hall-player.sh"
 install -m 0755 "$ROOT/deploy/scripts/mpv-volume.py" "$pkg/opt/jukebox/lib/mpv-volume.py"
 install -m 0644 "$ROOT/deploy/package/wake.mp4" "$pkg/opt/jukebox/lib/wake.mp4"
+install -m 0644 "$ROOT/deploy/package/welcome.jpg" "$pkg/opt/jukebox/lib/welcome.jpg"
 install -m 0755 "$ROOT/deploy/scripts/hide-cursor.py" "$pkg/opt/jukebox/lib/hide-cursor.py"
 install -m 0755 "$ROOT/deploy/package/secure-boot.sh" "$pkg/opt/jukebox/lib/secure-boot.sh"
 install -d "$pkg/usr/share/jukebox/secure-boot"
@@ -335,5 +336,5 @@ else
   sudo chown "$(id -u):$(id -g)" "$out/videojukebox.deb"
 fi
 sha256sum "$out/videojukebox.deb" | tee "$out/videojukebox.deb.sha256"
-rm -rf "$stage"
+rm -rf "$stage" 2>/dev/null || sudo -n rm -rf "$stage" || true
 echo "Package ready: $out/videojukebox.deb"

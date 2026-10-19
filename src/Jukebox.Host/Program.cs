@@ -86,7 +86,13 @@ if (config.WatchUsb)
 
 media.SeedSources(sources);
 media.UpsertSource(sources.First(source => source.Id == "onlime-reklamer"));
-app.Services.GetRequiredService<QueueStore>().ResetInterrupted();
+var queue = app.Services.GetRequiredService<QueueStore>();
+if (PowerGap.ForgetQueue(PowerGap.Read(paths.LastSeen), DateTime.UtcNow))
+    queue.ClearAll();
+else
+    queue.ResetInterrupted();
+PowerGap.Touch(paths.LastSeen);
+WelcomePoster.Write(paths.WelcomeCard, settings.Get().ClubName, paths.LogoPath);
 HallPlayback.ClearStalePlay(paths.PlayRequest, paths.PlayDone, paths.PlayClock);
 if (config.SeedSampleMedia)
     await SampleLibrarySeeder.SeedAsync(paths, CancellationToken.None);

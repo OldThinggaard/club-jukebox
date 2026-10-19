@@ -446,6 +446,7 @@ public static class Endpoints
         admin.MapPut("/settings", (ClubSettings body, SettingsStore settings, JukeboxPaths paths) =>
         {
             settings.Save(body);
+            WelcomePoster.Write(paths.WelcomeCard, body.ClubName, paths.LogoPath);
             try
             {
                 HallPlayback.AtomicWrite(paths.AudioEnv, HallPlayback.RouteFile(body.AudioDevice, body.VolumePercent));

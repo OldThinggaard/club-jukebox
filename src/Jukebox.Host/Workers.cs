@@ -52,6 +52,7 @@ public sealed class PlaybackWorker(
     private IReadOnlyList<DisplayInfo> _displays = [];
     private long _displaysAt = long.MinValue;
     private int _screenIndex;
+    private long _seenAt = long.MinValue;
     private bool _playerWoken;
     private bool _stoppedWaitingForPlayer;
     private long _playerWaitUntil = long.MinValue;
@@ -68,6 +69,7 @@ public sealed class PlaybackWorker(
             PlayJob? job = null;
             try
             {
+                NoteAlive();
                 if (HoldQueueForPlayer())
                 {
                     await Task.Delay(200, stoppingToken);
@@ -123,6 +125,22 @@ public sealed class PlaybackWorker(
                     coordinator.Finish(job, PlayResult.Failed(ex.Message));
                 await Task.Delay(1000, stoppingToken);
             }
+        }
+    }
+
+    private void NoteAlive()
+    {
+        var now = Environment.TickCount64;
+        if (_seenAt != long.MinValue && now - _seenAt < 15_000)
+            return;
+        _seenAt = now;
+        try
+        {
+            PowerGap.Touch(paths.LastSeen);
+        }
+        catch (IOException)
+        {
+            // The next pass writes the time. A missed line still counts as running.
         }
     }
 

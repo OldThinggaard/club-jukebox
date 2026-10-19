@@ -578,6 +578,61 @@ public class VersionTests
     }
 }
 
+public class PowerGapTests
+{
+    [Fact]
+    public void A_gap_over_thirty_minutes_forgets_the_queue()
+    {
+        var now = new DateTime(2026, 10, 19, 8, 0, 0, DateTimeKind.Utc);
+        Assert.True(PowerGap.ForgetQueue(null, now));
+        Assert.True(PowerGap.ForgetQueue(now.AddMinutes(-30).AddSeconds(-1), now));
+        Assert.False(PowerGap.ForgetQueue(now.AddMinutes(-30), now));
+        Assert.False(PowerGap.ForgetQueue(now.AddMinutes(-5), now));
+        Assert.False(PowerGap.ForgetQueue(now.AddMinutes(2), now));
+    }
+
+    [Fact]
+    public void The_seen_time_and_the_welcome_picture_are_written()
+    {
+        var root = Directory.CreateTempSubdirectory("jukebox-gap-").FullName;
+        try
+        {
+            var stamp = Path.Combine(root, "last-seen");
+            var when = new DateTime(2026, 10, 19, 7, 0, 0, DateTimeKind.Utc);
+            PowerGap.Write(stamp, when);
+            Assert.Equal(when, PowerGap.Read(stamp));
+            File.WriteAllText(stamp, "not-a-time");
+            Assert.Null(PowerGap.Read(stamp));
+
+            var card = Path.Combine(root, "welcome.jpg");
+            WelcomePoster.Write(card, "Oak & Iron", null);
+            Assert.True(new FileInfo(card).Length > 1000);
+            var head = new byte[2];
+            using (var stream = File.OpenRead(card))
+                stream.ReadExactly(head);
+            Assert.Equal(new byte[] { 0xFF, 0xD8 }, head);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { /* temp cleanup */ }
+        }
+    }
+
+    [Fact]
+    public void Clearing_after_a_long_stop_removes_the_song_that_was_playing()
+    {
+        using var fixture = new TempLibrary();
+        var song = fixture.Add("Queen", "Radio Ga Ga", "Rock", 1984);
+        Assert.True(fixture.Queue.TryEnqueue(song, Origins.User, "touchscreen").Ok);
+        fixture.Database.InWrite((connection, tx) => JukeboxDatabase.Execute(connection, """
+            UPDATE queue_items SET status='playing' WHERE media_id=$id;
+            """, tx, ("$id", song)));
+        Assert.Equal(1, fixture.Queue.ActiveCount());
+        fixture.Queue.ClearAll();
+        Assert.Equal(0, fixture.Queue.ActiveCount());
+    }
+}
+
 public class LibrarySearchTests
 {
     [Fact]
