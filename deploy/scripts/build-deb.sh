@@ -233,6 +233,18 @@ if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebo
   echo "An update must not talk to systemd." >&2
   exit 1
 fi
+if grep reboot "$pkg/opt/jukebox/lib/apply-pending.sh" | grep -v -- '-f' >/dev/null; then
+  echo "An update must not ask systemd to reboot." >&2
+  exit 1
+fi
+if ! grep -q 'reboot -f' "$pkg/opt/jukebox/lib/apply-pending.sh"; then
+  echo "An update must reboot without waiting for the printer service." >&2
+  exit 1
+fi
+if ! grep -q '/dev/null "/etc/systemd/system/${unit}"' "$pkg/DEBIAN/postinst"; then
+  echo "The printer service must stay off." >&2
+  exit 1
+fi
 if grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then
   echo "A dark screen must not restart the computer." >&2
   exit 1

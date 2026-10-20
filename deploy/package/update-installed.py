@@ -232,7 +232,6 @@ def main(argv):
     say("Færdig. Computeren starter igen.")
     say("Tag USB-nøglen ud, når hylden er tilbage.")
     time.sleep(3)
-    subprocess.run(["systemctl", "reboot"], check=False)
     subprocess.run(["reboot", "-f"], check=False)
     return 0
 

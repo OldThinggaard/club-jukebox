@@ -265,7 +265,8 @@ screen_flag=/var/lib/jukebox/restart-screens
 stop_browser() {
   local pid="$1"
   [[ -n "$pid" ]] || return 0
-  kill -- "-${pid}" >/dev/null 2>&1 || kill "$pid" >/dev/null 2>&1 || true
+  # Only this window. Killing its process group can take the whole session down.
+  kill "$pid" >/dev/null 2>&1 || true
   wait "$pid" >/dev/null 2>&1 || true
 }
 
