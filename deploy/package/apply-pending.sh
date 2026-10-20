@@ -17,9 +17,8 @@ sync
 if dpkg -i "$deb"; then
   rm -f "$deb" "$updating" /var/lib/jukebox/update-error
   sync
-  printf '%s\n' "Videojukebox er opdateret. Maskinen genstarter." > /dev/console || true
-  # Waiting for services stops the next start at the printer service.
-  /sbin/reboot -f || reboot -f || true
+  printf '%s\n' "Videojukebox er opdateret. Tag USB-noeglen ud. Maskinen genstarter." > /dev/console || true
+  reboot || true
   exit 0
 fi
 

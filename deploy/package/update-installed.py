@@ -229,10 +229,10 @@ def main(argv):
         say("Der er ikke slettet noget. Sluk, tag USB-nøglen ud, og tænd igen.")
         time.sleep(3600)
         return code
-    say("Færdig. Computeren starter igen.")
-    say("Tag USB-nøglen ud, når hylden er tilbage.")
-    time.sleep(3)
-    subprocess.run(["reboot", "-f"], check=False)
+    say("Færdig. Tag USB-nøglen ud nu.")
+    say("Computeren starter igen om et øjeblik.")
+    time.sleep(12)
+    subprocess.run(["reboot"], check=False)
     return 0
 
 

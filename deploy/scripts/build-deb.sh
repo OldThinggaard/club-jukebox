@@ -233,16 +233,23 @@ if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebo
   echo "An update must not talk to systemd." >&2
   exit 1
 fi
-if grep reboot "$pkg/opt/jukebox/lib/apply-pending.sh" | grep -v -- '-f' >/dev/null; then
-  echo "An update must not ask systemd to reboot." >&2
+if grep -q 'reboot -f' \
+  "$pkg/opt/jukebox/lib/apply-pending.sh" \
+  "$ROOT/deploy/package/update-installed.py" \
+  "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/install-to-disk.sh"; then
+  echo "A restart must let Debian finish." >&2
   exit 1
 fi
-if ! grep -q 'reboot -f' "$pkg/opt/jukebox/lib/apply-pending.sh"; then
-  echo "An update must reboot without waiting for the printer service." >&2
+if ! grep -qx '  reboot || true' "$pkg/opt/jukebox/lib/apply-pending.sh"; then
+  echo "An update must restart the computer." >&2
   exit 1
 fi
-if ! grep -q '/dev/null "/etc/systemd/system/${unit}"' "$pkg/DEBIAN/postinst"; then
-  echo "The printer service must stay off." >&2
+if grep -q 'ln -sfn /dev/null "/etc/systemd/system/${unit}"' "$pkg/DEBIAN/postinst"; then
+  echo "Startup must leave the printer service alone." >&2
+  exit 1
+fi
+if ! grep -q 'readlink "$link"' "$pkg/DEBIAN/postinst"; then
+  echo "A previous package must put the printer service back." >&2
   exit 1
 fi
 if grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then

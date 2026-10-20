@@ -196,7 +196,6 @@ fi
 say "Installationen er færdig."
 sync
 if [[ "$REBOOT" -eq 1 ]]; then
-  say "Maskinen genstarter nu uden USB-nøglen."
-  # A polite reboot waits for the printer service and can stop the next boot there.
-  /sbin/reboot -f || reboot -f || true
+  say "Tag USB-nøglen ud nu. Maskinen genstarter."
+  reboot || true
 fi
