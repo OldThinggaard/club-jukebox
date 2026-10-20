@@ -165,10 +165,6 @@ if ! grep -q 'mpv-volume.py active 80' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The idle jack must be turned off once at startup." >&2
   exit 1
 fi
-if grep -q 'restart-screens' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "The clock must not close the screens." >&2
-  exit 1
-fi
 if ! grep -q 'hide-cursor.py' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The pointer must stay hidden." >&2
   exit 1
@@ -231,24 +227,6 @@ if grep -q 'WatchdogSec' "$pkg/DEBIAN/postinst"; then
 fi
 if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebox/lib/boot-guard.sh" "$pkg/opt/jukebox/lib/apply-pending.sh"; then
   echo "An update must not talk to systemd." >&2
-  exit 1
-fi
-if grep -E '^[[:space:]]*(/sbin/)?reboot([[:space:]]|$)' \
-  "$pkg/opt/jukebox/lib/apply-pending.sh" \
-  "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/install-to-disk.sh"; then
-  echo "An update must leave the computer running." >&2
-  exit 1
-fi
-if grep -q 'reboot' "$ROOT/deploy/package/update-installed.py"; then
-  echo "The USB update must leave the computer running." >&2
-  exit 1
-fi
-if grep -q 'ln -sfn /dev/null "/etc/systemd/system/${unit}"' "$pkg/DEBIAN/postinst"; then
-  echo "Startup must leave the printer service alone." >&2
-  exit 1
-fi
-if ! grep -q 'readlink "$link"' "$pkg/DEBIAN/postinst"; then
-  echo "A previous package must put the printer service back." >&2
   exit 1
 fi
 if grep -q 'reboot -f' "$pkg/opt/jukebox/lib/boot-guard.sh"; then

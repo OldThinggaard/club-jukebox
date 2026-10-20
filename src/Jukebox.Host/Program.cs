@@ -34,7 +34,6 @@ if (args.Contains("--self-check"))
 }
 
 builder.Services.AddSingleton(config);
-builder.Services.AddSingleton(new HostClock(startedUtc));
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton<JukeboxDatabase>();
 builder.Services.AddSingleton<SettingsStore>();

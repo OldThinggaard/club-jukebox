@@ -71,9 +71,6 @@ public static class SettingKeys
     public const string BackupHour = "backup.hour_local";
     public const string LastScanAt = "system.last_scan_at";
     public const string LastBackupAt = "system.last_backup_at";
-    public const string ScreenRestartHour = "screens.restart_hour";
-    public const string ScreenRestartMinute = "screens.restart_minute";
-    public const string ScreenRestartDay = "screens.restart_day";
     public const string OnlimeShareUrl = "onlime.share_url";
     public const string OnlimeShareAt = "onlime.share_at";
     public const string OnlimeShareNote = "onlime.share_note";

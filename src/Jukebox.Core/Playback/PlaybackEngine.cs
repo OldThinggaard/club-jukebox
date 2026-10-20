@@ -156,7 +156,6 @@ public sealed class PlaybackCoordinator
     private string? _lastError;
     private string? _finishedQueueId;
     private bool _halt;
-    private bool _holdHouse;
 
     public PlaybackCoordinator(QueueStore queue, MediaStore media, SettingsStore settings)
     {
@@ -169,16 +168,6 @@ public sealed class PlaybackCoordinator
     {
         lock (_gate)
             _lastActivityUtc = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// While the screens are waiting for a quiet moment, the house must not
-    /// start another song. A guest's choice still plays.
-    /// </summary>
-    public void HoldHouseMusic(bool hold)
-    {
-        lock (_gate)
-            _holdHouse = hold;
     }
 
     public void HallHeartbeat()
@@ -412,7 +401,7 @@ public sealed class PlaybackCoordinator
 
     private QueueEntry? MaybeAutoplay()
     {
-        if (_holdHouse || !PauseHasLasted())
+        if (!PauseHasLasted())
             return null;
 
         var advertisement = _media.Events(DateTime.UtcNow)

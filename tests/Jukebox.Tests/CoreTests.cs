@@ -733,41 +733,6 @@ public class LibrarySearchTests
     }
 
     [Fact]
-    public void Screens_open_again_at_six_when_the_room_is_quiet()
-    {
-        var today = new DateTime(2026, 10, 20, 6, 0, 0);
-        var booted = new DateTime(2026, 10, 19, 18, 0, 0);
-        var utc = new DateTime(2026, 10, 20, 4, 0, 0, DateTimeKind.Utc);
-        var quiet = ScreenRestart.Decide(today, 6, 0, booted, null, false, false, utc.AddMinutes(-3), utc);
-        Assert.True(quiet.Restart);
-        Assert.True(quiet.HoldHouse);
-
-        var early = ScreenRestart.Decide(today.AddHours(-1), 6, 0, booted, null, false, false, utc.AddMinutes(-3), utc);
-        Assert.False(early.Restart);
-        Assert.False(early.HoldHouse);
-
-        var playing = ScreenRestart.Decide(today, 6, 0, booted, null, true, false, utc.AddMinutes(-3), utc);
-        Assert.False(playing.Restart);
-        Assert.True(playing.HoldHouse);
-
-        var queued = ScreenRestart.Decide(today, 6, 0, booted, null, false, true, utc.AddMinutes(-3), utc);
-        Assert.False(queued.Restart);
-        Assert.True(queued.HoldHouse);
-
-        var touched = ScreenRestart.Decide(today, 6, 0, booted, null, false, false, utc.AddSeconds(-30), utc);
-        Assert.False(touched.Restart);
-        Assert.True(touched.HoldHouse);
-
-        var slept = ScreenRestart.Decide(today.AddHours(4), 6, 0, today.AddHours(4), null, false, false, utc, utc);
-        Assert.False(slept.Restart);
-        Assert.False(slept.HoldHouse);
-
-        var done = ScreenRestart.Decide(today.AddMinutes(10), 6, 0, booted, "2026-10-20", false, false, utc.AddMinutes(-3), utc);
-        Assert.False(done.Restart);
-        Assert.False(done.HoldHouse);
-    }
-
-    [Fact]
     public void A_library_copy_can_be_removed_without_leaving_the_folder()
     {
         var root = Path.Combine(Path.GetTempPath(), "jukebox-copy-" + Guid.NewGuid().ToString("N"));

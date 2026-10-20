@@ -179,14 +179,6 @@ enable_wants jukebox-onlime.service
 rm -f /etc/systemd/system/sysinit.target.wants/jukebox-boot-guard.service
 enable_wants jukebox-boot-guard.service
 
-# An earlier package pointed the printer units at nothing. Put Debian's own files back.
-for unit in cups.service cups.socket cups-browsed.service; do
-  link="/etc/systemd/system/${unit}"
-  if [[ -L "$link" ]] && [[ "$(readlink "$link")" == /dev/null ]]; then
-    rm -f "$link"
-  fi
-done
-
 # The one-shot start entry makes this PC power on and off after the power button.
 # Leave the existing start files alone. Secure Boot stays off.
 rm -f /etc/kernel/postinst.d/zzz-jukebox-secure-boot

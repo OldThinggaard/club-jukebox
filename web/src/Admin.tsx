@@ -65,8 +65,6 @@ type Settings = {
   imageSeconds: number;
   timezone: string;
   backupHour: number;
-  screenRestartHour: number;
-  screenRestartMinute: number;
 };
 
 async function admin<T>(url: string, init?: RequestInit): Promise<T> {
@@ -112,13 +110,7 @@ export function Admin() {
     let last = Date.now();
     let seconds = 0;
     let left = false;
-    let sent = 0;
-    const mark = () => {
-      last = Date.now();
-      if (last - sent < 20000) return;
-      sent = last;
-      void fetch("/api/activity", { method: "POST" });
-    };
+    const mark = () => { last = Date.now(); };
     const read = () => {
       fetch("/api/screen").then((response) => response.json()).then((body: { idleTimeoutSeconds?: number }) => {
         seconds = Number(body.idleTimeoutSeconds) || 0;
