@@ -556,18 +556,6 @@ function PlaybackPanel() {
         </Field>
         <Field label="Photo seconds"><input type="number" value={settings.imageSeconds} onChange={(event) => set({ imageSeconds: Number(event.target.value) })} /></Field>
         <Field label="Backup hour"><input type="number" value={settings.backupHour} onChange={(event) => set({ backupHour: Number(event.target.value) })} /></Field>
-        <Field label="Genstart skærme">
-          <input
-            type="time"
-            value={`${String(settings.screenRestartHour).padStart(2, "0")}:${String(settings.screenRestartMinute).padStart(2, "0")}`}
-            onChange={(event) => {
-              const [hour, minute] = event.target.value.split(":");
-              if (hour === undefined || minute === undefined) return;
-              void saveSound({ screenRestartHour: Number(hour), screenRestartMinute: Number(minute) });
-            }}
-          />
-        </Field>
-        <p className="muted">Begge skærme lukker og åbner igen på dette tidspunkt. Den venter, til sangen er færdig, køen er tom, og hylden har stået stille i to minutter. Var maskinen slukket, springes dagen over.</p>
       </div>
       <Field label="Welcome"><textarea value={settings.welcomeMessage} onChange={(event) => set({ welcomeMessage: event.target.value })} /></Field>
       <Field label="Instructions"><textarea value={settings.instructions} onChange={(event) => set({ instructions: event.target.value })} /></Field>

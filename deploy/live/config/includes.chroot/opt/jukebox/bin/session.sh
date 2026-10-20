@@ -260,24 +260,8 @@ ui_pid=""
 hall_pid=""
 welcomed=0
 welcome_tries=0
-screen_flag=/var/lib/jukebox/restart-screens
-
-stop_browser() {
-  local pid="$1"
-  [[ -n "$pid" ]] || return 0
-  # Only this window. Killing its process group can take the whole session down.
-  kill "$pid" >/dev/null 2>&1 || true
-  wait "$pid" >/dev/null 2>&1 || true
-}
 
 while kill -0 "$openbox_pid" >/dev/null 2>&1; do
-  if [[ -f "$screen_flag" ]]; then
-    rm -f "$screen_flag"
-    stop_browser "$ui_pid"
-    stop_browser "$hall_pid"
-    ui_pid=""
-    hall_pid=""
-  fi
   if [[ -z "$ui_pid" ]] || ! kill -0 "$ui_pid" >/dev/null 2>&1; then
     setsid /opt/jukebox/bin/kiosk.sh ui &
     ui_pid=$!

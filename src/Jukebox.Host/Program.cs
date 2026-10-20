@@ -58,7 +58,6 @@ if (config.EnableBackground)
     builder.Services.AddHostedService<BackupWorker>();
     builder.Services.AddHostedService<SamplerWorker>();
     builder.Services.AddHostedService<OnlimeShareWorker>();
-    builder.Services.AddHostedService<ScreenRestartWorker>();
 }
 
 var app = builder.Build();

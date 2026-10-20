@@ -165,8 +165,8 @@ if ! grep -q 'mpv-volume.py active 80' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The idle jack must be turned off once at startup." >&2
   exit 1
 fi
-if ! grep -q 'restart-screens' "$pkg/opt/jukebox/bin/session.sh"; then
-  echo "The screens must be able to open again without leaving the session." >&2
+if grep -q 'restart-screens' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "The clock must not close the screens." >&2
   exit 1
 fi
 if ! grep -q 'hide-cursor.py' "$pkg/opt/jukebox/bin/session.sh"; then
@@ -233,15 +233,14 @@ if grep -q systemctl "$pkg/DEBIAN/postinst" "$pkg/DEBIAN/prerm" "$pkg/opt/jukebo
   echo "An update must not talk to systemd." >&2
   exit 1
 fi
-if grep -q 'reboot -f' \
+if grep -E '^[[:space:]]*(/sbin/)?reboot([[:space:]]|$)' \
   "$pkg/opt/jukebox/lib/apply-pending.sh" \
-  "$ROOT/deploy/package/update-installed.py" \
   "$ROOT/deploy/live/config/includes.chroot/opt/jukebox/lib/install-to-disk.sh"; then
-  echo "A restart must let Debian finish." >&2
+  echo "An update must leave the computer running." >&2
   exit 1
 fi
-if ! grep -qx '  reboot || true' "$pkg/opt/jukebox/lib/apply-pending.sh"; then
-  echo "An update must restart the computer." >&2
+if grep -q 'reboot' "$ROOT/deploy/package/update-installed.py"; then
+  echo "The USB update must leave the computer running." >&2
   exit 1
 fi
 if grep -q 'ln -sfn /dev/null "/etc/systemd/system/${unit}"' "$pkg/DEBIAN/postinst"; then

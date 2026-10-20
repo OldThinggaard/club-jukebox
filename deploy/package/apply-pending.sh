@@ -17,8 +17,7 @@ sync
 if dpkg -i "$deb"; then
   rm -f "$deb" "$updating" /var/lib/jukebox/update-error
   sync
-  printf '%s\n' "Videojukebox er opdateret. Tag USB-noeglen ud. Maskinen genstarter." > /dev/console || true
-  reboot || true
+  printf '%s\n' "Videojukebox er opdateret. Lad maskinen vaere." > /dev/console || true
   exit 0
 fi
 

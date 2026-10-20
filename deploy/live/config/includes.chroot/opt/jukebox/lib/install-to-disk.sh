@@ -196,6 +196,5 @@ fi
 say "Installationen er færdig."
 sync
 if [[ "$REBOOT" -eq 1 ]]; then
-  say "Tag USB-nøglen ud nu. Maskinen genstarter."
-  reboot || true
+  say "Tag USB-nøglen ud. Sluk med taend-knappen, og taend igen."
 fi
