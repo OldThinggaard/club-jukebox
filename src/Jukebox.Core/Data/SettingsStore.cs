@@ -24,6 +24,8 @@ public sealed class ClubSettings
     public int ImageSeconds { get; init; } = 12;
     public string Timezone { get; init; } = "Europe/Copenhagen";
     public int BackupHour { get; init; } = 3;
+    public int ScreenRestartHour { get; init; } = 6;
+    public int ScreenRestartMinute { get; init; } = 0;
     public string? LastScanAt { get; init; }
     public string? LastBackupAt { get; init; }
 }
@@ -57,6 +59,8 @@ public sealed class SettingsStore
             PutIfMissing(connection, tx, SettingKeys.ImageSeconds, defaults.ImageSeconds.ToString());
             PutIfMissing(connection, tx, SettingKeys.Timezone, defaults.Timezone);
             PutIfMissing(connection, tx, SettingKeys.BackupHour, defaults.BackupHour.ToString());
+            PutIfMissing(connection, tx, SettingKeys.ScreenRestartHour, defaults.ScreenRestartHour.ToString());
+            PutIfMissing(connection, tx, SettingKeys.ScreenRestartMinute, defaults.ScreenRestartMinute.ToString());
         });
     }
 
@@ -83,6 +87,8 @@ public sealed class SettingsStore
             ImageSeconds = Int(map, SettingKeys.ImageSeconds, 12),
             Timezone = Get(map, SettingKeys.Timezone, "Europe/Copenhagen"),
             BackupHour = Int(map, SettingKeys.BackupHour, 3),
+            ScreenRestartHour = Math.Clamp(Int(map, SettingKeys.ScreenRestartHour, 6), 0, 23),
+            ScreenRestartMinute = Math.Clamp(Int(map, SettingKeys.ScreenRestartMinute, 0), 0, 59),
             LastScanAt = map.TryGetValue(SettingKeys.LastScanAt, out var scan) ? scan : null,
             LastBackupAt = map.TryGetValue(SettingKeys.LastBackupAt, out var backup) ? backup : null
         };
@@ -113,7 +119,9 @@ public sealed class SettingsStore
             [SettingKeys.PlaybackOutput] = settings.PlaybackOutput.Trim(),
             [SettingKeys.ImageSeconds] = Math.Clamp(settings.ImageSeconds, 3, 120).ToString(),
             [SettingKeys.Timezone] = settings.Timezone.Trim(),
-            [SettingKeys.BackupHour] = Math.Clamp(settings.BackupHour, 0, 23).ToString()
+            [SettingKeys.BackupHour] = Math.Clamp(settings.BackupHour, 0, 23).ToString(),
+            [SettingKeys.ScreenRestartHour] = Math.Clamp(settings.ScreenRestartHour, 0, 23).ToString(),
+            [SettingKeys.ScreenRestartMinute] = Math.Clamp(settings.ScreenRestartMinute, 0, 59).ToString()
         };
         _database.InWrite((connection, tx) =>
         {

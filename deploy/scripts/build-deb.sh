@@ -165,6 +165,10 @@ if ! grep -q 'mpv-volume.py active 80' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The idle jack must be turned off once at startup." >&2
   exit 1
 fi
+if ! grep -q 'restart-screens' "$pkg/opt/jukebox/bin/session.sh"; then
+  echo "The screens must be able to open again without leaving the session." >&2
+  exit 1
+fi
 if ! grep -q 'hide-cursor.py' "$pkg/opt/jukebox/bin/session.sh"; then
   echo "The pointer must stay hidden." >&2
   exit 1

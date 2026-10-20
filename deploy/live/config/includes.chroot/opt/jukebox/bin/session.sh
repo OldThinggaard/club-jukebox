@@ -248,35 +248,56 @@ if [[ -n "$panel" ]]; then
     export UI_GEOM="$geom"
   fi
 fi
-
-(
-  for _ in $(seq 1 90); do
-    geom="$(hall_geom || true)"
-    if [[ -n "$geom" ]]; then
-      HALL_GEOM="$geom" /opt/jukebox/bin/kiosk.sh hall &
-      for _ in $(seq 1 20); do
-        if [[ -s /var/lib/jukebox/play.request ]]; then
-          break
-        fi
-        if xwininfo -root -tree 2>/dev/null | grep -q 'Club jukebox'; then
-          sleep 2
-          break
-        fi
-        sleep 0.5
-      done
-      hide_welcome
-      exit 0
-    fi
-    sleep 2
-  done
-) &
-
-/opt/jukebox/bin/hall-player.sh >/var/log/jukebox-hall-player.log 2>&1 &
-
 if [[ -f /etc/jukebox-installer ]]; then
   export JUKEBOX_KIOSK_URL="http://127.0.0.1:47123/install"
 fi
-/opt/jukebox/bin/kiosk.sh ui
-status=$?
+
+/opt/jukebox/bin/hall-player.sh >/var/log/jukebox-hall-player.log 2>&1 &
+
+# The two Chromium windows can close and open again without ending the
+# session. Ending it would drop the sound back to the startup volume.
+ui_pid=""
+hall_pid=""
+welcomed=0
+welcome_tries=0
+screen_flag=/var/lib/jukebox/restart-screens
+
+stop_browser() {
+  local pid="$1"
+  [[ -n "$pid" ]] || return 0
+  kill -- "-${pid}" >/dev/null 2>&1 || kill "$pid" >/dev/null 2>&1 || true
+  wait "$pid" >/dev/null 2>&1 || true
+}
+
+while kill -0 "$openbox_pid" >/dev/null 2>&1; do
+  if [[ -f "$screen_flag" ]]; then
+    rm -f "$screen_flag"
+    stop_browser "$ui_pid"
+    stop_browser "$hall_pid"
+    ui_pid=""
+    hall_pid=""
+  fi
+  if [[ -z "$ui_pid" ]] || ! kill -0 "$ui_pid" >/dev/null 2>&1; then
+    setsid /opt/jukebox/bin/kiosk.sh ui &
+    ui_pid=$!
+  fi
+  geom="$(hall_geom || true)"
+  if [[ -n "$geom" ]]; then
+    if [[ -z "$hall_pid" ]] || ! kill -0 "$hall_pid" >/dev/null 2>&1; then
+      HALL_GEOM="$geom" setsid /opt/jukebox/bin/kiosk.sh hall &
+      hall_pid=$!
+    fi
+  fi
+  if [[ "$welcomed" -eq 0 ]]; then
+    welcome_tries=$((welcome_tries + 1))
+    if [[ -s /var/lib/jukebox/play.request ]] || xwininfo -root -tree 2>/dev/null | grep -q 'Club jukebox' || [[ "$welcome_tries" -ge 20 ]]; then
+      sleep 2
+      hide_welcome
+      welcomed=1
+    fi
+  fi
+  sleep 2
+done
+
 kill "$openbox_pid" >/dev/null 2>&1 || true
-exit "$status"
+exit 0

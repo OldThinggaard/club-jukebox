@@ -25,6 +25,7 @@ public sealed class JukeboxPaths
     public string PlayClock => Path.Combine(DataDirectory, "play.clock");
     public string PlayerStamp => Path.Combine(DataDirectory, "player.stamp");
     public string LastSeen => Path.Combine(DataDirectory, "last-seen");
+    public string RestartScreens => Path.Combine(DataDirectory, "restart-screens");
     public string AudioEnv => Path.Combine(DataDirectory, "audio.env");
 
     public string LogoPath => Path.Combine(Branding, "logo.png");

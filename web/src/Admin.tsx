@@ -65,6 +65,8 @@ type Settings = {
   imageSeconds: number;
   timezone: string;
   backupHour: number;
+  screenRestartHour: number;
+  screenRestartMinute: number;
 };
 
 async function admin<T>(url: string, init?: RequestInit): Promise<T> {
@@ -110,7 +112,13 @@ export function Admin() {
     let last = Date.now();
     let seconds = 0;
     let left = false;
-    const mark = () => { last = Date.now(); };
+    let sent = 0;
+    const mark = () => {
+      last = Date.now();
+      if (last - sent < 20000) return;
+      sent = last;
+      void fetch("/api/activity", { method: "POST" });
+    };
     const read = () => {
       fetch("/api/screen").then((response) => response.json()).then((body: { idleTimeoutSeconds?: number }) => {
         seconds = Number(body.idleTimeoutSeconds) || 0;
@@ -548,6 +556,18 @@ function PlaybackPanel() {
         </Field>
         <Field label="Photo seconds"><input type="number" value={settings.imageSeconds} onChange={(event) => set({ imageSeconds: Number(event.target.value) })} /></Field>
         <Field label="Backup hour"><input type="number" value={settings.backupHour} onChange={(event) => set({ backupHour: Number(event.target.value) })} /></Field>
+        <Field label="Genstart skærme">
+          <input
+            type="time"
+            value={`${String(settings.screenRestartHour).padStart(2, "0")}:${String(settings.screenRestartMinute).padStart(2, "0")}`}
+            onChange={(event) => {
+              const [hour, minute] = event.target.value.split(":");
+              if (hour === undefined || minute === undefined) return;
+              void saveSound({ screenRestartHour: Number(hour), screenRestartMinute: Number(minute) });
+            }}
+          />
+        </Field>
+        <p className="muted">Begge skærme lukker og åbner igen på dette tidspunkt. Den venter, til sangen er færdig, køen er tom, og hylden har stået stille i to minutter. Var maskinen slukket, springes dagen over.</p>
       </div>
       <Field label="Welcome"><textarea value={settings.welcomeMessage} onChange={(event) => set({ welcomeMessage: event.target.value })} /></Field>
       <Field label="Instructions"><textarea value={settings.instructions} onChange={(event) => set({ instructions: event.target.value })} /></Field>

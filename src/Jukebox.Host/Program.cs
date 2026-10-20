@@ -34,6 +34,7 @@ if (args.Contains("--self-check"))
 }
 
 builder.Services.AddSingleton(config);
+builder.Services.AddSingleton(new HostClock(startedUtc));
 builder.Services.AddSingleton(paths);
 builder.Services.AddSingleton<JukeboxDatabase>();
 builder.Services.AddSingleton<SettingsStore>();
@@ -57,6 +58,7 @@ if (config.EnableBackground)
     builder.Services.AddHostedService<BackupWorker>();
     builder.Services.AddHostedService<SamplerWorker>();
     builder.Services.AddHostedService<OnlimeShareWorker>();
+    builder.Services.AddHostedService<ScreenRestartWorker>();
 }
 
 var app = builder.Build();
